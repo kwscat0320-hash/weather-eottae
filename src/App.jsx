@@ -20,9 +20,13 @@ import {
 // 현재는 OpenWeather API만 사용합니다.
 // 기상청 API는 브라우저 CORS/인증 이슈 때문에 잠시 보류합니다.
 
-const OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;
+const OPENWEATHER_API_KEY =
+  import.meta.env.VITE_OW_KEY ||
+  import.meta.env.VITE_OPENWEATHER_API_KEY ||
+  "";
 
-
+console.log("환경변수 확인:", import.meta.env);
+console.log("VITE_OW_KEY:", import.meta.env.VITE_OW_KEY);
 
 const DEFAULT_LOCATION = {
   lat: 37.5665,
@@ -122,7 +126,7 @@ export default function WeatherApp() {
 
   const fetchOpenWeatherData = async (lat, lon) => {
     if (!OPENWEATHER_API_KEY || OPENWEATHER_API_KEY === "YOUR_API_KEY") {
-      throw new Error("OpenWeather API 키를 입력해야 실제 날씨를 불러올 수 있어요.");
+      throw new Error("날씨 서비스 키를 읽지 못했어요. .env 또는 Vercel 환경변수에 VITE_OW_KEY를 등록해 주세요.");
     }
 
     const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=kr`;
