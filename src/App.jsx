@@ -38,7 +38,6 @@ export default function WeatherApp() {
   const [coords, setCoords] = useState(DEFAULT_LOCATION);
   const [weatherSource, setWeatherSource] = useState("확인 중");
   const [displayLocation, setDisplayLocation] = useState(DEFAULT_LOCATION.name);
-  const [locationDebug, setLocationDebug] = useState("");
   const [currentWeather, setCurrentWeather] = useState(null);
   const [forecast, setForecast] = useState([]);
   const [airQuality, setAirQuality] = useState(null);
@@ -84,7 +83,6 @@ export default function WeatherApp() {
     try {
       setLoading(true);
       setError("");
-      setLocationDebug(`위도 ${lat.toFixed(4)} · 경도 ${lon.toFixed(4)}`);
       await fetchOpenWeatherData(lat, lon);
       setLastUpdated(new Date());
     } catch (err) {
