@@ -16,11 +16,18 @@ export default async function handler(req, res) {
   const grid = dfsXyConv(Number(lat), Number(lon));
   const { date, ultraDate, ultraTime, vilageTime } = getKmaBaseDateTime();
 
+  const testUrl = buildKmaUrl("getUltraSrtNcst", key, ultraDate, ultraTime, grid, 100);
+  console.log("[KMA] key length:", key.length);
+  console.log("[KMA] key prefix:", key.slice(0, 10));
+  console.log("[KMA] testUrl:", testUrl);
+
   const [ncstRes, ultraFcstRes, vilageFcstRes] = await Promise.allSettled([
-    fetch(buildKmaUrl("getUltraSrtNcst", key, ultraDate, ultraTime, grid, 100)),
+    fetch(testUrl),
     fetch(buildKmaUrl("getUltraSrtFcst", key, ultraDate, ultraTime, grid, 200)),
     fetch(buildKmaUrl("getVilageFcst", key, date, vilageTime, grid, 1000)),
   ]);
+
+  console.log("[KMA] ncst status:", ncstRes.status ?? ncstRes.value?.status);
 
   try {
     const ncstItems = await parseKmaResult(ncstRes, "초단기실황");
@@ -32,6 +39,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ current, forecast });
   } catch (err) {
+    console.error("[KMA] error:", err.message);
     return res.status(502).json({ error: err.message });
   }
 }
@@ -41,7 +49,7 @@ export default async function handler(req, res) {
 function buildKmaUrl(endpoint, key, baseDate, baseTime, grid, rows) {
   return (
     `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${endpoint}` +
-    `?serviceKey=${key}` +
+    `?serviceKey=${encodeURIComponent(key)}` +
     `&pageNo=1&numOfRows=${rows}&dataType=JSON` +
     `&base_date=${baseDate}&base_time=${baseTime}` +
     `&nx=${grid.x}&ny=${grid.y}`
