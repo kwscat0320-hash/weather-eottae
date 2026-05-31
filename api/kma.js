@@ -86,16 +86,16 @@ function httpsGet(urlStr) {
 // ── KMA URL 빌더 ──────────────────────────────────────────────────────────────
 
 function buildKmaUrl(endpoint, rawKey, baseDate, baseTime, grid, rows) {
-  const url = new URL(`https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${endpoint}`);
-  url.searchParams.set("serviceKey", rawKey);
-  url.searchParams.set("pageNo", "1");
-  url.searchParams.set("numOfRows", String(rows));
-  url.searchParams.set("dataType", "JSON");
-  url.searchParams.set("base_date", baseDate);
-  url.searchParams.set("base_time", baseTime);
-  url.searchParams.set("nx", String(grid.x));
-  url.searchParams.set("ny", String(grid.y));
-  return url.toString();
+  const params = new URLSearchParams({
+    pageNo: "1",
+    numOfRows: String(rows),
+    dataType: "JSON",
+    base_date: baseDate,
+    base_time: baseTime,
+    nx: String(grid.x),
+    ny: String(grid.y),
+  });
+  return `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${endpoint}?serviceKey=${rawKey}&${params.toString()}`;
 }
 
 // ── 응답 파싱 ─────────────────────────────────────────────────────────────────
