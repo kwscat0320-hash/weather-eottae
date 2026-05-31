@@ -68,7 +68,11 @@ async function parseKmaResult(result, label) {
   if (result.status !== "fulfilled") throw new Error(`${label} 요청 실패`);
 
   const res = result.value;
-  if (!res.ok) throw new Error(`${label} HTTP ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.log(`[KMA] ${label} ${res.status} body:`, body.slice(0, 300));
+    throw new Error(`${label} HTTP ${res.status}`);
+  }
 
   let data;
   try {
