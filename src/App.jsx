@@ -16,13 +16,6 @@ import {
   Wind,
 } from "lucide-react";
 
-// MVP 버전
-// 현재 실제 호출은 OpenWeather API만 사용합니다.
-// 기상청 API는 브라우저 CORS/인증 이슈 때문에 잠시 보류하지만,
-// 이후 재연동을 위해 관련 보조 함수는 코드 하단에 보존합니다.
-// 로컬 .env 또는 Vercel Environment Variables에 아래 값이 필요합니다.
-// VITE_OW_KEY=OpenWeather키
-
 const OPENWEATHER_API_KEY =
   import.meta.env.VITE_OW_KEY ||
   import.meta.env.VITE_OPENWEATHER_API_KEY ||
@@ -110,7 +103,9 @@ export default function WeatherApp() {
     }
 
     const currentData = await currentRes.json();
-    const locationName = await fetchOpenWeatherLocationName(lat, lon);
+
+    // OpenWeather API 응답의 name 필드를 위치명으로 직접 사용
+    const locationName = currentData.name || coords.name;
 
     const [forecastResult, airResult] = await Promise.allSettled([
       fetch(forecastUrl),
@@ -136,22 +131,6 @@ export default function WeatherApp() {
     setDisplayLocation(locationName);
     setWeatherSource("OpenWeather");
   };
-
-const fetchOpenWeatherLocationName = async (lat, lon) => {
-  try {
-    const geoUrl = `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=5&appid=${OPENWEATHER_API_KEY}`;
-    const geoRes = await fetch(geoUrl);
-    if (!geoRes.ok) return coords.name;
-
-    const geoData = await geoRes.json();
-    const location = geoData.find((item) => item.country === "KR") || geoData[0];
-    if (!location) return coords.name;
-
-    return location.local_names?.ko || location.name || coords.name;
-  } catch {
-    return coords.name;
-  }
-};
 
   const todayForecasts = useMemo(() => forecast.slice(0, 6), [forecast]);
 
