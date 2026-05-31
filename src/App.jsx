@@ -137,28 +137,21 @@ export default function WeatherApp() {
     setWeatherSource("OpenWeather");
   };
 
-  const fetchOpenWeatherLocationName = async (lat, lon) => {
-    try {
-      const geoUrl = `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=5&appid=${OPENWEATHER_API_KEY}`;
-      const geoRes = await fetch(geoUrl);
-      if (!geoRes.ok) return coords.name;
+const fetchOpenWeatherLocationName = async (lat, lon) => {
+  try {
+    const geoUrl = `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=5&appid=${OPENWEATHER_API_KEY}`;
+    const geoRes = await fetch(geoUrl);
+    if (!geoRes.ok) return coords.name;
 
-      const geoData = await geoRes.json();
-      const location = geoData.find((item) => item.country === "KR") || geoData[0];
-      if (!location) return coords.name;
+    const geoData = await geoRes.json();
+    const location = geoData.find((item) => item.country === "KR") || geoData[0];
+    if (!location) return coords.name;
 
-      const localName = location.local_names?.ko || location.name || "";
-      const stateName = location.state || "";
-
-      if (stateName && localName && stateName !== localName) {
-        return `${stateName} ${localName}`;
-      }
-
-      return localName || stateName || coords.name;
-    } catch {
-      return coords.name;
-    }
-  };
+    return location.local_names?.ko || location.name || coords.name;
+  } catch {
+    return coords.name;
+  }
+};
 
   const todayForecasts = useMemo(() => forecast.slice(0, 6), [forecast]);
 
