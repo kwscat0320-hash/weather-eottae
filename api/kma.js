@@ -13,14 +13,15 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "KMA_KEY 환경변수가 설정되지 않았습니다." });
   }
 
-  // 키가 이미 percent-encoded 상태면 그대로, 아니면 인코딩
-  const key = rawKey.includes("%") ? rawKey : encodeURIComponent(rawKey);
+  // 키 앞뒤 공백 제거 후 percent-encoded 여부로 인코딩 방식 결정
+  const trimmedKey = rawKey.trim();
+  const key = trimmedKey.includes("%") ? trimmedKey : encodeURIComponent(trimmedKey);
 
   const grid = dfsXyConv(Number(lat), Number(lon));
   const { date, ultraDate, ultraTime, vilageTime } = getKmaBaseDateTime();
 
-  console.log("[KMA] rawKey prefix:", rawKey.slice(0, 12));
-  console.log("[KMA] encodedKey prefix:", key.slice(0, 12));
+  console.log("[KMA] rawKey length:", rawKey.length, "trimmed:", trimmedKey.length);
+  console.log("[KMA] rawKey prefix:", rawKey.slice(0, 20));
   console.log("[KMA] grid:", JSON.stringify(grid));
   console.log("[KMA] baseDate:", date, "ultraDate:", ultraDate, "ultraTime:", ultraTime);
 
@@ -196,32 +197,33 @@ function calcFeelsLike(temp, wind) {
 }
 
 function getKmaBaseDateTime() {
-  const now = new Date();
+  // Vercel 서버는 UTC 기준 → KST(UTC+9)로 변환
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
 
   const ultra = new Date(now);
-  if (ultra.getMinutes() < 45) ultra.setHours(ultra.getHours() - 1);
+  if (ultra.getUTCMinutes() < 45) ultra.setUTCHours(ultra.getUTCHours() - 1);
 
   const village = new Date(now);
-  const hhmm = village.getHours() * 100 + village.getMinutes();
+  const hhmm = village.getUTCHours() * 100 + village.getUTCMinutes();
   const baseTimes = [2300, 2000, 1700, 1400, 1100, 800, 500, 200];
   let selected = baseTimes.find((t) => hhmm >= t + 10);
   if (!selected) {
-    village.setDate(village.getDate() - 1);
+    village.setUTCDate(village.getUTCDate() - 1);
     selected = 2300;
   }
 
   return {
     date: formatYMD(village),
     ultraDate: formatYMD(ultra),
-    ultraTime: `${String(ultra.getHours()).padStart(2, "0")}00`,
+    ultraTime: `${String(ultra.getUTCHours()).padStart(2, "0")}00`,
     vilageTime: String(selected).padStart(4, "0"),
   };
 }
 
 function formatYMD(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
   return `${y}${m}${d}`;
 }
 
