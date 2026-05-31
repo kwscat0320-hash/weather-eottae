@@ -8,26 +8,31 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "lat, lon 파라미터가 필요합니다." });
   }
 
-  const key = process.env.KMA_KEY;
-  if (!key) {
+  const rawKey = process.env.KMA_KEY;
+  if (!rawKey) {
     return res.status(500).json({ error: "KMA_KEY 환경변수가 설정되지 않았습니다." });
   }
+
+  // 키가 이미 percent-encoded 상태면 그대로, 아니면 인코딩
+  const key = rawKey.includes("%") ? rawKey : encodeURIComponent(rawKey);
 
   const grid = dfsXyConv(Number(lat), Number(lon));
   const { date, ultraDate, ultraTime, vilageTime } = getKmaBaseDateTime();
 
-  const testUrl = buildKmaUrl("getUltraSrtNcst", key, ultraDate, ultraTime, grid, 100);
-  console.log("[KMA] key length:", key.length);
-  console.log("[KMA] key prefix:", key.slice(0, 10));
-  console.log("[KMA] testUrl:", testUrl);
+  console.log("[KMA] rawKey prefix:", rawKey.slice(0, 12));
+  console.log("[KMA] encodedKey prefix:", key.slice(0, 12));
+  console.log("[KMA] grid:", JSON.stringify(grid));
+  console.log("[KMA] baseDate:", date, "ultraDate:", ultraDate, "ultraTime:", ultraTime);
 
   const [ncstRes, ultraFcstRes, vilageFcstRes] = await Promise.allSettled([
-    fetch(testUrl),
+    fetch(buildKmaUrl("getUltraSrtNcst", key, ultraDate, ultraTime, grid, 100)),
     fetch(buildKmaUrl("getUltraSrtFcst", key, ultraDate, ultraTime, grid, 200)),
     fetch(buildKmaUrl("getVilageFcst", key, date, vilageTime, grid, 1000)),
   ]);
 
-  console.log("[KMA] ncst status:", ncstRes.status ?? ncstRes.value?.status);
+  console.log("[KMA] ncst HTTP:", ncstRes.value?.status);
+  console.log("[KMA] ultraFcst HTTP:", ultraFcstRes.value?.status);
+  console.log("[KMA] vilageFcst HTTP:", vilageFcstRes.value?.status);
 
   try {
     const ncstItems = await parseKmaResult(ncstRes, "초단기실황");
