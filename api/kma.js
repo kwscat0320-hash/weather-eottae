@@ -41,7 +41,7 @@ export default async function handler(req, res) {
 function buildKmaUrl(endpoint, key, baseDate, baseTime, grid, rows) {
   return (
     `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${endpoint}` +
-    `?serviceKey=${encodeURIComponent(key)}` +
+    `?serviceKey=${key}` +
     `&pageNo=1&numOfRows=${rows}&dataType=JSON` +
     `&base_date=${baseDate}&base_time=${baseTime}` +
     `&nx=${grid.x}&ny=${grid.y}`
