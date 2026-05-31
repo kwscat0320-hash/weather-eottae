@@ -3,80 +3,77 @@ import { motion } from "framer-motion";
 import {
   AlertCircle,
   Bell,
+  Cloud,
+  CloudRain,
+  CloudSnow,
   CloudSun,
   Droplets,
   Loader2,
   MapPin,
   Navigation,
   RefreshCw,
-  ShieldAlert,
   Shirt,
   Sun,
   Umbrella,
   Wind,
 } from "lucide-react";
 
-const OPENWEATHER_API_KEY =
-  import.meta.env.VITE_OW_KEY ||
-  import.meta.env.VITE_OPENWEATHER_API_KEY ||
-  "";
-
-const DEFAULT_LOCATION = {
-  lat: 37.5665,
-  lon: 126.978,
-  name: "서울",
-};
+const DEFAULT_LOCATION = { lat: 37.5665, lon: 126.978, name: "서울" };
 
 export default function WeatherApp() {
   const [coords, setCoords] = useState(DEFAULT_LOCATION);
-  const [weatherSource, setWeatherSource] = useState("확인 중");
-  const [displayLocation, setDisplayLocation] = useState(DEFAULT_LOCATION.name);
   const [currentWeather, setCurrentWeather] = useState(null);
   const [forecast, setForecast] = useState([]);
-  const [airQuality, setAirQuality] = useState(null);
+  const [weatherSource, setWeatherSource] = useState("확인 중");
+  const [displayLocation, setDisplayLocation] = useState(DEFAULT_LOCATION.name);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
-    runSelfTests();
     requestCurrentLocation();
   }, []);
 
   const requestCurrentLocation = () => {
     if (!navigator.geolocation) {
-      fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
+      fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon, DEFAULT_LOCATION.name);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const nextCoords = {
+        const next = {
           lat: position.coords.latitude,
           lon: position.coords.longitude,
           name: "현재 위치",
         };
-
-        setCoords(nextCoords);
-        fetchWeatherData(nextCoords.lat, nextCoords.lon);
+        setCoords(next);
+        fetchWeatherData(next.lat, next.lon, next.name);
       },
       () => {
         setCoords(DEFAULT_LOCATION);
-        fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
+        fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon, DEFAULT_LOCATION.name);
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 8000,
-        maximumAge: 1000 * 60 * 10,
-      }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 1000 * 60 * 10 }
     );
   };
 
-  const fetchWeatherData = async (lat, lon) => {
+  const fetchWeatherData = async (lat, lon, locationName) => {
     try {
       setLoading(true);
       setError("");
-      await fetchOpenWeatherData(lat, lon);
+
+      const res = await fetch(`/api/kma?lat=${lat}&lon=${lon}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `기상청 API 오류 (${res.status})`);
+      }
+
+      const data = await res.json();
+      setCurrentWeather(data.current);
+      setForecast(data.forecast);
+      setDisplayLocation(locationName);
+      setWeatherSource("기상청");
       setLastUpdated(new Date());
     } catch (err) {
       setError(err.message || "알 수 없는 오류가 발생했어요.");
@@ -85,67 +82,17 @@ export default function WeatherApp() {
     }
   };
 
-  const fetchOpenWeatherData = async (lat, lon) => {
-    if (!OPENWEATHER_API_KEY || OPENWEATHER_API_KEY === "YOUR_API_KEY") {
-      throw new Error("날씨 서비스 키를 읽지 못했어요. .env 또는 Vercel 환경변수에 VITE_OW_KEY를 등록해 주세요.");
-    }
-
-    const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=kr`;
-    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=kr`;
-    const airUrl = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}`;
-
-    const currentRes = await fetch(currentUrl);
-
-    if (!currentRes.ok) {
-      const errorData = await currentRes.json().catch(() => null);
-      const message = errorData?.message || "현재 날씨 데이터를 불러오지 못했어요.";
-      throw new Error(`OpenWeather 현재 날씨 오류: ${message}`);
-    }
-
-    const currentData = await currentRes.json();
-
-    // OpenWeather API 응답의 name 필드를 위치명으로 직접 사용
-    const locationName = currentData.name || coords.name;
-
-    const [forecastResult, airResult] = await Promise.allSettled([
-      fetch(forecastUrl),
-      fetch(airUrl),
-    ]);
-
-    let forecastData = [];
-    let airData = null;
-
-    if (forecastResult.status === "fulfilled" && forecastResult.value.ok) {
-      const data = await forecastResult.value.json();
-      forecastData = normalizeOpenWeatherForecast(data.list || []);
-    }
-
-    if (airResult.status === "fulfilled" && airResult.value.ok) {
-      const data = await airResult.value.json();
-      airData = data.list?.[0] || null;
-    }
-
-    setCurrentWeather(normalizeOpenWeatherCurrent(currentData));
-    setForecast(forecastData);
-    setAirQuality(airData);
-    setDisplayLocation(locationName);
-    setWeatherSource("OpenWeather");
-  };
-
   const todayForecasts = useMemo(() => forecast.slice(0, 6), [forecast]);
 
   const dailyForecasts = useMemo(() => {
     const grouped = {};
-
     forecast.forEach((item) => {
       const key = item.dateLabel;
-
       if (!grouped[key]) {
         grouped[key] = {
           date: key,
           min: item.tempMin ?? item.temp,
           max: item.tempMax ?? item.temp,
-          icon: item.icon,
           condition: item.condition,
           rainChance: item.rainChance ?? 0,
         };
@@ -155,19 +102,14 @@ export default function WeatherApp() {
         grouped[key].rainChance = Math.max(grouped[key].rainChance, item.rainChance ?? 0);
       }
     });
-
     return Object.values(grouped).slice(0, 5);
   }, [forecast]);
 
   const weather = useMemo(() => {
     if (!currentWeather) return null;
-
-    const pm10 = airQuality?.components?.pm10 ?? null;
-    const pm25 = airQuality?.components?.pm2_5 ?? null;
     const rainChance = currentWeather.rainChance ?? todayForecasts[0]?.rainChance ?? 0;
-
     return {
-      location: displayLocation || coords.name,
+      location: displayLocation,
       source: weatherSource,
       date: new Date().toLocaleDateString("ko-KR", {
         month: "long",
@@ -175,7 +117,6 @@ export default function WeatherApp() {
         weekday: "long",
       }),
       condition: currentWeather.condition || "날씨 정보 없음",
-      icon: currentWeather.icon,
       temp: Math.round(currentWeather.temp),
       feelsLike: Math.round(currentWeather.feelsLike ?? currentWeather.temp),
       high: Math.round(currentWeather.high ?? currentWeather.temp),
@@ -183,17 +124,13 @@ export default function WeatherApp() {
       rainChance,
       humidity: currentWeather.humidity ?? 0,
       wind: currentWeather.wind ?? 0,
-      pm10,
-      pm25,
     };
-  }, [currentWeather, airQuality, todayForecasts, coords.name, displayLocation, weatherSource]);
+  }, [currentWeather, todayForecasts, displayLocation, weatherSource]);
 
   const outdoorScore = useMemo(() => {
     if (!weather) return 0;
-
     let score = 100;
     if (weather.rainChance > 50) score -= 25;
-    if ((weather.pm10 ?? 0) > 80 || (weather.pm25 ?? 0) > 35) score -= 25;
     if (weather.temp >= 30 || weather.temp <= 3) score -= 20;
     if (weather.wind > 7) score -= 10;
     return Math.max(score, 0);
@@ -209,25 +146,12 @@ export default function WeatherApp() {
     return "두꺼운 외투";
   }, [weather]);
 
-  const dustLabel = useMemo(() => {
-    if (!weather?.pm10 && !weather?.pm25) return "확인 중";
-    if ((weather.pm10 ?? 0) > 150 || (weather.pm25 ?? 0) > 75) return "매우 나쁨";
-    if ((weather.pm10 ?? 0) > 80 || (weather.pm25 ?? 0) > 35) return "나쁨";
-    if ((weather.pm10 ?? 0) > 30 || (weather.pm25 ?? 0) > 15) return "보통";
-    return "좋음";
-  }, [weather]);
-
   const briefingText = useMemo(() => {
     if (!weather) return "날씨 정보를 불러오는 중이에요.";
-
-    const umbrellaText = weather.rainChance >= 40 ? "우산을 챙기는 게 좋아요." : "우산은 없어도 괜찮아 보여요.";
-    const dustText =
-      dustLabel === "나쁨" || dustLabel === "매우 나쁨"
-        ? "미세먼지도 주의해 주세요."
-        : "미세먼지는 크게 걱정하지 않아도 돼요.";
-
-    return `오늘 ${weather.location}은 ${weather.condition}, 현재 ${weather.temp}도예요. 체감온도는 ${weather.feelsLike}도이고, 강수확률은 ${weather.rainChance}%입니다. ${umbrellaText} 옷차림은 ${clothing}이 좋아요. ${dustText}`;
-  }, [weather, clothing, dustLabel]);
+    const umbrellaText =
+      weather.rainChance >= 40 ? "우산을 챙기는 게 좋아요." : "우산은 없어도 괜찮아 보여요.";
+    return `오늘 ${weather.location}은 ${weather.condition}, 현재 ${weather.temp}도예요. 체감온도는 ${weather.feelsLike}도이고, 강수확률은 ${weather.rainChance}%입니다. ${umbrellaText} 옷차림은 ${clothing}이 좋아요.`;
+  }, [weather, clothing]);
 
   if (loading) {
     return (
@@ -248,7 +172,10 @@ export default function WeatherApp() {
           <AlertCircle className="mb-4 text-rose-500" size={40} />
           <h1 className="text-2xl font-bold">날씨를 불러오지 못했어요</h1>
           <p className="text-sm text-slate-500 mt-3 leading-6 whitespace-pre-line">{error}</p>
-          <Button className="rounded-2xl mt-5" onClick={() => fetchWeatherData(coords.lat, coords.lon)}>
+          <Button
+            className="rounded-2xl mt-5"
+            onClick={() => fetchWeatherData(coords.lat, coords.lon, coords.name)}
+          >
             다시 시도
           </Button>
         </div>
@@ -275,12 +202,16 @@ export default function WeatherApp() {
               <p className="text-xs text-slate-400 mt-1">데이터: {weather.source}</p>
               {lastUpdated && (
                 <p className="text-xs text-slate-400 mt-1">
-                  업데이트 {lastUpdated.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                  업데이트{" "}
+                  {lastUpdated.toLocaleTimeString("ko-KR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </p>
               )}
             </div>
             <button
-              onClick={() => fetchWeatherData(coords.lat, coords.lon)}
+              onClick={() => fetchWeatherData(coords.lat, coords.lon, coords.name)}
               className="h-11 w-11 rounded-full bg-white/80 shadow-sm flex items-center justify-center"
               aria-label="날씨 새로고침"
             >
@@ -295,23 +226,19 @@ export default function WeatherApp() {
                 <span className="text-7xl font-semibold leading-none">{weather.temp}</span>
                 <span className="text-2xl font-semibold mt-2">°</span>
               </div>
-              <p className="text-lg font-medium mt-2">{weather.condition} · 체감 {weather.feelsLike}°</p>
-              <p className="text-sm text-slate-500 mt-1">최고 {weather.high}° / 최저 {weather.low}°</p>
+              <p className="text-lg font-medium mt-2">
+                {weather.condition} · 체감 {weather.feelsLike}°
+              </p>
+              <p className="text-sm text-slate-500 mt-1">
+                최고 {weather.high}° / 최저 {weather.low}°
+              </p>
             </div>
             <motion.div
               animate={{ y: [0, -8, 0] }}
               transition={{ repeat: Infinity, duration: 3 }}
-              className="h-24 w-24 rounded-full bg-white shadow-md flex items-center justify-center overflow-hidden"
+              className="h-24 w-24 rounded-full bg-white shadow-md flex items-center justify-center"
             >
-              {weather.icon ? (
-                <img
-                  src={`https://openweathermap.org/img/wn/${weather.icon}@2x.png`}
-                  alt={weather.condition}
-                  className="h-24 w-24"
-                />
-              ) : (
-                <CloudSun size={56} className="text-sky-500" />
-              )}
+              <WeatherIcon condition={weather.condition} size={52} />
             </motion.div>
           </div>
         </div>
@@ -335,12 +262,17 @@ export default function WeatherApp() {
               value={weather.rainChance >= 40 ? "챙기기" : "필요 낮음"}
               note={`강수확률 ${weather.rainChance}%`}
             />
-            <InfoCard icon={<Navigation size={20} />} title="야외 활동" value={`${outdoorScore}점`} note={outdoorScore >= 80 ? "나가기 좋아요" : "상황 체크"} />
             <InfoCard
-              icon={<ShieldAlert size={20} />}
-              title="미세먼지"
-              value={dustLabel}
-              note={`PM10 ${weather.pm10 ? Math.round(weather.pm10) : "-"}`}
+              icon={<Navigation size={20} />}
+              title="야외 활동"
+              value={`${outdoorScore}점`}
+              note={outdoorScore >= 80 ? "나가기 좋아요" : "상황 체크"}
+            />
+            <InfoCard
+              icon={<Wind size={20} />}
+              title="풍속"
+              value={`${Number(weather.wind).toFixed(1)}m/s`}
+              note={weather.wind > 7 ? "바람 강해요" : "바람 양호"}
             />
           </div>
 
@@ -351,7 +283,9 @@ export default function WeatherApp() {
               </h2>
               <div className="flex gap-3 overflow-x-auto pb-1">
                 {todayForecasts.length ? (
-                  todayForecasts.map((item) => <HourlyCard key={`${item.dateLabel}-${item.timeLabel}`} item={item} />)
+                  todayForecasts.map((item) => (
+                    <HourlyCard key={`${item.dateLabel}-${item.timeLabel}`} item={item} />
+                  ))
                 ) : (
                   <p className="text-sm text-slate-400">시간대별 예보를 불러오는 중이에요.</p>
                 )}
@@ -376,7 +310,11 @@ export default function WeatherApp() {
 
           <div className="grid grid-cols-3 gap-3">
             <MiniMetric icon={<Droplets size={16} />} label="습도" value={`${weather.humidity}%`} />
-            <MiniMetric icon={<Wind size={16} />} label="풍속" value={`${Number(weather.wind).toFixed(1)}m/s`} />
+            <MiniMetric
+              icon={<Wind size={16} />}
+              label="풍속"
+              value={`${Number(weather.wind).toFixed(1)}m/s`}
+            />
             <MiniMetric icon={<Umbrella size={16} />} label="강수" value={`${weather.rainChance}%`} />
           </div>
         </div>
@@ -385,337 +323,21 @@ export default function WeatherApp() {
   );
 }
 
-function normalizeOpenWeatherCurrent(data) {
-  return {
-    condition: data.weather?.[0]?.description || "날씨 정보 없음",
-    icon: data.weather?.[0]?.icon,
-    temp: data.main.temp,
-    feelsLike: data.main.feels_like,
-    high: data.main.temp_max,
-    low: data.main.temp_min,
-    rainChance: 0,
-    humidity: data.main.humidity,
-    wind: data.wind.speed,
-  };
+// ── 날씨 아이콘 ───────────────────────────────────────────────────────────────
+
+function WeatherIcon({ condition = "", size = 48 }) {
+  if (condition.includes("비") || condition.includes("소나기"))
+    return <CloudRain size={size} className="text-sky-500" />;
+  if (condition.includes("눈"))
+    return <CloudSnow size={size} className="text-blue-300" />;
+  if (condition.includes("구름많음"))
+    return <CloudSun size={size} className="text-slate-400" />;
+  if (condition.includes("흐림"))
+    return <Cloud size={size} className="text-slate-400" />;
+  return <Sun size={size} className="text-yellow-400" />;
 }
 
-function normalizeOpenWeatherForecast(list) {
-  return list.map((item) => {
-    const date = new Date(item.dt * 1000);
-
-    return {
-      dateLabel: date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }),
-      timeLabel: date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
-      condition: item.weather?.[0]?.description || "날씨",
-      icon: item.weather?.[0]?.icon,
-      temp: item.main.temp,
-      tempMin: item.main.temp_min,
-      tempMax: item.main.temp_max,
-      rainChance: Math.round((item.pop || 0) * 100),
-    };
-  });
-}
-
-function isKoreaLocation(lat, lon) {
-  return lat >= 33 && lat <= 39.5 && lon >= 124 && lon <= 132;
-}
-
-function buildKmaUrl(endpoint, serviceKey, baseDate, baseTime, grid, rows) {
-  return (
-    `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${endpoint}` +
-    `?serviceKey=${serviceKey}` +
-    `&pageNo=1` +
-    `&numOfRows=${rows}` +
-    `&dataType=JSON` +
-    `&base_date=${baseDate}` +
-    `&base_time=${baseTime}` +
-    `&nx=${grid.x}` +
-    `&ny=${grid.y}`
-  );
-}
-
-async function readKmaResponse(result, label, required = true) {
-  if (result.status !== "fulfilled") {
-    console.error(`${label} FETCH ERROR:`, result.reason);
-    if (required) throw new Error(`${label} 호출에 실패했어요. 브라우저 CORS 차단 또는 네트워크 문제 가능성이 높아요.`);
-    return null;
-  }
-
-  const responseText = await result.value.text().catch(() => "");
-  console.log(`${label} HTTP STATUS:`, result.value.status, result.value.statusText);
-  console.log(`${label} RAW RESPONSE:`, responseText);
-
-  if (!result.value.ok) {
-    if (required) throw new Error(`${label} HTTP ${result.value.status}: ${responseText || result.value.statusText}`);
-    return null;
-  }
-
-  if (!responseText) {
-    if (required) throw new Error(`${label} 응답이 비어 있어요.`);
-    return null;
-  }
-
-  let data = null;
-
-  try {
-    data = JSON.parse(responseText);
-  } catch {
-    if (required) throw new Error(`${label} 응답이 JSON 형식이 아니에요.`);
-    return null;
-  }
-
-  const code = data?.response?.header?.resultCode;
-  const message = data?.response?.header?.resultMsg;
-
-  if (code && code !== "00") {
-    if (required) throw new Error(`${label} 오류: ${message || code}`);
-    return null;
-  }
-
-  return data;
-}
-
-function normalizeKmaItems(items) {
-  if (!items) return [];
-  return Array.isArray(items) ? items : [items];
-}
-
-function itemsToCategoryMap(items) {
-  return items.reduce((acc, item) => {
-    acc[item.category] = item.obsrValue ?? item.fcstValue;
-    return acc;
-  }, {});
-}
-
-function groupForecastItems(items) {
-  const groups = {};
-
-  items.forEach((item) => {
-    const key = `${item.fcstDate}-${item.fcstTime}`;
-    if (!groups[key]) {
-      groups[key] = {
-        fcstDate: item.fcstDate,
-        fcstTime: item.fcstTime,
-      };
-    }
-    groups[key][item.category] = item.fcstValue;
-  });
-
-  return Object.values(groups).sort((a, b) => `${a.fcstDate}${a.fcstTime}`.localeCompare(`${b.fcstDate}${b.fcstTime}`));
-}
-
-function pickFirstForecastGroup(villageItems, ultraForecastItems) {
-  const ultraGroups = groupForecastItems(ultraForecastItems);
-  if (ultraGroups.length) return ultraGroups[0];
-
-  const villageGroups = groupForecastItems(villageItems);
-  return villageGroups[0] || {};
-}
-
-function findCategoryValue(items, category) {
-  return items.find((item) => item.category === category)?.fcstValue;
-}
-
-function getKmaCondition(sky, pty) {
-  const ptyCode = String(pty ?? "0");
-  const skyCode = String(sky ?? "1");
-
-  if (ptyCode === "1") return "비";
-  if (ptyCode === "2") return "비/눈";
-  if (ptyCode === "3") return "눈";
-  if (ptyCode === "4") return "소나기";
-
-  if (skyCode === "1") return "맑음";
-  if (skyCode === "3") return "구름많음";
-  if (skyCode === "4") return "흐림";
-  return "날씨 정보";
-}
-
-function calcFeelsLike(temp, wind) {
-  if (temp <= 10 && wind >= 1.3) {
-    return temp - Math.min(5, wind * 0.5);
-  }
-  return temp;
-}
-
-function buildKmaCurrentWeather(villageItems, ultraNowItems, ultraForecastItems, lat, lon, grid) {
-  const nowMap = itemsToCategoryMap(ultraNowItems);
-  const firstForecast = pickFirstForecastGroup(villageItems, ultraForecastItems);
-  const today = formatDateYYYYMMDD(new Date());
-  const todayVillage = villageItems.filter((item) => item.fcstDate === today);
-  const tmx = findCategoryValue(todayVillage, "TMX");
-  const tmn = findCategoryValue(todayVillage, "TMN");
-  const temp = Number(nowMap.T1H ?? firstForecast.TMP ?? firstForecast.T1H ?? 0);
-  const humidity = Number(nowMap.REH ?? firstForecast.REH ?? 0);
-  const wind = Number(nowMap.WSD ?? firstForecast.WSD ?? 0);
-  const condition = getKmaCondition(firstForecast.SKY, firstForecast.PTY ?? nowMap.PTY);
-
-  return {
-    location: "현재 위치",
-    lat,
-    lon,
-    grid,
-    condition,
-    icon: "03d",
-    temp,
-    feelsLike: calcFeelsLike(temp, wind),
-    high: Number(tmx ?? firstForecast.TMP ?? temp),
-    low: Number(tmn ?? firstForecast.TMP ?? temp),
-    rainChance: Number(firstForecast.POP ?? 0),
-    humidity,
-    wind,
-  };
-}
-
-function buildKmaHourlyForecast(villageItems, ultraForecastItems) {
-  const baseItems = ultraForecastItems.length ? ultraForecastItems : villageItems;
-  return groupForecastItems(baseItems).slice(0, 8).map((group) => {
-    const condition = getKmaCondition(group.SKY, group.PTY);
-    const date = parseKmaDateTime(group.fcstDate, group.fcstTime);
-
-    return {
-      dateLabel: date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }),
-      timeLabel: formatKmaTime(group.fcstTime),
-      condition,
-      icon: "03d",
-      temp: Number(group.TMP ?? group.T1H ?? 0),
-      tempMin: Number(group.TMP ?? group.T1H ?? 0),
-      tempMax: Number(group.TMP ?? group.T1H ?? 0),
-      rainChance: Number(group.POP ?? 0),
-    };
-  });
-}
-
-function buildKmaDailyForecast(villageItems) {
-  return groupForecastItems(villageItems).map((group) => {
-    const condition = getKmaCondition(group.SKY, group.PTY);
-    const date = parseKmaDateTime(group.fcstDate, group.fcstTime);
-
-    return {
-      dateLabel: date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }),
-      timeLabel: formatKmaTime(group.fcstTime),
-      condition,
-      icon: "03d",
-      temp: Number(group.TMP ?? group.T1H ?? 0),
-      tempMin: Number(group.TMN ?? group.TMP ?? group.T1H ?? 0),
-      tempMax: Number(group.TMX ?? group.TMP ?? group.T1H ?? 0),
-      rainChance: Number(group.POP ?? 0),
-    };
-  });
-}
-
-function getKmaBaseDateTime() {
-  const now = new Date();
-  const ultra = new Date(now);
-
-  if (ultra.getMinutes() < 45) ultra.setHours(ultra.getHours() - 1);
-
-  const village = new Date(now);
-  const hour = village.getHours();
-  const minute = village.getMinutes();
-  const currentHHMM = hour * 100 + minute;
-  const baseTimes = [2300, 2000, 1700, 1400, 1100, 800, 500, 200];
-  let selected = baseTimes.find((time) => currentHHMM >= time + 10);
-
-  if (!selected) {
-    village.setDate(village.getDate() - 1);
-    selected = 2300;
-  }
-
-  return {
-    date: formatDateYYYYMMDD(village),
-    ultraDate: formatDateYYYYMMDD(ultra),
-    ultraTime: `${String(ultra.getHours()).padStart(2, "0")}00`,
-    vilageTime: String(selected).padStart(4, "0"),
-  };
-}
-
-function parseKmaDateTime(date, time) {
-  const y = Number(date.slice(0, 4));
-  const m = Number(date.slice(4, 6)) - 1;
-  const d = Number(date.slice(6, 8));
-  const h = Number(time.slice(0, 2));
-  const min = Number(time.slice(2, 4));
-  return new Date(y, m, d, h, min);
-}
-
-function formatKmaTime(time) {
-  return `${time.slice(0, 2)}:${time.slice(2, 4)}`;
-}
-
-function formatDateYYYYMMDD(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}${m}${d}`;
-}
-
-function dfsXyConv(code, v1, v2) {
-  const RE = 6371.00877;
-  const GRID = 5.0;
-  const SLAT1 = 30.0;
-  const SLAT2 = 60.0;
-  const OLON = 126.0;
-  const OLAT = 38.0;
-  const XO = 43;
-  const YO = 136;
-  const DEGRAD = Math.PI / 180.0;
-  const RADDEG = 180.0 / Math.PI;
-  const re = RE / GRID;
-  const slat1 = SLAT1 * DEGRAD;
-  const slat2 = SLAT2 * DEGRAD;
-  const olon = OLON * DEGRAD;
-  const olat = OLAT * DEGRAD;
-
-  let sn = Math.tan(Math.PI * 0.25 + slat2 * 0.5) / Math.tan(Math.PI * 0.25 + slat1 * 0.5);
-  sn = Math.log(Math.cos(slat1) / Math.cos(slat2)) / Math.log(sn);
-
-  let sf = Math.tan(Math.PI * 0.25 + slat1 * 0.5);
-  sf = (Math.pow(sf, sn) * Math.cos(slat1)) / sn;
-
-  let ro = Math.tan(Math.PI * 0.25 + olat * 0.5);
-  ro = (re * sf) / Math.pow(ro, sn);
-
-  if (code === "toXY") {
-    let ra = Math.tan(Math.PI * 0.25 + v1 * DEGRAD * 0.5);
-    ra = (re * sf) / Math.pow(ra, sn);
-    let theta = v2 * DEGRAD - olon;
-    if (theta > Math.PI) theta -= 2.0 * Math.PI;
-    if (theta < -Math.PI) theta += 2.0 * Math.PI;
-    theta *= sn;
-
-    return {
-      x: Math.floor(ra * Math.sin(theta) + XO + 0.5),
-      y: Math.floor(ro - ra * Math.cos(theta) + YO + 0.5),
-    };
-  }
-
-  let xn = v1 - XO;
-  let yn = ro - v2 + YO;
-  let ra = Math.sqrt(xn * xn + yn * yn);
-  if (sn < 0.0) ra = -ra;
-  let alat = Math.pow((re * sf) / ra, 1.0 / sn);
-  alat = 2.0 * Math.atan(alat) - Math.PI * 0.5;
-
-  let theta = 0.0;
-  if (Math.abs(xn) <= 0.0) {
-    theta = 0.0;
-  } else if (Math.abs(yn) <= 0.0) {
-    theta = Math.PI * 0.5;
-    if (xn < 0.0) theta = -theta;
-  } else {
-    theta = Math.atan2(xn, yn);
-  }
-
-  return {
-    lat: alat * RADDEG,
-    lon: (theta / sn + olon) * RADDEG,
-  };
-}
-
-function runSelfTests() {
-  console.assert(typeof OPENWEATHER_API_KEY === "string", "OpenWeather API key should be a string");
-}
+// ── UI 컴포넌트 ───────────────────────────────────────────────────────────────
 
 function Card({ children, className = "" }) {
   return <div className={className}>{children}</div>;
@@ -725,15 +347,10 @@ function CardContent({ children, className = "" }) {
   return <div className={className}>{children}</div>;
 }
 
-function Button({ children, className = "", variant = "default", ...props }) {
-  const baseClass =
-    variant === "outline"
-      ? "border border-slate-300 bg-white text-slate-900 hover:bg-slate-50"
-      : "bg-slate-950 text-white hover:bg-slate-800";
-
+function Button({ children, className = "", ...props }) {
   return (
     <button
-      className={`px-4 py-2 text-sm font-semibold shadow-sm transition ${baseClass} ${className}`}
+      className={`px-4 py-2 text-sm font-semibold bg-slate-950 text-white hover:bg-slate-800 shadow-sm transition ${className}`}
       {...props}
     >
       {children}
@@ -768,11 +385,9 @@ function HourlyCard({ item }) {
   return (
     <div className="min-w-[72px] rounded-3xl bg-slate-50 p-3 text-center">
       <p className="text-xs text-slate-500">{item.timeLabel}</p>
-      <img
-        src={`https://openweathermap.org/img/wn/${item.icon}@2x.png`}
-        alt={item.condition || "날씨"}
-        className="h-11 w-11 mx-auto"
-      />
+      <div className="flex justify-center my-1">
+        <WeatherIcon condition={item.condition} size={28} />
+      </div>
       <p className="font-semibold text-sm">{Math.round(item.temp)}°</p>
       <p className="text-[11px] text-slate-400 mt-1">비 {Math.round(item.rainChance || 0)}%</p>
     </div>
@@ -783,7 +398,9 @@ function DailyRow({ day }) {
   return (
     <div className="flex items-center justify-between border-b border-slate-100 pb-2 last:border-0 last:pb-0">
       <div className="flex items-center gap-2">
-        <img src={`https://openweathermap.org/img/wn/${day.icon}@2x.png`} alt={day.condition} className="h-9 w-9" />
+        <div className="h-9 w-9 flex items-center justify-center">
+          <WeatherIcon condition={day.condition} size={24} />
+        </div>
         <div>
           <p className="text-sm font-medium">{day.date}</p>
           <p className="text-xs text-slate-400">비 {day.rainChance}%</p>
