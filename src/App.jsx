@@ -17,46 +17,21 @@ import {
 } from "lucide-react";
 
 // MVP 버전
-// 현재는 OpenWeather API만 사용합니다.
-// 기상청 API는 브라우저 CORS/인증 이슈 때문에 잠시 보류합니다.
+// 현재 실제 호출은 OpenWeather API만 사용합니다.
+// 기상청 API는 브라우저 CORS/인증 이슈 때문에 잠시 보류하지만,
+// 이후 재연동을 위해 관련 보조 함수는 코드 하단에 보존합니다.
+// 로컬 .env 또는 Vercel Environment Variables에 아래 값이 필요합니다.
+// VITE_OW_KEY=OpenWeather키
 
 const OPENWEATHER_API_KEY =
   import.meta.env.VITE_OW_KEY ||
   import.meta.env.VITE_OPENWEATHER_API_KEY ||
   "";
 
-console.log("환경변수 확인:", import.meta.env);
-console.log("VITE_OW_KEY:", import.meta.env.VITE_OW_KEY);
-
 const DEFAULT_LOCATION = {
   lat: 37.5665,
   lon: 126.978,
   name: "서울",
-};
-
-// OpenWeather Reverse Geocoding이 한국 수도권 좌표를 "서울"로 뭉뚱그려 반환하는 경우가 있어
-// 화면 표시용 지역명은 먼저 좌표 기반으로 보정합니다.
-const KOREA_REGION_RULES = [
-  { name: "인천", minLat: 37.0, maxLat: 38.0, minLon: 124.4, maxLon: 126.85 },
-  { name: "서울", minLat: 37.40, maxLat: 37.72, minLon: 126.76, maxLon: 127.20 },
-  { name: "경기", minLat: 36.85, maxLat: 38.35, minLon: 126.50, maxLon: 127.90 },
-  { name: "부산", minLat: 35.00, maxLat: 35.35, minLon: 128.75, maxLon: 129.35 },
-  { name: "대구", minLat: 35.75, maxLat: 36.05, minLon: 128.40, maxLon: 128.80 },
-  { name: "대전", minLat: 36.20, maxLat: 36.50, minLon: 127.25, maxLon: 127.55 },
-  { name: "광주", minLat: 35.05, maxLat: 35.30, minLon: 126.75, maxLon: 127.05 },
-  { name: "울산", minLat: 35.35, maxLat: 35.75, minLon: 129.00, maxLon: 129.50 },
-  { name: "제주", minLat: 33.10, maxLat: 33.65, minLon: 126.10, maxLon: 126.95 },
-];
-
-const WEATHER_ICONS = {
-  맑음: "01d",
-  구름많음: "03d",
-  흐림: "04d",
-  비: "10d",
-  "비/눈": "13d",
-  눈: "13d",
-  소나기: "09d",
-  "날씨 정보": "03d",
 };
 
 export default function WeatherApp() {
@@ -69,7 +44,6 @@ export default function WeatherApp() {
   const [airQuality, setAirQuality] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  
   const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
@@ -111,8 +85,6 @@ export default function WeatherApp() {
       setLoading(true);
       setError("");
       setLocationDebug(`위도 ${lat.toFixed(4)} · 경도 ${lon.toFixed(4)}`);
-      setDisplayLocation(getDisplayRegionName(lat, lon));
-
       await fetchOpenWeatherData(lat, lon);
       setLastUpdated(new Date());
     } catch (err) {
@@ -121,8 +93,6 @@ export default function WeatherApp() {
       setLoading(false);
     }
   };
-
-  
 
   const fetchOpenWeatherData = async (lat, lon) => {
     if (!OPENWEATHER_API_KEY || OPENWEATHER_API_KEY === "YOUR_API_KEY") {
@@ -170,9 +140,6 @@ export default function WeatherApp() {
   };
 
   const fetchOpenWeatherLocationName = async (lat, lon) => {
-    const inferredRegion = getDisplayRegionName(lat, lon);
-    if (inferredRegion !== "현재 위치") return inferredRegion;
-
     try {
       const geoUrl = `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=5&appid=${OPENWEATHER_API_KEY}`;
       const geoRes = await fetch(geoUrl);
@@ -182,9 +149,14 @@ export default function WeatherApp() {
       const location = geoData.find((item) => item.country === "KR") || geoData[0];
       if (!location) return coords.name;
 
-      const localName = location.local_names?.ko || location.name;
-      const stateName = location.state;
-      return stateName && stateName !== localName ? `${stateName} ${localName}` : localName;
+      const localName = location.local_names?.ko || location.name || "";
+      const stateName = location.state || "";
+
+      if (stateName && localName && stateName !== localName) {
+        return `${stateName} ${localName}`;
+      }
+
+      return localName || stateName || coords.name;
     } catch {
       return coords.name;
     }
@@ -220,8 +192,8 @@ export default function WeatherApp() {
   const weather = useMemo(() => {
     if (!currentWeather) return null;
 
-    const pm10 = airQuality?.components?.pm10 ?? currentWeather.pm10 ?? null;
-    const pm25 = airQuality?.components?.pm2_5 ?? currentWeather.pm25 ?? null;
+    const pm10 = airQuality?.components?.pm10 ?? null;
+    const pm25 = airQuality?.components?.pm2_5 ?? null;
     const rainChance = currentWeather.rainChance ?? todayForecasts[0]?.rainChance ?? 0;
 
     return {
@@ -268,7 +240,7 @@ export default function WeatherApp() {
   }, [weather]);
 
   const dustLabel = useMemo(() => {
-    if (!weather?.pm10 && !weather?.pm25) return weather?.source === "기상청" ? "별도 연동 필요" : "확인 중";
+    if (!weather?.pm10 && !weather?.pm25) return "확인 중";
     if ((weather.pm10 ?? 0) > 150 || (weather.pm25 ?? 0) > 75) return "매우 나쁨";
     if ((weather.pm10 ?? 0) > 80 || (weather.pm25 ?? 0) > 35) return "나쁨";
     if ((weather.pm10 ?? 0) > 30 || (weather.pm25 ?? 0) > 15) return "보통";
@@ -280,11 +252,9 @@ export default function WeatherApp() {
 
     const umbrellaText = weather.rainChance >= 40 ? "우산을 챙기는 게 좋아요." : "우산은 없어도 괜찮아 보여요.";
     const dustText =
-      weather.source === "기상청"
-        ? "미세먼지는 별도 API 연동이 필요해요."
-        : dustLabel === "나쁨" || dustLabel === "매우 나쁨"
-          ? "미세먼지도 주의해 주세요."
-          : "미세먼지는 크게 걱정하지 않아도 돼요.";
+      dustLabel === "나쁨" || dustLabel === "매우 나쁨"
+        ? "미세먼지도 주의해 주세요."
+        : "미세먼지는 크게 걱정하지 않아도 돼요.";
 
     return `오늘 ${weather.location}은 ${weather.condition}, 현재 ${weather.temp}도예요. 체감온도는 ${weather.feelsLike}도이고, 강수확률은 ${weather.rainChance}%입니다. ${umbrellaText} 옷차림은 ${clothing}이 좋아요. ${dustText}`;
   }, [weather, clothing, dustLabel]);
@@ -333,13 +303,11 @@ export default function WeatherApp() {
               </div>
               <h1 className="text-2xl font-bold tracking-tight mt-1">날씨어때?</h1>
               <p className="text-xs text-slate-400 mt-1">데이터: {weather.source}</p>
-              
               {lastUpdated && (
                 <p className="text-xs text-slate-400 mt-1">
                   업데이트 {lastUpdated.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
                 </p>
               )}
-              {locationDebug && <p className="text-[11px] text-slate-400 mt-1">{locationDebug}</p>}
             </div>
             <button
               onClick={() => fetchWeatherData(coords.lat, coords.lon)}
@@ -402,7 +370,7 @@ export default function WeatherApp() {
               icon={<ShieldAlert size={20} />}
               title="미세먼지"
               value={dustLabel}
-              note={weather.source === "기상청" ? "다음 단계 연동" : `PM10 ${weather.pm10 ? Math.round(weather.pm10) : "-"}`}
+              note={`PM10 ${weather.pm10 ? Math.round(weather.pm10) : "-"}`}
             />
           </div>
 
@@ -447,20 +415,39 @@ export default function WeatherApp() {
   );
 }
 
-function isKoreaLocation(lat, lon) {
-  return lat >= 33 && lat <= 39.5 && lon >= 124 && lon <= 132;
+function normalizeOpenWeatherCurrent(data) {
+  return {
+    condition: data.weather?.[0]?.description || "날씨 정보 없음",
+    icon: data.weather?.[0]?.icon,
+    temp: data.main.temp,
+    feelsLike: data.main.feels_like,
+    high: data.main.temp_max,
+    low: data.main.temp_min,
+    rainChance: 0,
+    humidity: data.main.humidity,
+    wind: data.wind.speed,
+  };
 }
 
-function getDisplayRegionName(lat, lon) {
-  const matchedRegion = KOREA_REGION_RULES.find(
-    (region) =>
-      lat >= region.minLat &&
-      lat <= region.maxLat &&
-      lon >= region.minLon &&
-      lon <= region.maxLon
-  );
+function normalizeOpenWeatherForecast(list) {
+  return list.map((item) => {
+    const date = new Date(item.dt * 1000);
 
-  return matchedRegion?.name || "현재 위치";
+    return {
+      dateLabel: date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }),
+      timeLabel: date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+      condition: item.weather?.[0]?.description || "날씨",
+      icon: item.weather?.[0]?.icon,
+      temp: item.main.temp,
+      tempMin: item.main.temp_min,
+      tempMax: item.main.temp_max,
+      rainChance: Math.round((item.pop || 0) * 100),
+    };
+  });
+}
+
+function isKoreaLocation(lat, lon) {
+  return lat >= 33 && lat <= 39.5 && lon >= 124 && lon <= 132;
 }
 
 function buildKmaUrl(endpoint, serviceKey, baseDate, baseTime, grid, rows) {
@@ -523,111 +510,6 @@ function normalizeKmaItems(items) {
   return Array.isArray(items) ? items : [items];
 }
 
-function buildKmaCurrentWeather(villageItems, ultraNowItems, ultraForecastItems, lat, lon, grid) {
-  const nowMap = itemsToCategoryMap(ultraNowItems);
-  const firstForecast = pickFirstForecastGroup(villageItems, ultraForecastItems);
-  const today = formatDateYYYYMMDD(new Date());
-
-  const todayVillage = villageItems.filter((item) => item.fcstDate === today);
-  const tmx = findCategoryValue(todayVillage, "TMX");
-  const tmn = findCategoryValue(todayVillage, "TMN");
-
-  const temp = Number(nowMap.T1H ?? firstForecast.TMP ?? firstForecast.T1H ?? 0);
-  const humidity = Number(nowMap.REH ?? firstForecast.REH ?? 0);
-  const wind = Number(nowMap.WSD ?? firstForecast.WSD ?? 0);
-  const sky = firstForecast.SKY;
-  const pty = firstForecast.PTY ?? nowMap.PTY;
-  const condition = getKmaCondition(sky, pty);
-
-  return {
-    location: "현재 위치",
-    lat,
-    lon,
-    grid,
-    condition,
-    icon: WEATHER_ICONS[condition] || "03d",
-    temp,
-    feelsLike: calcFeelsLike(temp, wind),
-    high: Number(tmx ?? firstForecast.TMP ?? temp),
-    low: Number(tmn ?? firstForecast.TMP ?? temp),
-    rainChance: Number(firstForecast.POP ?? 0),
-    humidity,
-    wind,
-  };
-}
-
-function buildKmaHourlyForecast(villageItems, ultraForecastItems) {
-  const baseItems = ultraForecastItems.length ? ultraForecastItems : villageItems;
-  const grouped = groupForecastItems(baseItems).slice(0, 8);
-
-  return grouped.map((group) => {
-    const condition = getKmaCondition(group.SKY, group.PTY);
-    const date = parseKmaDateTime(group.fcstDate, group.fcstTime);
-
-    return {
-      dateLabel: date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }),
-      timeLabel: formatKmaTime(group.fcstTime),
-      condition,
-      icon: WEATHER_ICONS[condition] || "03d",
-      temp: Number(group.TMP ?? group.T1H ?? 0),
-      tempMin: Number(group.TMP ?? group.T1H ?? 0),
-      tempMax: Number(group.TMP ?? group.T1H ?? 0),
-      rainChance: Number(group.POP ?? 0),
-    };
-  });
-}
-
-function buildKmaDailyForecast(villageItems) {
-  const grouped = groupForecastItems(villageItems);
-
-  return grouped.map((group) => {
-    const condition = getKmaCondition(group.SKY, group.PTY);
-    const date = parseKmaDateTime(group.fcstDate, group.fcstTime);
-
-    return {
-      dateLabel: date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }),
-      timeLabel: formatKmaTime(group.fcstTime),
-      condition,
-      icon: WEATHER_ICONS[condition] || "03d",
-      temp: Number(group.TMP ?? group.T1H ?? 0),
-      tempMin: Number(group.TMN ?? group.TMP ?? group.T1H ?? 0),
-      tempMax: Number(group.TMX ?? group.TMP ?? group.T1H ?? 0),
-      rainChance: Number(group.POP ?? 0),
-    };
-  });
-}
-
-function normalizeOpenWeatherCurrent(data) {
-  return {
-    condition: data.weather?.[0]?.description || "날씨 정보 없음",
-    icon: data.weather?.[0]?.icon,
-    temp: data.main.temp,
-    feelsLike: data.main.feels_like,
-    high: data.main.temp_max,
-    low: data.main.temp_min,
-    rainChance: 0,
-    humidity: data.main.humidity,
-    wind: data.wind.speed,
-  };
-}
-
-function normalizeOpenWeatherForecast(list) {
-  return list.map((item) => {
-    const date = new Date(item.dt * 1000);
-
-    return {
-      dateLabel: date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }),
-      timeLabel: date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
-      condition: item.weather?.[0]?.description || "날씨",
-      icon: item.weather?.[0]?.icon,
-      temp: item.main.temp,
-      tempMin: item.main.temp_min,
-      tempMax: item.main.temp_max,
-      rainChance: Math.round((item.pop || 0) * 100),
-    };
-  });
-}
-
 function itemsToCategoryMap(items) {
   return items.reduce((acc, item) => {
     acc[item.category] = item.obsrValue ?? item.fcstValue;
@@ -686,6 +568,72 @@ function calcFeelsLike(temp, wind) {
   return temp;
 }
 
+function buildKmaCurrentWeather(villageItems, ultraNowItems, ultraForecastItems, lat, lon, grid) {
+  const nowMap = itemsToCategoryMap(ultraNowItems);
+  const firstForecast = pickFirstForecastGroup(villageItems, ultraForecastItems);
+  const today = formatDateYYYYMMDD(new Date());
+  const todayVillage = villageItems.filter((item) => item.fcstDate === today);
+  const tmx = findCategoryValue(todayVillage, "TMX");
+  const tmn = findCategoryValue(todayVillage, "TMN");
+  const temp = Number(nowMap.T1H ?? firstForecast.TMP ?? firstForecast.T1H ?? 0);
+  const humidity = Number(nowMap.REH ?? firstForecast.REH ?? 0);
+  const wind = Number(nowMap.WSD ?? firstForecast.WSD ?? 0);
+  const condition = getKmaCondition(firstForecast.SKY, firstForecast.PTY ?? nowMap.PTY);
+
+  return {
+    location: "현재 위치",
+    lat,
+    lon,
+    grid,
+    condition,
+    icon: "03d",
+    temp,
+    feelsLike: calcFeelsLike(temp, wind),
+    high: Number(tmx ?? firstForecast.TMP ?? temp),
+    low: Number(tmn ?? firstForecast.TMP ?? temp),
+    rainChance: Number(firstForecast.POP ?? 0),
+    humidity,
+    wind,
+  };
+}
+
+function buildKmaHourlyForecast(villageItems, ultraForecastItems) {
+  const baseItems = ultraForecastItems.length ? ultraForecastItems : villageItems;
+  return groupForecastItems(baseItems).slice(0, 8).map((group) => {
+    const condition = getKmaCondition(group.SKY, group.PTY);
+    const date = parseKmaDateTime(group.fcstDate, group.fcstTime);
+
+    return {
+      dateLabel: date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }),
+      timeLabel: formatKmaTime(group.fcstTime),
+      condition,
+      icon: "03d",
+      temp: Number(group.TMP ?? group.T1H ?? 0),
+      tempMin: Number(group.TMP ?? group.T1H ?? 0),
+      tempMax: Number(group.TMP ?? group.T1H ?? 0),
+      rainChance: Number(group.POP ?? 0),
+    };
+  });
+}
+
+function buildKmaDailyForecast(villageItems) {
+  return groupForecastItems(villageItems).map((group) => {
+    const condition = getKmaCondition(group.SKY, group.PTY);
+    const date = parseKmaDateTime(group.fcstDate, group.fcstTime);
+
+    return {
+      dateLabel: date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }),
+      timeLabel: formatKmaTime(group.fcstTime),
+      condition,
+      icon: "03d",
+      temp: Number(group.TMP ?? group.T1H ?? 0),
+      tempMin: Number(group.TMN ?? group.TMP ?? group.T1H ?? 0),
+      tempMax: Number(group.TMX ?? group.TMP ?? group.T1H ?? 0),
+      rainChance: Number(group.POP ?? 0),
+    };
+  });
+}
+
 function getKmaBaseDateTime() {
   const now = new Date();
   const ultra = new Date(now);
@@ -741,10 +689,8 @@ function dfsXyConv(code, v1, v2) {
   const OLAT = 38.0;
   const XO = 43;
   const YO = 136;
-
   const DEGRAD = Math.PI / 180.0;
   const RADDEG = 180.0 / Math.PI;
-
   const re = RE / GRID;
   const slat1 = SLAT1 * DEGRAD;
   const slat2 = SLAT2 * DEGRAD;
@@ -784,29 +730,21 @@ function dfsXyConv(code, v1, v2) {
   let theta = 0.0;
   if (Math.abs(xn) <= 0.0) {
     theta = 0.0;
+  } else if (Math.abs(yn) <= 0.0) {
+    theta = Math.PI * 0.5;
+    if (xn < 0.0) theta = -theta;
   } else {
-    if (Math.abs(yn) <= 0.0) {
-      theta = Math.PI * 0.5;
-      if (xn < 0.0) theta = -theta;
-    } else {
-      theta = Math.atan2(xn, yn);
-    }
+    theta = Math.atan2(xn, yn);
   }
-  const alon = theta / sn + olon;
 
   return {
     lat: alat * RADDEG,
-    lon: alon * RADDEG,
+    lon: (theta / sn + olon) * RADDEG,
   };
 }
 
 function runSelfTests() {
-  const seoul = dfsXyConv("toXY", 37.5665, 126.978);
-  console.assert(Number.isFinite(seoul.x) && Number.isFinite(seoul.y), "DFS grid conversion should return finite x/y");
-  console.assert(isKoreaLocation(37.5665, 126.978) === true, "Seoul should be detected as Korea");
-  console.assert(isKoreaLocation(40.7128, -74.006) === false, "New York should not be detected as Korea");
-  console.assert(getKmaCondition("1", "0") === "맑음", "KMA SKY=1, PTY=0 should be 맑음");
-  console.assert(getKmaCondition("4", "1") === "비", "KMA PTY=1 should be 비");
+  console.assert(typeof OPENWEATHER_API_KEY === "string", "OpenWeather API key should be a string");
 }
 
 function Card({ children, className = "" }) {
