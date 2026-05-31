@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/kma.js": {
+      "regions": ["icn1"]
+    }
+  }
+}
