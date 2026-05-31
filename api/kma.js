@@ -13,9 +13,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "KMA_KEY 환경변수가 설정되지 않았습니다." });
   }
 
-  // 키 앞뒤 공백 제거 후 percent-encoded 여부로 인코딩 방식 결정
   const trimmedKey = rawKey.trim();
-  const key = trimmedKey.includes("%") ? trimmedKey : encodeURIComponent(trimmedKey);
 
   const grid = dfsXyConv(Number(lat), Number(lon));
   const { date, ultraDate, ultraTime, vilageTime } = getKmaBaseDateTime();
@@ -26,9 +24,9 @@ export default async function handler(req, res) {
   console.log("[KMA] baseDate:", date, "ultraDate:", ultraDate, "ultraTime:", ultraTime);
 
   const [ncstRes, ultraFcstRes, vilageFcstRes] = await Promise.allSettled([
-    fetch(buildKmaUrl("getUltraSrtNcst", key, ultraDate, ultraTime, grid, 100)),
-    fetch(buildKmaUrl("getUltraSrtFcst", key, ultraDate, ultraTime, grid, 200)),
-    fetch(buildKmaUrl("getVilageFcst", key, date, vilageTime, grid, 1000)),
+    fetch(buildKmaUrl("getUltraSrtNcst", trimmedKey, ultraDate, ultraTime, grid, 100)),
+    fetch(buildKmaUrl("getUltraSrtFcst", trimmedKey, ultraDate, ultraTime, grid, 200)),
+    fetch(buildKmaUrl("getVilageFcst", trimmedKey, date, vilageTime, grid, 1000)),
   ]);
 
   console.log("[KMA] ncst HTTP:", ncstRes.value?.status);
@@ -52,14 +50,17 @@ export default async function handler(req, res) {
 
 // ── KMA URL 빌더 ──────────────────────────────────────────────────────────────
 
-function buildKmaUrl(endpoint, key, baseDate, baseTime, grid, rows) {
-  return (
-    `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${endpoint}` +
-    `?serviceKey=${encodeURIComponent(key)}` +
-    `&pageNo=1&numOfRows=${rows}&dataType=JSON` +
-    `&base_date=${baseDate}&base_time=${baseTime}` +
-    `&nx=${grid.x}&ny=${grid.y}`
-  );
+function buildKmaUrl(endpoint, rawKey, baseDate, baseTime, grid, rows) {
+  const url = new URL(`https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${endpoint}`);
+  url.searchParams.set("serviceKey", rawKey);
+  url.searchParams.set("pageNo", "1");
+  url.searchParams.set("numOfRows", String(rows));
+  url.searchParams.set("dataType", "JSON");
+  url.searchParams.set("base_date", baseDate);
+  url.searchParams.set("base_time", baseTime);
+  url.searchParams.set("nx", String(grid.x));
+  url.searchParams.set("ny", String(grid.y));
+  return url.toString();
 }
 
 // ── 응답 파싱 ─────────────────────────────────────────────────────────────────
