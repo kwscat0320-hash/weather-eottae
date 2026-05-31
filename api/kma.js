@@ -1,3 +1,5 @@
+import { request } from "https";
+
 // Vercel 서버리스 프록시 — 브라우저 CORS 우회용
 
 export default async function handler(req, res) {
@@ -24,9 +26,9 @@ export default async function handler(req, res) {
   console.log("[KMA] baseDate:", date, "ultraDate:", ultraDate, "ultraTime:", ultraTime);
 
   const [ncstRes, ultraFcstRes, vilageFcstRes] = await Promise.allSettled([
-    fetch(buildKmaUrl("getUltraSrtNcst", trimmedKey, ultraDate, ultraTime, grid, 100)),
-    fetch(buildKmaUrl("getUltraSrtFcst", trimmedKey, ultraDate, ultraTime, grid, 200)),
-    fetch(buildKmaUrl("getVilageFcst", trimmedKey, date, vilageTime, grid, 1000)),
+    httpsGet(buildKmaUrl("getUltraSrtNcst", trimmedKey, ultraDate, ultraTime, grid, 100)),
+    httpsGet(buildKmaUrl("getUltraSrtFcst", trimmedKey, ultraDate, ultraTime, grid, 200)),
+    httpsGet(buildKmaUrl("getVilageFcst", trimmedKey, date, vilageTime, grid, 1000)),
   ]);
 
   console.log("[KMA] ncst HTTP:", ncstRes.value?.status);
@@ -46,6 +48,37 @@ export default async function handler(req, res) {
     console.error("[KMA] error:", err.message);
     return res.status(502).json({ error: err.message });
   }
+}
+
+// ── HTTPS 요청 (fetch 대신 내장 모듈 직접 사용) ───────────────────────────────
+
+function httpsGet(urlStr) {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(urlStr);
+    const options = {
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; WeatherApp/1.0)",
+        "Accept": "application/json",
+      },
+    };
+    const req = request(options, (r) => {
+      let body = "";
+      r.on("data", (chunk) => (body += chunk));
+      r.on("end", () =>
+        resolve({
+          ok: r.statusCode >= 200 && r.statusCode < 300,
+          status: r.statusCode,
+          text: () => Promise.resolve(body),
+          json: () => Promise.resolve(JSON.parse(body)),
+        })
+      );
+    });
+    req.on("error", reject);
+    req.end();
+  });
 }
 
 // ── KMA URL 빌더 ──────────────────────────────────────────────────────────────
