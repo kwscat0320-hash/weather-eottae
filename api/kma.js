@@ -20,12 +20,6 @@ export default async function handler(req, res) {
   const grid = dfsXyConv(Number(lat), Number(lon));
   const { date, ultraDate, ultraTime, vilageTime } = getKmaBaseDateTime();
 
-  console.log("[KMA] rawKey length:", rawKey.length, "trimmed:", trimmedKey.length);
-  console.log("[KMA] rawKey prefix:", rawKey.slice(0, 20));
-  console.log("[KMA] key JSON:", JSON.stringify(trimmedKey));
-  console.log("[KMA] built url sample:", buildKmaUrl("getVilageFcst", trimmedKey, "20260531", "2300", {x:60,y:127}, 1));
-  console.log("[KMA] grid:", JSON.stringify(grid));
-  console.log("[KMA] baseDate:", date, "ultraDate:", ultraDate, "ultraTime:", ultraTime);
 
   const [ncstRes, ultraFcstRes, vilageFcstRes] = await Promise.allSettled([
     httpsGet(buildKmaUrl("getUltraSrtNcst", trimmedKey, ultraDate, ultraTime, grid, 100)),
@@ -33,9 +27,6 @@ export default async function handler(req, res) {
     httpsGet(buildKmaUrl("getVilageFcst", trimmedKey, date, vilageTime, grid, 1000)),
   ]);
 
-  console.log("[KMA] ncst HTTP:", ncstRes.value?.status);
-  console.log("[KMA] ultraFcst HTTP:", ultraFcstRes.value?.status);
-  console.log("[KMA] vilageFcst HTTP:", vilageFcstRes.value?.status);
 
   try {
     const ncstItems = await parseKmaResult(ncstRes, "초단기실황");
