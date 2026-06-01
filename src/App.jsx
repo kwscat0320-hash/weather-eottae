@@ -58,22 +58,29 @@ export default function WeatherApp() {
     );
   };
 
+  const isKorea = (lat, lon) =>
+    lat >= 33 && lat <= 38.9 && lon >= 124 && lon <= 132;
+
   const fetchWeatherData = async (lat, lon, locationName) => {
     try {
       setLoading(true);
       setError("");
 
-      const res = await fetch(`/api/kma?lat=${lat}&lon=${lon}`);
+      const korea = isKorea(lat, lon);
+      const url = korea ? `/api/kma?lat=${lat}&lon=${lon}` : `/api/openweather?lat=${lat}&lon=${lon}`;
+      const source = korea ? "기상청" : "OpenWeather";
+
+      const res = await fetch(url);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `기상청 API 오류 (${res.status})`);
+        throw new Error(body.error || `날씨 API 오류 (${res.status})`);
       }
 
       const data = await res.json();
       setCurrentWeather(data.current);
       setForecast(data.forecast);
       setDisplayLocation(locationName);
-      setWeatherSource("기상청");
+      setWeatherSource(source);
       setLastUpdated(new Date());
     } catch (err) {
       setError(err.message || "알 수 없는 오류가 발생했어요.");
