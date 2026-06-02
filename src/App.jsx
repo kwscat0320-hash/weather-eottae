@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, RefreshCw, Droplets, Wind, Umbrella, ChevronDown, ChevronUp } from "lucide-react";
+import { motion } from "framer-motion";
+import { MapPin, RefreshCw, Droplets, Wind, Umbrella } from "lucide-react";
 
 const DEFAULT_LOCATION = { lat: 37.5665, lon: 126.978 };
 
@@ -102,7 +102,6 @@ export default function WeatherApp() {
   const [displayLocation, setDisplayLocation] = useState("서울");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showDetail, setShowDetail] = useState(false);
 
   useEffect(() => { requestCurrentLocation(); }, []);
 
@@ -256,47 +255,31 @@ export default function WeatherApp() {
           <Metric icon={<Umbrella size={18} />} label="강수" value={`${weather?.rainChance}%`} theme={theme} />
         </div>
 
-        <button onClick={() => setShowDetail((v) => !v)}
-          className={`w-full ${theme.card} backdrop-blur-sm rounded-3xl px-4 py-3 flex items-center justify-between ${theme.text} font-semibold text-sm`}>
-          <span>시간대별 · 주간 예보</span>
-          {showDetail ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-        </button>
+        <div className={`${theme.card} backdrop-blur-sm rounded-3xl p-4`}>
+          <p className={`text-xs font-semibold mb-3 ${theme.sub}`}>시간대별 예보</p>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {todayForecasts.map((item) => (
+              <div key={`${item.dateLabel}-${item.timeLabel}`} className="min-w-[64px] rounded-2xl bg-white/30 p-2 text-center">
+                <p className={`text-[11px] ${theme.sub}`}>{item.timeLabel}</p>
+                <p className={`font-bold text-sm mt-1 ${theme.text}`}>{Math.round(item.temp)}°</p>
+                <p className={`text-[10px] mt-1 ${theme.sub}`}>비 {item.rainChance}%</p>
+              </div>
+            ))}
+          </div>
+        </div>
 
-        <AnimatePresence>
-          {showDetail && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }} className="overflow-hidden space-y-3">
-              <div className={`${theme.card} backdrop-blur-sm rounded-3xl p-4`}>
-                <p className={`text-xs font-semibold mb-3 ${theme.sub}`}>시간대별 예보</p>
-                <div className="flex gap-3 overflow-x-auto pb-1">
-                  {todayForecasts.map((item) => (
-                    <div key={`${item.dateLabel}-${item.timeLabel}`} className="min-w-[64px] rounded-2xl bg-white/30 p-2 text-center">
-                      <p className={`text-[11px] ${theme.sub}`}>{item.timeLabel}</p>
-                      <p className={`font-bold text-sm mt-1 ${theme.text}`}>{Math.round(item.temp)}°</p>
-                      <p className={`text-[10px] mt-1 ${theme.sub}`}>비 {item.rainChance}%</p>
-                    </div>
-                  ))}
-                </div>
+        <div className={`${theme.card} backdrop-blur-sm rounded-3xl p-4`}>
+          <p className={`text-xs font-semibold mb-3 ${theme.sub}`}>5일 예보</p>
+          <div className="space-y-2">
+            {dailyForecasts.map((day) => (
+              <div key={day.date} className="flex items-center justify-between">
+                <p className={`text-sm font-medium ${theme.text} w-28`}>{day.date}</p>
+                <p className={`text-xs ${theme.sub}`}>비 {day.rainChance}%</p>
+                <p className={`text-sm font-semibold ${theme.text}`}>{Math.round(day.min)}° / {Math.round(day.max)}°</p>
               </div>
-              <div className={`${theme.card} backdrop-blur-sm rounded-3xl p-4`}>
-                <p className={`text-xs font-semibold mb-3 ${theme.sub}`}>5일 예보</p>
-                <div className="space-y-2">
-                  {dailyForecasts.map((day) => (
-                    <div key={day.date} className="flex items-center justify-between">
-                      <p className={`text-sm font-medium ${theme.text} w-28`}>{day.date}</p>
-                      <p className={`text-xs ${theme.sub}`}>비 {day.rainChance}%</p>
-                      <p className={`text-sm font-semibold ${theme.text}`}>{Math.round(day.min)}° / {Math.round(day.max)}°</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className={`${theme.card} backdrop-blur-sm rounded-3xl p-4 text-center`}>
-                <p className={`text-xs ${theme.sub} mb-1`}>오늘 옷차림 추천</p>
-                <p className={`text-lg font-bold ${theme.text}`}>{getClothing(weather?.temp)}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
     </div>
