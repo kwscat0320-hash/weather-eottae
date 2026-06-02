@@ -132,7 +132,21 @@ export default function WeatherApp() {
       }
       const data = await res.json();
       setCurrentWeather(data.current);
-      setForecast(data.forecast);
+
+      // 한국이면 중기예보(3~10일) 추가
+      if (korea) {
+        const midRes = await fetch(`/api/kma-mid?lat=${lat}&lon=${lon}`).catch(() => null);
+        if (midRes?.ok) {
+          const midData = await midRes.json();
+          const shortLabels = new Set((data.forecast || []).map(f => f.dateLabel));
+          const midOnly = (midData.forecast || []).filter(f => !shortLabels.has(f.dateLabel));
+          setForecast([...(data.forecast || []), ...midOnly]);
+        } else {
+          setForecast(data.forecast);
+        }
+      } else {
+        setForecast(data.forecast);
+      }
     } catch (err) {
       setError(err.message || "알 수 없는 오류가 발생했어요.");
     } finally {
