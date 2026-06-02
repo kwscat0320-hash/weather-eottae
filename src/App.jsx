@@ -96,12 +96,26 @@ function getClothing(temp) {
 
 // ?? 硫붿씤 而댄룷?뚰듃 ?????????????????????????????????????????????????????????????
 
+async function reverseGeocode(lat, lon) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko`,
+      { headers: { "Accept-Language": "ko" } }
+    );
+    const data = await res.json();
+    const a = data.address;
+    // 동 > 읍/면 > 구 > 시 순으로 가장 세밀한 단위 반환
+    return a.neighbourhood || a.suburb || a.quarter || a.city_district || a.district || a.county || a.city || a.state || "현재 위치";
+  } catch {
+    return "현재 위치";
+  }
+}
+
 export default function WeatherApp() {
   const [coords, setCoords] = useState(DEFAULT_LOCATION);
   const [currentWeather, setCurrentWeather] = useState(null);
   const [forecast, setForecast] = useState([]);
-  const [weatherSource, setWeatherSource] = useState("");
-  const [displayLocation, setDisplayLocation] = useState(DEFAULT_LOCATION.name);
+  const [displayLocation, setDisplayLocation] = useState("서울");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showDetail, setShowDetail] = useState(false);
@@ -110,18 +124,19 @@ export default function WeatherApp() {
 
   const requestCurrentLocation = () => {
     if (!navigator.geolocation) {
-      fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon, DEFAULT_LOCATION.name);
+      fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const next = { lat: pos.coords.latitude, lon: pos.coords.longitude, name: "?꾩옱 ?꾩튂" };
-        setCoords(next);
-        fetchWeatherData(next.lat, next.lon, next.name);
+      async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        setCoords({ lat, lon });
+        const locationName = await reverseGeocode(lat, lon);
+                fetchWeatherData(lat, lon);
       },
       () => {
         setCoords(DEFAULT_LOCATION);
-        fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon, DEFAULT_LOCATION.name);
+        fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 600000 }
     );
@@ -129,7 +144,7 @@ export default function WeatherApp() {
 
   const isKorea = (lat, lon) => lat >= 33 && lat <= 38.9 && lon >= 124 && lon <= 132;
 
-  const fetchWeatherData = async (lat, lon, locationName) => {
+  const fetchWeatherData = async (lat, lon) => {
     try {
       setLoading(true);
       setError("");
@@ -143,9 +158,7 @@ export default function WeatherApp() {
       const data = await res.json();
       setCurrentWeather(data.current);
       setForecast(data.forecast);
-      setDisplayLocation(locationName);
-      setWeatherSource(korea ? "湲곗긽泥? : "OpenWeather");
-    } catch (err) {
+          } catch (err) {
       setError(err.message || "?????녿뒗 ?ㅻ쪟媛 諛쒖깮?덉뼱??");
     } finally {
       setLoading(false);
@@ -208,7 +221,7 @@ export default function WeatherApp() {
         <div className="text-center">
           <p className="text-4xl mb-4">?샒</p>
           <p className="text-slate-700 font-medium mb-4">{error}</p>
-          <button onClick={() => fetchWeatherData(coords.lat, coords.lon, coords.name)}
+          <button onClick={() => fetchWeatherData(coords.lat, coords.lon)}
             className="px-5 py-2 bg-slate-800 text-white rounded-2xl text-sm font-semibold">
             ?ㅼ떆 ?쒕룄
           </button>
@@ -231,7 +244,7 @@ export default function WeatherApp() {
             <span className="text-xs">{displayLocation} 쨌 {weatherSource}</span>
           </div>
         </div>
-        <button onClick={() => fetchWeatherData(coords.lat, coords.lon, coords.name)}
+        <button onClick={() => fetchWeatherData(coords.lat, coords.lon)}
           className="w-9 h-9 rounded-full bg-white/30 flex items-center justify-center">
           <RefreshCw size={16} className={theme.text} />
         </button>
