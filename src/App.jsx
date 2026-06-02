@@ -220,7 +220,8 @@ export default function WeatherApp() {
   // ── 메인 화면 ────────────────────────────────────────────────────────────────
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${theme.bg} flex flex-col`}>
+    <div className="min-h-screen bg-slate-200 flex justify-center">
+    <div className={`w-full max-w-[393px] min-h-screen bg-gradient-to-br ${theme.bg} flex flex-col`}>
       {/* 상단 바 */}
       <div className="flex items-center justify-between px-6 pt-10 pb-2">
         <div>
@@ -338,6 +339,7 @@ export default function WeatherApp() {
           )}
         </AnimatePresence>
       </div>
+    </div>
     </div>
   );
 }
