@@ -13,7 +13,7 @@ async function reverseGeocode(lat, lon) {
     const data = await res.json();
     const a = data.address;
     const dong = a.neighbourhood || a.suburb || a.quarter || "";
-    const gu = a.city_district || a.district || "";
+    const gu = a.borough || a.city_district || a.district || "";
     if (dong && gu) return `${gu} ${dong}`;
     if (dong) return dong;
     if (gu) return gu;
