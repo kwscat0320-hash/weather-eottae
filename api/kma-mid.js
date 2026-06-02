@@ -86,25 +86,16 @@ function getTmFc() {
   const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
   const h = now.getUTCHours();
 
-  let base;
-  if (h < 6) {
-    base = new Date(now);
-    base.setUTCDate(base.getUTCDate() - 1);
-    base.setUTCHours(18, 0, 0, 0);
-  } else if (h < 18) {
-    base = new Date(now);
-    base.setUTCHours(6, 0, 0, 0);
-  } else {
-    base = new Date(now);
-    base.setUTCHours(18, 0, 0, 0);
-  }
+  // 항상 06시 발표 사용 (taMin4부터 제공). 06시 이전이면 전날 06시
+  const base = new Date(now);
+  if (h < 6) base.setUTCDate(base.getUTCDate() - 1);
+  base.setUTCHours(6, 0, 0, 0);
 
   const y = base.getUTCFullYear();
   const m = String(base.getUTCMonth() + 1).padStart(2, "0");
   const d = String(base.getUTCDate()).padStart(2, "0");
-  const hh = base.getUTCHours() === 6 ? "0600" : "1800";
 
-  return { tmFc: `${y}${m}${d}${hh}`, tmFcDate: base };
+  return { tmFc: `${y}${m}${d}0600`, tmFcDate: base };
 }
 
 function wfToCondition(wf = "") {
