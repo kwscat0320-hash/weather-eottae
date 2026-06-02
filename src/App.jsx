@@ -231,8 +231,8 @@ export default function WeatherApp() {
 
       <div className="px-6 pt-4">
         <div className={`text-7xl font-bold leading-none ${theme.text}`}>{weather?.temp}°</div>
-        <p className={`text-xl font-semibold mt-1 ${theme.text}`}>{weather?.condition}</p>
         <p className={`text-sm mt-1 ${theme.sub}`}>최고 {weather?.high}° / 최저 {weather?.low}° · 체감 {weather?.feelsLike}°</p>
+        <p className={`text-xl font-semibold mt-1 ${theme.text}`}>{weather?.condition}</p>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-4">
