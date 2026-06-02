@@ -155,7 +155,7 @@ function buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems) {
 // ── 예보 빌드 ─────────────────────────────────────────────────────────────────
 
 function buildForecast(vilageFcstItems, ultraFcstItems) {
-  const base = ultraFcstItems.length ? ultraFcstItems : vilageFcstItems;
+  const base = vilageFcstItems.length ? vilageFcstItems : ultraFcstItems;
   const groups = groupByDateTime(base);
 
   return groups.slice(0, 40).map((g) => {
