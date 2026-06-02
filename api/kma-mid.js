@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (!key) return res.status(500).json({ error: "KMA_KEY 없음" });
 
   const { landRegId, taRegId } = getRegionIds(Number(lat), Number(lon));
-  const tmFc = getTmFc();
+  const { tmFc, tmFcDate } = getTmFc();
 
   try {
     const [landRes, taRes] = await Promise.all([
@@ -26,16 +26,23 @@ export default async function handler(req, res) {
 
     if (!land || !ta) return res.status(502).json({ error: "중기예보 데이터 없음" });
 
-    const forecast = [];
-    for (let d = 3; d <= 10; d++) {
-      const suffix = d <= 7 ? d : `${d}`;
-      const rnSt   = land[`rnSt${suffix}Am`] ?? land[`rnSt${suffix}`] ?? 0;
-      const wf     = land[`wf${suffix}Am`]   ?? land[`wf${suffix}`]   ?? "";
-      const taMin  = ta[`taMin${suffix}`] ?? 0;
-      const taMax  = ta[`taMax${suffix}`] ?? 0;
+    // 실제 응답에 존재하는 day 번호만 추출 (taMin3~taMin10)
+    const availableDays = [];
+    for (let n = 3; n <= 10; n++) {
+      if (ta[`taMin${n}`] !== undefined) availableDays.push(n);
+    }
 
-      const date = new Date();
-      date.setDate(date.getDate() + d);
+
+    const forecast = [];
+    for (const n of availableDays) {
+      const taMin = ta[`taMin${n}`] ?? 0;
+      const taMax = ta[`taMax${n}`] ?? 0;
+      const rnSt  = land[`rnSt${n}Am`] ?? land[`rnSt${n}`] ?? 0;
+      const wf    = land[`wf${n}Am`]   ?? land[`wf${n}`]   ?? "";
+
+      // 발표일 기준 n일 후 날짜
+      const date = new Date(tmFcDate);
+      date.setDate(date.getDate() + n);
       const dateLabel = date.toLocaleDateString("ko-KR", {
         month: "numeric", day: "numeric", weekday: "short",
       });
@@ -78,17 +85,26 @@ function getRegionIds(lat, lon) {
 function getTmFc() {
   const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
   const h = now.getUTCHours();
-  const y = now.getUTCFullYear();
-  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(now.getUTCDate()).padStart(2, "0");
-  const hh = h >= 18 ? "1800" : "0600";
-  // 06시 이전이면 전날 18시
+
+  let base;
   if (h < 6) {
-    const prev = new Date(now);
-    prev.setUTCDate(prev.getUTCDate() - 1);
-    return `${prev.getUTCFullYear()}${String(prev.getUTCMonth()+1).padStart(2,"0")}${String(prev.getUTCDate()).padStart(2,"0")}1800`;
+    base = new Date(now);
+    base.setUTCDate(base.getUTCDate() - 1);
+    base.setUTCHours(18, 0, 0, 0);
+  } else if (h < 18) {
+    base = new Date(now);
+    base.setUTCHours(6, 0, 0, 0);
+  } else {
+    base = new Date(now);
+    base.setUTCHours(18, 0, 0, 0);
   }
-  return `${y}${m}${d}${hh}`;
+
+  const y = base.getUTCFullYear();
+  const m = String(base.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(base.getUTCDate()).padStart(2, "0");
+  const hh = base.getUTCHours() === 6 ? "0600" : "1800";
+
+  return { tmFc: `${y}${m}${d}${hh}`, tmFcDate: base };
 }
 
 function wfToCondition(wf = "") {
