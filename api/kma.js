@@ -36,6 +36,10 @@ export default async function handler(req, res) {
     const current = buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems);
     const forecast = buildForecast(vilageFcstItems, ultraFcstItems);
 
+    // 단기예보 날짜 범위 로그
+    const dates = [...new Set(forecast.map(f => f.dateLabel))];
+    console.log("[KMA] forecast dates:", dates.join(", "));
+
     return res.status(200).json({ current, forecast });
   } catch (err) {
     console.error("[KMA] error:", err.message);
