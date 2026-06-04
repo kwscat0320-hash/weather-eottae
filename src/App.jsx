@@ -105,9 +105,17 @@ export default function WeatherApp() {
 
   useEffect(() => { requestCurrentLocation(); }, []);
 
+  const fetchAir = (lat, lon) => {
+    fetch(`/api/air?lat=${lat}&lon=${lon}`)
+      .then(r => r.json())
+      .then(d => { if (d && !d.error) setAir(d); })
+      .catch(() => {});
+  };
+
   const requestCurrentLocation = () => {
     if (!navigator.geolocation) {
       fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
+      fetchAir(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -117,11 +125,12 @@ export default function WeatherApp() {
         const name = await reverseGeocode(lat, lon);
         setDisplayLocation(name);
         fetchWeatherData(lat, lon);
-        fetch(`/api/air?lat=${lat}&lon=${lon}`).then(r => r.ok ? r.json() : null).then(d => { if (d) setAir(d); });
+        fetchAir(lat, lon);
       },
       () => {
         setCoords(DEFAULT_LOCATION);
         fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
+        fetchAir(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 600000 }
     );
