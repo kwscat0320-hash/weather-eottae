@@ -81,12 +81,12 @@ function getTheme(condition = "") {
   };
 }
 
-function gradeColor(grade) {
-  if (grade === "1") return "#2563eb"; // 좋음 - 파란
-  if (grade === "2") return "#16a34a"; // 보통 - 초록
-  if (grade === "3") return "#ea580c"; // 나쁨 - 주황
-  if (grade === "4") return "#dc2626"; // 매우나쁨 - 빨강
-  return "#6b7280";
+function gradeInfo(grade) {
+  if (grade === "1") return { emoji: "😊", color: "#2563eb", label: "좋음" };
+  if (grade === "2") return { emoji: "🙂", color: "#16a34a", label: "보통" };
+  if (grade === "3") return { emoji: "😟", color: "#ea580c", label: "나쁨" };
+  if (grade === "4") return { emoji: "😷", color: "#dc2626", label: "매우나쁨" };
+  return { emoji: "😊", color: "#6b7280", label: "-" };
 }
 
 function getSpeech(theme, weather) {
@@ -284,8 +284,8 @@ export default function WeatherApp() {
           </div>
           {air && (
             <div className="grid grid-cols-2 gap-3 mt-3 pt-3" style={{ borderTop: `1px solid rgba(0,0,0,0.08)` }}>
-              <Metric icon={<span className="text-xs font-bold">PM10</span>} label="미세먼지" value={air.pm10 !== "-" ? `${air.pm10}㎍` : "-"} sub={theme.sub} text={gradeColor(air.pm10Grade)} />
-              <Metric icon={<span className="text-xs font-bold">PM2.5</span>} label="초미세먼지" value={air.pm25 !== "-" ? `${air.pm25}㎍` : "-"} sub={theme.sub} text={gradeColor(air.pm25Grade)} />
+              <AirCard label="미세먼지" value={air.pm10} grade={air.pm10Grade} sub={theme.sub} />
+              <AirCard label="초미세먼지" value={air.pm25} grade={air.pm25Grade} sub={theme.sub} />
             </div>
           )}
         </div>
@@ -322,6 +322,18 @@ export default function WeatherApp() {
 
       </div>
     </div>
+    </div>
+  );
+}
+
+function AirCard({ label, value, grade, sub }) {
+  const { emoji, color, label: gradeLabel } = gradeInfo(grade);
+  return (
+    <div className="text-center">
+      <p className="text-xs" style={{ color: sub }}>{label}</p>
+      <div className="text-2xl mt-1">{emoji}</div>
+      <p className="text-xs font-bold mt-0.5" style={{ color }}>{gradeLabel}</p>
+      <p className="text-[10px] mt-0.5" style={{ color: sub }}>{value !== "-" ? `${value}㎍/㎥` : "-"}</p>
     </div>
   );
 }
