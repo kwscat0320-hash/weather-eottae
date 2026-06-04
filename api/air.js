@@ -15,9 +15,11 @@ export default async function handler(req, res) {
 
     // 2. TM 좌표 → 가장 가까운 측정소
     const stationUrl = `https://apis.data.go.kr/B552584/MsrstnInfoInqireSvc/getNearbyMsrstnList?serviceKey=${key}&returnType=json&tmX=${tmX}&tmY=${tmY}&ver=1.1`;
-    const stationData = await httpsGetJson(stationUrl);
-    const stationName = stationData?.response?.body?.items?.[0]?.stationName;
-    if (!stationName) throw new Error(`측정소 없음: ${JSON.stringify(stationData?.response?.header)}`);
+    const stationData = await httpsGetRaw(stationUrl);
+    console.log("[AIR] stationRaw:", stationData.slice(0, 300));
+    const stationJson = JSON.parse(stationData);
+    const stationName = stationJson?.response?.body?.items?.[0]?.stationName;
+    if (!stationName) throw new Error(`측정소 없음: ${stationData.slice(0, 200)}`);
 
     // 3. 측정소 → 실시간 대기오염 정보
     const airUrl = `https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?serviceKey=${key}&returnType=json&numOfRows=1&pageNo=1&stationName=${encodeURIComponent(stationName)}&dataTerm=DAILY&ver=1.3`;
@@ -80,6 +82,24 @@ function wgs84ToTm(lat, lon) {
   const y = k0 * (M - M0 + N * Math.tan(latR) * (A ** 2 / 2 + (5 - T + 9 * C + 4 * C ** 2) * A ** 4 / 24)) + dy;
 
   return { tmX: x.toFixed(6), tmY: y.toFixed(6) };
+}
+
+function httpsGetRaw(urlStr) {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(urlStr);
+    const req = request({
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      method: "GET",
+      headers: { "User-Agent": "WeatherApp/1.0", "Accept": "application/json" },
+    }, (r) => {
+      let body = "";
+      r.on("data", (c) => (body += c));
+      r.on("end", () => resolve(body));
+    });
+    req.on("error", reject);
+    req.end();
+  });
 }
 
 function httpsGetJson(urlStr) {
