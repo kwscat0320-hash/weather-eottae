@@ -202,14 +202,34 @@ export default function WeatherApp() {
       const key = item.dateLabel;
       if (key === todayLabel) return; // 오늘 제외
       if (!grouped[key]) {
-        grouped[key] = { date: key, min: item.tempMin ?? item.temp, max: item.tempMax ?? item.temp, rainChance: item.rainChance ?? 0 };
+        grouped[key] = {
+          date: key,
+          min: item.tempMin,   // TMN 공식값 우선 (null이면 나중에 TMP로 보완)
+          max: item.tempMax,   // TMX 공식값 우선
+          rainChance: item.rainChance ?? 0,
+          tmps: [item.temp],   // TMP 수집
+        };
       } else {
-        grouped[key].min = Math.min(grouped[key].min, item.tempMin ?? item.temp);
-        grouped[key].max = Math.max(grouped[key].max, item.tempMax ?? item.temp);
+        // TMN/TMX가 이미 있으면 유지, 새 슬롯에 공식값이 있으면 덮어씀
+        if (item.tempMin !== null && item.tempMin !== undefined) {
+          grouped[key].min = grouped[key].min === null || grouped[key].min === undefined
+            ? item.tempMin
+            : Math.min(grouped[key].min, item.tempMin);
+        }
+        if (item.tempMax !== null && item.tempMax !== undefined) {
+          grouped[key].max = grouped[key].max === null || grouped[key].max === undefined
+            ? item.tempMax
+            : Math.max(grouped[key].max, item.tempMax);
+        }
         grouped[key].rainChance = Math.max(grouped[key].rainChance, item.rainChance ?? 0);
+        grouped[key].tmps.push(item.temp);
       }
     });
-    return Object.values(grouped).slice(0, 5);
+    return Object.values(grouped).slice(0, 5).map(({ tmps, min, max, ...rest }) => ({
+      ...rest,
+      min: min ?? Math.min(...tmps),  // TMN 없으면 TMP 최솟값
+      max: max ?? Math.max(...tmps),  // TMX 없으면 TMP 최댓값
+    }));
   }, [forecast]);
 
   const dateStr = new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
