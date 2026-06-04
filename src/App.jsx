@@ -152,16 +152,20 @@ export default function WeatherApp() {
       const data = await res.json();
       setCurrentWeather(data.current);
 
-      // 한국이면 중기예보(3~10일) 추가
+      // 한국이면 중기예보(4~10일) 추가 — 단기예보 날짜는 절대 덮어쓰지 않음
       if (korea) {
+        const shortForecast = data.forecast || [];
+        const shortLabels = new Set(
+          [...new Set(shortForecast.map(f => f.dateLabel))]
+        );
         const midRes = await fetch(`/api/kma-mid?lat=${lat}&lon=${lon}`).catch(() => null);
         if (midRes?.ok) {
           const midData = await midRes.json();
-          const shortLabels = new Set((data.forecast || []).map(f => f.dateLabel));
+          // 단기예보에 이미 있는 날짜는 중기예보에서 완전히 제외
           const midOnly = (midData.forecast || []).filter(f => !shortLabels.has(f.dateLabel));
-          setForecast([...(data.forecast || []), ...midOnly]);
+          setForecast([...shortForecast, ...midOnly]);
         } else {
-          setForecast(data.forecast);
+          setForecast(shortForecast);
         }
       } else {
         setForecast(data.forecast);
