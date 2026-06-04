@@ -12,24 +12,29 @@ export default async function handler(req, res) {
   try {
     // 1. 좌표 → 가장 가까운 측정소 이름
     const stationUrl = `https://apis.data.go.kr/B552584/MsrstnInfoInqireSvc/getNearbyMsrstnList?serviceKey=${key}&returnType=json&tmX=${lon}&tmY=${lat}&ver=1.1`;
+    console.log("[AIR] stationUrl:", stationUrl.slice(0, 120));
     const stationData = await httpsGetJson(stationUrl);
+    console.log("[AIR] stationData:", JSON.stringify(stationData).slice(0, 300));
     const stationName = stationData?.response?.body?.items?.[0]?.stationName;
-    if (!stationName) throw new Error("측정소를 찾을 수 없습니다.");
+    if (!stationName) throw new Error(`측정소 없음: ${JSON.stringify(stationData).slice(0, 200)}`);
 
     // 2. 측정소 → 대기오염 정보
     const airUrl = `https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?serviceKey=${key}&returnType=json&numOfRows=1&pageNo=1&stationName=${encodeURIComponent(stationName)}&dataTerm=DAILY&ver=1.3`;
+    console.log("[AIR] airUrl:", airUrl.slice(0, 120));
     const airData = await httpsGetJson(airUrl);
+    console.log("[AIR] airData:", JSON.stringify(airData).slice(0, 300));
     const item = airData?.response?.body?.items?.[0];
-    if (!item) throw new Error("대기오염 데이터 없음");
+    if (!item) throw new Error(`대기오염 데이터 없음: ${JSON.stringify(airData).slice(0, 200)}`);
 
     return res.status(200).json({
-      pm10: item.pm10Value ?? "-",   // 미세먼지 (PM10)
-      pm25: item.pm25Value ?? "-",   // 초미세먼지 (PM2.5)
+      pm10: item.pm10Value ?? "-",
+      pm25: item.pm25Value ?? "-",
       pm10Grade: item.pm10Grade ?? "0",
       pm25Grade: item.pm25Grade ?? "0",
       stationName,
     });
   } catch (err) {
+    console.error("[AIR] error:", err.message);
     return res.status(502).json({ error: err.message });
   }
 }
