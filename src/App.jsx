@@ -81,6 +81,14 @@ function getTheme(condition = "") {
   };
 }
 
+function gradeColor(grade) {
+  if (grade === "1") return "#2563eb"; // 좋음 - 파란
+  if (grade === "2") return "#16a34a"; // 보통 - 초록
+  if (grade === "3") return "#ea580c"; // 나쁨 - 주황
+  if (grade === "4") return "#dc2626"; // 매우나쁨 - 빨강
+  return "#6b7280";
+}
+
 function getSpeech(theme, weather) {
   if (!weather) return theme.speech[0];
   return theme.speech[new Date().getHours() % theme.speech.length];
@@ -93,6 +101,7 @@ export default function WeatherApp() {
   const [displayLocation, setDisplayLocation] = useState("서울");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [air, setAir] = useState(null);
 
   useEffect(() => { requestCurrentLocation(); }, []);
 
@@ -108,6 +117,7 @@ export default function WeatherApp() {
         const name = await reverseGeocode(lat, lon);
         setDisplayLocation(name);
         fetchWeatherData(lat, lon);
+        fetch(`/api/air?lat=${lat}&lon=${lon}`).then(r => r.ok ? r.json() : null).then(d => { if (d) setAir(d); });
       },
       () => {
         setCoords(DEFAULT_LOCATION);
@@ -265,11 +275,19 @@ export default function WeatherApp() {
       {/* 하단 카드들 */}
       <div className="px-4 pb-6 space-y-3 mt-2">
 
-        {/* 습도/풍속/강수 */}
-        <div className="rounded-3xl p-4 grid grid-cols-3 gap-3" style={{ background: theme.card }}>
-          <Metric icon={<Droplets size={18} />} label="습도" value={`${weather?.humidity}%`} sub={theme.sub} text={theme.text} />
-          <Metric icon={<Wind size={18} />} label="풍속" value={`${Number(weather?.wind).toFixed(1)}m/s`} sub={theme.sub} text={theme.text} />
-          <Metric icon={<Umbrella size={18} />} label="강수" value={`${weather?.rainChance}%`} sub={theme.sub} text={theme.text} />
+        {/* 요약 카드 */}
+        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+          <div className="grid grid-cols-3 gap-3">
+            <Metric icon={<Droplets size={18} />} label="습도" value={`${weather?.humidity}%`} sub={theme.sub} text={theme.text} />
+            <Metric icon={<Wind size={18} />} label="풍속" value={`${Number(weather?.wind).toFixed(1)}m/s`} sub={theme.sub} text={theme.text} />
+            <Metric icon={<Umbrella size={18} />} label="강수" value={`${weather?.rainChance}%`} sub={theme.sub} text={theme.text} />
+          </div>
+          {air && (
+            <div className="grid grid-cols-2 gap-3 mt-3 pt-3" style={{ borderTop: `1px solid rgba(0,0,0,0.08)` }}>
+              <Metric icon={<span className="text-xs font-bold">PM10</span>} label="미세먼지" value={air.pm10 !== "-" ? `${air.pm10}㎍` : "-"} sub={theme.sub} text={gradeColor(air.pm10Grade)} />
+              <Metric icon={<span className="text-xs font-bold">PM2.5</span>} label="초미세먼지" value={air.pm25 !== "-" ? `${air.pm25}㎍` : "-"} sub={theme.sub} text={gradeColor(air.pm25Grade)} />
+            </div>
+          )}
         </div>
 
         {/* 시간대별 예보 */}
