@@ -158,8 +158,18 @@ function buildForecast(vilageFcstItems, ultraFcstItems) {
   const base = vilageFcstItems.length ? vilageFcstItems : ultraFcstItems;
   const groups = groupByDateTime(base);
 
+  // 날짜별 공식 TMN/TMX 먼저 수집
+  const officialByDate = {};
+  base.forEach((item) => {
+    const d = item.fcstDate;
+    if (!officialByDate[d]) officialByDate[d] = {};
+    if (item.category === "TMN") officialByDate[d].TMN = Number(item.fcstValue);
+    if (item.category === "TMX") officialByDate[d].TMX = Number(item.fcstValue);
+  });
+
   return groups.slice(0, 60).map((g) => {
     const date = parseKmaDate(g.fcstDate, g.fcstTime);
+    const official = officialByDate[g.fcstDate] ?? {};
     return {
       dateLabel: date.toLocaleDateString("ko-KR", {
         month: "numeric",
@@ -170,8 +180,8 @@ function buildForecast(vilageFcstItems, ultraFcstItems) {
       condition: getCondition(g.SKY, g.PTY),
       icon: getIcon(g.SKY, g.PTY),
       temp: Number(g.TMP ?? g.T1H ?? 0),
-      tempMin: Number(g.TMN ?? g.TMP ?? g.T1H ?? 0),
-      tempMax: Number(g.TMX ?? g.TMP ?? g.T1H ?? 0),
+      tempMin: official.TMN ?? Number(g.TMP ?? g.T1H ?? 0),
+      tempMax: official.TMX ?? Number(g.TMP ?? g.T1H ?? 0),
       rainChance: Number(g.POP ?? 0),
     };
   });
