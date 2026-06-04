@@ -33,15 +33,8 @@ export default async function handler(req, res) {
     const ultraFcstItems = await parseKmaResult(ultraFcstRes, "초단기예보");
     const vilageFcstItems = await parseKmaResult(vilageFcstRes, "단기예보");
 
-    console.log("[KMA] vilageFcst items:", vilageFcstItems.length);
-    const vilageDates = [...new Set(vilageFcstItems.map(i => i.fcstDate))];
-    console.log("[KMA] vilageFcst raw dates:", vilageDates.join(", "));
-
     const current = buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems);
     const forecast = buildForecast(vilageFcstItems, ultraFcstItems);
-
-    const dates = [...new Set(forecast.map(f => f.dateLabel))];
-    console.log("[KMA] forecast dates:", dates.join(", "));
 
     return res.status(200).json({ current, forecast });
   } catch (err) {
@@ -165,7 +158,7 @@ function buildForecast(vilageFcstItems, ultraFcstItems) {
   const base = vilageFcstItems.length ? vilageFcstItems : ultraFcstItems;
   const groups = groupByDateTime(base);
 
-  return groups.slice(0, 40).map((g) => {
+  return groups.slice(0, 60).map((g) => {
     const date = parseKmaDate(g.fcstDate, g.fcstTime);
     return {
       dateLabel: date.toLocaleDateString("ko-KR", {
