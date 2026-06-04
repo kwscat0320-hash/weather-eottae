@@ -10,50 +10,37 @@ export default async function handler(req, res) {
   if (!key) return res.status(500).json({ error: "KMA_KEY 없음" });
 
   const { landRegId, taRegId } = getRegionIds(Number(lat), Number(lon));
-  const { tmFc: tmFcToday, tmFcDate: tmFcDateToday } = getTmFc(0);
-  const { tmFc: tmFcYest,  tmFcDate: tmFcDateYest  } = getTmFc(1); // 어제 발표
+  // 2일전, 1일전, 오늘 (우선순위 낮→높, 나중에 덮어씀)
+  const issuances = [getTmFc(2), getTmFc(1), getTmFc(0)];
 
   try {
-    // 오늘 + 어제 발표 병렬 요청
-    const [landToday, taToday, landYest, taYest] = await Promise.all([
-      httpsGetJson(buildUrl("getMidLandFcst", key, { regId: landRegId, tmFc: tmFcToday })),
-      httpsGetJson(buildUrl("getMidTa",       key, { regId: taRegId,   tmFc: tmFcToday })),
-      httpsGetJson(buildUrl("getMidLandFcst", key, { regId: landRegId, tmFc: tmFcYest  })),
-      httpsGetJson(buildUrl("getMidTa",       key, { regId: taRegId,   tmFc: tmFcYest  })),
-    ]);
+    const results = await Promise.all(
+      issuances.flatMap(({ tmFc }) => [
+        httpsGetJson(buildUrl("getMidLandFcst", key, { regId: landRegId, tmFc })).catch(() => null),
+        httpsGetJson(buildUrl("getMidTa",       key, { regId: taRegId,   tmFc })).catch(() => null),
+      ])
+    );
 
-    const land1 = getItem(landToday);
-    const ta1   = getItem(taToday);
-    const land0 = getItem(landYest);
-    const ta0   = getItem(taYest);
-
-    // 날짜별 데이터 맵 구성 (dateLabel → forecast)
     const byDate = {};
 
-    // 어제 발표 먼저 (낮은 우선순위)
-    if (land0 && ta0) {
+    for (let i = 0; i < issuances.length; i++) {
+      const { tmFcDate } = issuances[i];
+      const land = getItem(results[i * 2]);
+      const ta   = getItem(results[i * 2 + 1]);
+      if (!land || !ta) continue;
+
       for (let n = 3; n <= 10; n++) {
-        if (ta0[`taMin${n}`] === undefined) continue;
-        const date = new Date(tmFcDateYest);
+        if (ta[`taMin${n}`] === undefined) continue;
+        const date = new Date(tmFcDate);
         date.setDate(date.getDate() + n);
         const label = toLabel(date);
-        byDate[label] = makeEntry(label, ta0, land0, n);
+        byDate[label] = makeEntry(label, ta, land, n);
       }
     }
 
-    // 오늘 발표 (높은 우선순위 - 덮어씀)
-    if (land1 && ta1) {
-      for (let n = 3; n <= 10; n++) {
-        if (ta1[`taMin${n}`] === undefined) continue;
-        const date = new Date(tmFcDateToday);
-        date.setDate(date.getDate() + n);
-        const label = toLabel(date);
-        byDate[label] = makeEntry(label, ta1, land1, n);
-      }
-    }
-
-    // 날짜순 정렬
-    const forecast = Object.values(byDate).sort((a, b) => a._ts - b._ts).map(({ _ts, ...rest }) => rest);
+    const forecast = Object.values(byDate)
+      .sort((a, b) => a._ts - b._ts)
+      .map(({ _ts, ...rest }) => rest);
 
     return res.status(200).json({ forecast });
   } catch (err) {
@@ -66,7 +53,6 @@ function makeEntry(label, ta, land, n) {
   const taMax = ta[`taMax${n}`] ?? 0;
   const rnSt  = land[`rnSt${n}Am`] ?? land[`rnSt${n}`] ?? 0;
   const wf    = land[`wf${n}Am`]   ?? land[`wf${n}`]   ?? "";
-  // timestamp for sorting
   const parts = label.match(/(\d+)\.\s*(\d+)/);
   const ts = parts ? Number(parts[1]) * 100 + Number(parts[2]) : 0;
   return { dateLabel: label, timeLabel: "일간", condition: wfToCondition(wf),
@@ -82,8 +68,6 @@ function getItem(res) {
 function toLabel(date) {
   return date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
 }
-
-// ── 지역코드 매핑 ─────────────────────────────────────────────────────────────
 
 function getRegionIds(lat, lon) {
   if (lat >= 37.4 && lon >= 126.0 && lon <= 127.5) return { landRegId: "11B10101", taRegId: "11B10101" };
