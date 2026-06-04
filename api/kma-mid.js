@@ -1,4 +1,4 @@
-import { request } from "https";
+﻿import { request } from "https";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -10,53 +10,50 @@ export default async function handler(req, res) {
   if (!key) return res.status(500).json({ error: "KMA_KEY 없음" });
 
   const { landRegId, taRegId } = getRegionIds(Number(lat), Number(lon));
-  const { tmFc, tmFcDate } = getTmFc();
+  const { tmFc: tmFcToday, tmFcDate: tmFcDateToday } = getTmFc(0);
+  const { tmFc: tmFcYest,  tmFcDate: tmFcDateYest  } = getTmFc(1); // 어제 발표
 
   try {
-    const [landRes, taRes] = await Promise.all([
-      httpsGetJson(buildUrl("getMidLandFcst", key, { regId: landRegId, tmFc })),
-      httpsGetJson(buildUrl("getMidTa",       key, { regId: taRegId,   tmFc })),
+    // 오늘 + 어제 발표 병렬 요청
+    const [landToday, taToday, landYest, taYest] = await Promise.all([
+      httpsGetJson(buildUrl("getMidLandFcst", key, { regId: landRegId, tmFc: tmFcToday })),
+      httpsGetJson(buildUrl("getMidTa",       key, { regId: taRegId,   tmFc: tmFcToday })),
+      httpsGetJson(buildUrl("getMidLandFcst", key, { regId: landRegId, tmFc: tmFcYest  })),
+      httpsGetJson(buildUrl("getMidTa",       key, { regId: taRegId,   tmFc: tmFcYest  })),
     ]);
 
-    const landItems = landRes?.response?.body?.items?.item;
-    const taItems   = taRes?.response?.body?.items?.item;
+    const land1 = getItem(landToday);
+    const ta1   = getItem(taToday);
+    const land0 = getItem(landYest);
+    const ta0   = getItem(taYest);
 
-    const land = Array.isArray(landItems) ? landItems[0] : landItems;
-    const ta   = Array.isArray(taItems)   ? taItems[0]   : taItems;
+    // 날짜별 데이터 맵 구성 (dateLabel → forecast)
+    const byDate = {};
 
-    if (!land || !ta) return res.status(502).json({ error: "중기예보 데이터 없음" });
-
-    // 실제 응답에 존재하는 day 번호만 추출 (taMin3~taMin10)
-    const availableDays = [];
-    for (let n = 3; n <= 10; n++) {
-      if (ta[`taMin${n}`] !== undefined) availableDays.push(n);
+    // 어제 발표 먼저 (낮은 우선순위)
+    if (land0 && ta0) {
+      for (let n = 3; n <= 10; n++) {
+        if (ta0[`taMin${n}`] === undefined) continue;
+        const date = new Date(tmFcDateYest);
+        date.setDate(date.getDate() + n);
+        const label = toLabel(date);
+        byDate[label] = makeEntry(label, ta0, land0, n);
+      }
     }
 
-
-    const forecast = [];
-    for (const n of availableDays) {
-      const taMin = ta[`taMin${n}`] ?? 0;
-      const taMax = ta[`taMax${n}`] ?? 0;
-      const rnSt  = land[`rnSt${n}Am`] ?? land[`rnSt${n}`] ?? 0;
-      const wf    = land[`wf${n}Am`]   ?? land[`wf${n}`]   ?? "";
-
-      // 발표일 기준 n일 후 날짜
-      const date = new Date(tmFcDate);
-      date.setDate(date.getDate() + n);
-      const dateLabel = date.toLocaleDateString("ko-KR", {
-        month: "numeric", day: "numeric", weekday: "short",
-      });
-
-      forecast.push({
-        dateLabel,
-        timeLabel: "일간",
-        condition: wfToCondition(wf),
-        temp: Math.round((taMin + taMax) / 2),
-        tempMin: taMin,
-        tempMax: taMax,
-        rainChance: rnSt,
-      });
+    // 오늘 발표 (높은 우선순위 - 덮어씀)
+    if (land1 && ta1) {
+      for (let n = 3; n <= 10; n++) {
+        if (ta1[`taMin${n}`] === undefined) continue;
+        const date = new Date(tmFcDateToday);
+        date.setDate(date.getDate() + n);
+        const label = toLabel(date);
+        byDate[label] = makeEntry(label, ta1, land1, n);
+      }
     }
+
+    // 날짜순 정렬
+    const forecast = Object.values(byDate).sort((a, b) => a._ts - b._ts).map(({ _ts, ...rest }) => rest);
 
     return res.status(200).json({ forecast });
   } catch (err) {
@@ -64,37 +61,55 @@ export default async function handler(req, res) {
   }
 }
 
+function makeEntry(label, ta, land, n) {
+  const taMin = ta[`taMin${n}`] ?? 0;
+  const taMax = ta[`taMax${n}`] ?? 0;
+  const rnSt  = land[`rnSt${n}Am`] ?? land[`rnSt${n}`] ?? 0;
+  const wf    = land[`wf${n}Am`]   ?? land[`wf${n}`]   ?? "";
+  // timestamp for sorting
+  const parts = label.match(/(\d+)\.\s*(\d+)/);
+  const ts = parts ? Number(parts[1]) * 100 + Number(parts[2]) : 0;
+  return { dateLabel: label, timeLabel: "일간", condition: wfToCondition(wf),
+    temp: Math.round((taMin + taMax) / 2), tempMin: taMin, tempMax: taMax,
+    rainChance: rnSt, _ts: ts };
+}
+
+function getItem(res) {
+  const items = res?.response?.body?.items?.item;
+  return Array.isArray(items) ? items[0] : items;
+}
+
+function toLabel(date) {
+  return date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+}
+
 // ── 지역코드 매핑 ─────────────────────────────────────────────────────────────
 
 function getRegionIds(lat, lon) {
-  // 육상예보 regId / 기온예보 regId
-  if (lat >= 37.4 && lon >= 126.0 && lon <= 127.5) return { landRegId: "11B10101", taRegId: "11B10101" }; // 서울/인천/경기북부
-  if (lat >= 37.0 && lat < 37.4 && lon >= 126.5)  return { landRegId: "11B20101", taRegId: "11B20601" }; // 경기남부
-  if (lat >= 36.5 && lat < 37.5 && lon >= 127.5 && lon < 129.0) return { landRegId: "11D10101", taRegId: "11D10301" }; // 강원영서
-  if (lat >= 37.0 && lon >= 129.0)                 return { landRegId: "11D20101", taRegId: "11D20201" }; // 강원영동
-  if (lat >= 36.0 && lat < 37.0 && lon >= 127.0 && lon < 128.5) return { landRegId: "11C10101", taRegId: "11C10301" }; // 충북
-  if (lat >= 36.0 && lat < 37.0 && lon < 127.0)   return { landRegId: "11C20101", taRegId: "11C20401" }; // 충남/대전
-  if (lat >= 35.5 && lat < 36.5 && lon >= 128.5)  return { landRegId: "11H10701", taRegId: "11H10701" }; // 경북
-  if (lat >= 35.0 && lat < 36.0 && lon >= 128.0)  return { landRegId: "11H20201", taRegId: "11H20201" }; // 경남/부산
-  if (lat >= 35.5 && lat < 36.5 && lon < 127.5)   return { landRegId: "11F10201", taRegId: "11F10201" }; // 전북
-  if (lat >= 34.0 && lat < 35.5 && lon < 127.5)   return { landRegId: "11F20501", taRegId: "11F20501" }; // 전남/광주
-  if (lat < 34.0)                                   return { landRegId: "11G00201", taRegId: "11G00201" }; // 제주
-  return { landRegId: "11B10101", taRegId: "11B10101" }; // 기본: 서울
+  if (lat >= 37.4 && lon >= 126.0 && lon <= 127.5) return { landRegId: "11B10101", taRegId: "11B10101" };
+  if (lat >= 37.0 && lat < 37.4 && lon >= 126.5)  return { landRegId: "11B20101", taRegId: "11B20601" };
+  if (lat >= 36.5 && lat < 37.5 && lon >= 127.5 && lon < 129.0) return { landRegId: "11D10101", taRegId: "11D10301" };
+  if (lat >= 37.0 && lon >= 129.0)                 return { landRegId: "11D20101", taRegId: "11D20201" };
+  if (lat >= 36.0 && lat < 37.0 && lon >= 127.0 && lon < 128.5) return { landRegId: "11C10101", taRegId: "11C10301" };
+  if (lat >= 36.0 && lat < 37.0 && lon < 127.0)   return { landRegId: "11C20101", taRegId: "11C20401" };
+  if (lat >= 35.5 && lat < 36.5 && lon >= 128.5)  return { landRegId: "11H10701", taRegId: "11H10701" };
+  if (lat >= 35.0 && lat < 36.0 && lon >= 128.0)  return { landRegId: "11H20201", taRegId: "11H20201" };
+  if (lat >= 35.5 && lat < 36.5 && lon < 127.5)   return { landRegId: "11F10201", taRegId: "11F10201" };
+  if (lat >= 34.0 && lat < 35.5 && lon < 127.5)   return { landRegId: "11F20501", taRegId: "11F20501" };
+  if (lat < 34.0)                                   return { landRegId: "11G00201", taRegId: "11G00201" };
+  return { landRegId: "11B10101", taRegId: "11B10101" };
 }
 
-function getTmFc() {
+function getTmFc(daysAgo = 0) {
   const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
   const h = now.getUTCHours();
-
-  // 항상 06시 발표 사용 (taMin4부터 제공). 06시 이전이면 전날 06시
   const base = new Date(now);
   if (h < 6) base.setUTCDate(base.getUTCDate() - 1);
+  base.setUTCDate(base.getUTCDate() - daysAgo);
   base.setUTCHours(6, 0, 0, 0);
-
   const y = base.getUTCFullYear();
   const m = String(base.getUTCMonth() + 1).padStart(2, "0");
   const d = String(base.getUTCDate()).padStart(2, "0");
-
   return { tmFc: `${y}${m}${d}0600`, tmFcDate: base };
 }
 

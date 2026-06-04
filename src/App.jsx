@@ -192,9 +192,11 @@ export default function WeatherApp() {
   const todayForecasts = useMemo(() => forecast.slice(0, 6), [forecast]);
 
   const dailyForecasts = useMemo(() => {
+    const todayLabel = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
     const grouped = {};
     forecast.forEach((item) => {
       const key = item.dateLabel;
+      if (key === todayLabel) return; // 오늘 제외
       if (!grouped[key]) {
         grouped[key] = { date: key, min: item.tempMin ?? item.temp, max: item.tempMax ?? item.temp, rainChance: item.rainChance ?? 0 };
       } else {
