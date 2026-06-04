@@ -33,10 +33,13 @@ export default async function handler(req, res) {
     const ultraFcstItems = await parseKmaResult(ultraFcstRes, "초단기예보");
     const vilageFcstItems = await parseKmaResult(vilageFcstRes, "단기예보");
 
+    console.log("[KMA] vilageFcst items:", vilageFcstItems.length);
+    const vilageDates = [...new Set(vilageFcstItems.map(i => i.fcstDate))];
+    console.log("[KMA] vilageFcst raw dates:", vilageDates.join(", "));
+
     const current = buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems);
     const forecast = buildForecast(vilageFcstItems, ultraFcstItems);
 
-    // 단기예보 날짜 범위 로그
     const dates = [...new Set(forecast.map(f => f.dateLabel))];
     console.log("[KMA] forecast dates:", dates.join(", "));
 
