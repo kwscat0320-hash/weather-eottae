@@ -3,11 +3,5 @@
     "api/kma.js": { "regions": ["icn1"] },
     "api/kma-cron.js": { "regions": ["icn1"] },
     "api/kma-history.js": { "regions": ["icn1"] }
-  },
-  "crons": [
-    {
-      "path": "/api/kma-cron",
-      "schedule": "0 */2 * * *"
-    }
-  ]
+  }
 }
