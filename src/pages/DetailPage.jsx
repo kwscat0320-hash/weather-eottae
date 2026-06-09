@@ -41,7 +41,7 @@ export default function DetailPage() {
                 source="OpenWeather"
                 color="#ea580c"
                 rows={[
-                  { label: "기온", value: `${Math.round(compareWeather.temp)}°` },
+                  { label: "현재 온도", value: `${Math.round(compareWeather.temp)}°` },
                   { label: "체감", value: `${Math.round(compareWeather.feelsLike)}°` },
                   { label: "최고", value: `${Math.round(compareWeather.high)}°` },
                   { label: "최저", value: `${Math.round(compareWeather.low)}°` },
