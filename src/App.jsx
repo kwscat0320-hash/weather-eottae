@@ -384,6 +384,7 @@ export default function WeatherApp() {
     </div>
     </div>
   );
+}
 
 function CompareCard({ kma, ow, theme }) {
   const rows = [
