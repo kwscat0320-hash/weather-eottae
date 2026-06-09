@@ -102,6 +102,7 @@ export default function WeatherApp() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [air, setAir] = useState(null);
+  const [compareWeather, setCompareWeather] = useState(null);
 
   useEffect(() => { requestCurrentLocation(); }, []);
 
@@ -142,32 +143,45 @@ export default function WeatherApp() {
     try {
       setLoading(true);
       setError("");
+      setCompareWeather(null);
       const korea = isKorea(lat, lon);
-      const url = korea ? `/api/kma?lat=${lat}&lon=${lon}` : `/api/openweather?lat=${lat}&lon=${lon}`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `날씨 API 오류 (${res.status})`);
-      }
-      const data = await res.json();
-      setCurrentWeather(data.current);
 
-      // 한국이면 중기예보(4~10일) 추가 — 단기예보 날짜는 절대 덮어쓰지 않음
       if (korea) {
+        const [kmaRes, owRes] = await Promise.allSettled([
+          fetch(`/api/kma?lat=${lat}&lon=${lon}`),
+          fetch(`/api/openweather?lat=${lat}&lon=${lon}`),
+        ]);
+
+        if (kmaRes.status !== "fulfilled" || !kmaRes.value.ok) {
+          const body = await kmaRes.value?.json().catch(() => ({}));
+          throw new Error(body?.error || "기상청 API 오류");
+        }
+        const data = await kmaRes.value.json();
+        setCurrentWeather(data.current);
+
+        if (owRes.status === "fulfilled" && owRes.value.ok) {
+          const owData = await owRes.value.json();
+          setCompareWeather(owData.current);
+        }
+
         const shortForecast = data.forecast || [];
-        const shortLabels = new Set(
-          [...new Set(shortForecast.map(f => f.dateLabel))]
-        );
+        const shortLabels = new Set(shortForecast.map(f => f.dateLabel));
         const midRes = await fetch(`/api/kma-mid?lat=${lat}&lon=${lon}`).catch(() => null);
         if (midRes?.ok) {
           const midData = await midRes.json();
-          // 단기예보에 이미 있는 날짜는 중기예보에서 완전히 제외
           const midOnly = (midData.forecast || []).filter(f => !shortLabels.has(f.dateLabel));
           setForecast([...shortForecast, ...midOnly]);
         } else {
           setForecast(shortForecast);
         }
       } else {
+        const res = await fetch(`/api/openweather?lat=${lat}&lon=${lon}`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `날씨 API 오류 (${res.status})`);
+        }
+        const data = await res.json();
+        setCurrentWeather(data.current);
         setForecast(data.forecast);
       }
     } catch (err) {
@@ -176,7 +190,6 @@ export default function WeatherApp() {
       setLoading(false);
     }
   };
-
   const theme = useMemo(() => getTheme(currentWeather?.condition), [currentWeather]);
 
   const weather = useMemo(() => {
@@ -355,10 +368,45 @@ export default function WeatherApp() {
           </div>
         </div>
 
+        {/* 기상청 vs OpenWeather 비교 */}
+        {compareWeather && (
+          <CompareCard kma={weather} ow={compareWeather} theme={theme} />
+        )}
+
       </div>
     </div>
     </div>
   );
+
+function CompareCard({ kma, ow, theme }) {
+  const rows = [
+    { label: "날씨", kmaVal: kma.condition, owVal: ow.condition },
+    { label: "기온", kmaVal: `${Math.round(kma.temp)}°`, owVal: `${Math.round(ow.temp)}°` },
+    { label: "체감", kmaVal: `${Math.round(kma.feelsLike)}°`, owVal: `${Math.round(ow.feelsLike)}°` },
+    { label: "최고/최저", kmaVal: `${Math.round(kma.high)}°/${Math.round(kma.low)}°`, owVal: `${Math.round(ow.high)}°/${Math.round(ow.low)}°` },
+    { label: "습도", kmaVal: `${kma.humidity}%`, owVal: `${ow.humidity}%` },
+    { label: "바람", kmaVal: `${Number(kma.wind).toFixed(1)}m/s`, owVal: `${Number(ow.wind).toFixed(1)}m/s` },
+    { label: "강수확률", kmaVal: `${kma.rainChance}%`, owVal: `${ow.rainChance}%` },
+  ];
+  return (
+    <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+      <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>기상청 vs OpenWeather 비교</p>
+      <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
+        <div className="font-semibold" style={{ color: theme.sub }}></div>
+        <div className="font-semibold text-center" style={{ color: theme.sub }}>기상청</div>
+        <div className="font-semibold text-center" style={{ color: theme.sub }}>OpenWeather</div>
+        {rows.map(({ label, kmaVal, owVal }) => (
+          <React.Fragment key={label}>
+            <div className="py-1" style={{ color: theme.sub }}>{label}</div>
+            <div className="py-1 text-center font-medium" style={{ color: theme.text }}>{kmaVal}</div>
+            <div className="py-1 text-center font-medium" style={{ color: theme.text }}>{owVal}</div>
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 }
 
 function AirCard({ label, value, grade, sub }) {
