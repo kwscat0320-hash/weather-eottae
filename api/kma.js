@@ -173,17 +173,33 @@ function buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems) {
   const villageGroups = groupByDateTime(vilageFcstItems);
   const firstVillage = villageGroups[0] ?? {};
 
-  const today = formatYMD(new Date());
-  const todayVillage = vilageFcstItems.filter((i) => i.fcstDate === today);
-  const tmx = todayVillage.find((i) => i.category === "TMX")?.fcstValue;
-  const tmn = todayVillage.find((i) => i.category === "TMN")?.fcstValue;
-
-  const temp = Number(nowMap.T1H ?? firstUltra.T1H ?? firstVillage.TMP ?? 0);
-  const humidity = Number(nowMap.REH ?? firstUltra.REH ?? firstVillage.REH ?? 0);
-  const wind = Number(nowMap.WSD ?? firstUltra.WSD ?? firstVillage.WSD ?? 0);
+  // ── 현재 기상 (초단기실황 T1H 우선) ────────────────────────────────
+  const temp     = Number(nowMap.T1H  ?? firstUltra.T1H  ?? firstVillage.TMP ?? 0);
+  const humidity = Number(nowMap.REH  ?? firstUltra.REH  ?? firstVillage.REH ?? 0);
+  const wind     = Number(nowMap.WSD  ?? firstUltra.WSD  ?? firstVillage.WSD ?? 0);
   const sky = firstUltra.SKY ?? firstVillage.SKY;
   const pty = nowMap.PTY ?? firstUltra.PTY ?? firstVillage.PTY ?? "0";
 
+  // ── 오늘 최고/최저 (단기예보 TMX/TMN 우선, 없으면 TMP 전체 범위) ──
+  const today = formatYMD(new Date());
+  const todayVillage = vilageFcstItems.filter((i) => i.fcstDate === today);
+
+  const tmx = todayVillage.find((i) => i.category === "TMX")?.fcstValue;
+  const tmn = todayVillage.find((i) => i.category === "TMN")?.fcstValue;
+
+  const todayTmps = todayVillage
+    .filter((i) => i.category === "TMP")
+    .map((i) => Number(i.fcstValue))
+    .filter((v) => !isNaN(v));
+
+  const high = tmx != null ? Number(tmx)
+    : todayTmps.length > 0 ? Math.max(...todayTmps)
+    : temp;
+  const low  = tmn != null ? Number(tmn)
+    : todayTmps.length > 0 ? Math.min(...todayTmps)
+    : temp;
+
+  // ── 관측 시각 ────────────────────────────────────────────────────
   const ncst0 = ncstItems[0];
   const observedAt = ncst0
     ? `${ncst0.baseTime.slice(0, 2)}:${ncst0.baseTime.slice(2, 4)} (기상청 실측)`
@@ -194,8 +210,8 @@ function buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems) {
     icon: getIcon(sky, pty),
     temp,
     feelsLike: calcFeelsLike(temp, wind),
-    high: Number(tmx ?? firstVillage.TMP ?? temp),
-    low: Number(tmn ?? firstVillage.TMP ?? temp),
+    high,
+    low,
     rainChance: Number(firstUltra.POP ?? firstVillage.POP ?? 0),
     humidity,
     wind,
