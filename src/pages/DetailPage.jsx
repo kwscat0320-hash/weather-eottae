@@ -31,7 +31,7 @@ export default function DetailPage() {
                 source="기상청"
                 color="#2563eb"
                 rows={[
-                  { label: "기온", value: `${Math.round(weather.temp)}°` },
+                  { label: "현재 온도", value: `${Math.round(weather.temp)}°` },
                   { label: "체감", value: `${Math.round(weather.feelsLike)}°` },
                   { label: "최고", value: `${Math.round(weather.high)}°` },
                   { label: "최저", value: `${Math.round(weather.low)}°` },
