@@ -101,20 +101,21 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* 시간대별 예보 — 3소스 비교 */}
+        {/* 시간대별 예보 — 3소스 24h 비교 */}
         <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 예보</p>
+          <p className="text-xs font-semibold mb-1" style={{ color: theme.sub }}>시간대별 예보</p>
+          <p className="text-[9px] mb-3" style={{ color: theme.sub, opacity: 0.7 }}>현재 기준 24시간</p>
           {[
-            { name: "기상청",       data: todayForecasts },
-            { name: "OpenWeather", data: owForecast },
-            { name: "Open-Meteo",  data: meteoForecast },
+            { name: "기상청 (1h)",   data: todayForecasts },
+            { name: "OW (3h)",       data: owForecast },
+            { name: "Open-Meteo (1h)", data: meteoForecast },
           ].filter(s => s.data?.length > 0).map(source => (
             <div key={source.name} className="mb-3 last:mb-0">
               <p className="text-[10px] font-semibold mb-1.5" style={{ color: theme.sub, opacity: 0.8 }}>{source.name}</p>
               <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
                 {source.data.map((item, i) => (
                   <div key={i} className="flex-shrink-0 rounded-xl p-2 text-center"
-                    style={{ width: 60, background: "rgba(255,254,254,0.25)" }}>
+                    style={{ width: 56, background: "rgba(255,254,254,0.25)" }}>
                     <p className="text-[10px]" style={{ color: theme.sub }}>{item.timeLabel}</p>
                     <p className="font-bold text-sm mt-1" style={{ color: theme.text }}>{Math.round(item.temp)}°</p>
                     <p className="text-[9px] mt-0.5" style={{ color: theme.sub }}>{item.rainChance}%</p>

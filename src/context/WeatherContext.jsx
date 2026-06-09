@@ -111,7 +111,7 @@ export function WeatherProvider({ children }) {
           }
           setCompareWeather(owCurrent);
           // OW 시간별 예보 저장 (다음 6슬롯)
-          setOwForecast((owData.forecast || []).slice(0, 6).map(f => ({
+          setOwForecast((owData.forecast || []).slice(0, 8).map(f => ({
             timeLabel:  f.timeLabel,
             temp:       f.temp,
             rainChance: f.rainChance,
@@ -166,7 +166,7 @@ export function WeatherProvider({ children }) {
 
   const speech = getSpeech(theme, weather);
 
-  const todayForecasts = useMemo(() => forecast.slice(0, 6), [forecast]);
+  const todayForecasts = useMemo(() => forecast.slice(0, 24), [forecast]);
 
   const dailyForecasts = useMemo(() => {
     const todayLabel = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });

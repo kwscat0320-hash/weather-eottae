@@ -76,7 +76,7 @@ export default async function handler(req, res) {
     // 현재 시각 이후 6슬롯
     const startIdx = (h.time || []).findIndex(t => t >= nowHour);
     const forecast = [];
-    for (let i = Math.max(0, startIdx); i < Math.min((h.time || []).length, startIdx + 6); i++) {
+    for (let i = Math.max(0, startIdx); i < Math.min((h.time || []).length, startIdx + 24); i++) {
       const t = new Date(h.time[i]);
       forecast.push({
         timeLabel: `${String(t.getHours()).padStart(2,"0")}:00`,
