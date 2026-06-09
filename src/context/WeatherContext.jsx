@@ -3,7 +3,7 @@ import { DEFAULT_LOCATION, getTheme, getSpeech, isKorea } from "../utils/weather
 
 async function reverseGeocode(lat, lon) {
   try {
-    const res = await fetch(`/api/geocode?lat=${lat}&lon=${lon}`);
+    const res = await fetch(`/api/geocode?lat=${lat}&lon=${lon}&_=${Date.now()}`);
     const data = await res.json();
     return data.name || "현재 위치";
   } catch {
