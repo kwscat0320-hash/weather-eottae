@@ -168,7 +168,6 @@ function SourceCard({ source, color, rows }) {
             <div key={label} className="flex justify-between items-center">
               <span className="text-xs text-slate-400">{label}</span>
               <div className="flex items-center gap-1.5">
-                {g && <AirDot color={g.dotColor} size={20} />}
                 {g && <span className="text-xs font-bold" style={{ color: g.dotColor }}>{g.label}</span>}
                 <span className="text-sm font-semibold text-slate-800">{value}</span>
               </div>
