@@ -44,10 +44,6 @@ export default async function handler(req, res) {
     const b = data.documents?.find(d => d.region_type === "B");
     const doc = h || b;
 
-    const h = data.documents?.find(d => d.region_type === "H");
-    const b = data.documents?.find(d => d.region_type === "B");
-    const doc = h || b;
-
     if (!doc) return res.status(200).json({ name: "현재 위치" });
 
     const gu   = doc.region_2depth_name;
