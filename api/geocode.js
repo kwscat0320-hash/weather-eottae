@@ -44,7 +44,16 @@ export default async function handler(req, res) {
     const b = data.documents?.find(d => d.region_type === "B");
     const doc = h || b;
 
-    return res.status(200).json({ _debug: data });
+    const h = data.documents?.find(d => d.region_type === "H");
+    const b = data.documents?.find(d => d.region_type === "B");
+    const doc = h || b;
+
+    if (!doc) return res.status(200).json({ name: "현재 위치" });
+
+    const gu   = doc.region_2depth_name;
+    const dong = doc.region_3depth_name;
+    const name = dong ? `${gu} ${dong}` : gu || "현재 위치";
+    return res.status(200).json({ name });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
