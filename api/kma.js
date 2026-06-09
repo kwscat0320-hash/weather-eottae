@@ -1,11 +1,17 @@
 import { request } from "https";
+import { kv } from "@vercel/kv";
+import { dfsXyConv } from "./_kma-utils.js";
+
+const CACHE_TTL_SEC = 7200;      // 캐시 유효 시간: 2시간
+const HISTORY_TTL_SEC = 259200;  // 히스토리 보존: 3일
+const HISTORY_MAX = 36;          // 최대 스냅샷 수 (3일 × 12개/일)
 
 // Vercel 서버리스 프록시 — 브라우저 CORS 우회용
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
-  const { lat, lon } = req.query;
+  const { lat, lon, force } = req.query;
   if (!lat || !lon) {
     return res.status(400).json({ error: "lat, lon 파라미터가 필요합니다." });
   }
@@ -15,18 +21,33 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "KMA_KEY 환경변수가 설정되지 않았습니다." });
   }
 
-  const trimmedKey = rawKey.trim();
-
   const grid = dfsXyConv(Number(lat), Number(lon));
-  const { date, ultraDate, ultraTime, vilageTime } = getKmaBaseDateTime();
+  const cacheKey = `kma:latest:${grid.x}:${grid.y}`;
 
+  // KV 캐시 확인 (force=1 이면 강제 갱신)
+  if (!force && process.env.KV_REST_API_URL) {
+    try {
+      const cached = await kv.get(cacheKey);
+      if (cached) {
+        const age = Date.now() - cached.savedAt;
+        if (age < CACHE_TTL_SEC * 1000) {
+          res.setHeader("X-Cache", "HIT");
+          return res.status(200).json(cached.data);
+        }
+      }
+    } catch (e) {
+      console.warn("[KMA cache] KV read failed:", e.message);
+    }
+  }
+
+  const trimmedKey = rawKey.trim();
+  const { date, ultraDate, ultraTime, vilageTime } = getKmaBaseDateTime();
 
   const [ncstRes, ultraFcstRes, vilageFcstRes] = await Promise.allSettled([
     httpsGet(buildKmaUrl("getUltraSrtNcst", trimmedKey, ultraDate, ultraTime, grid, 100)),
     httpsGet(buildKmaUrl("getUltraSrtFcst", trimmedKey, ultraDate, ultraTime, grid, 200)),
     httpsGet(buildKmaUrl("getVilageFcst", trimmedKey, date, vilageTime, grid, 1000)),
   ]);
-
 
   try {
     const ncstItems = await parseKmaResult(ncstRes, "초단기실황");
@@ -35,8 +56,32 @@ export default async function handler(req, res) {
 
     const current = buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems);
     const forecast = buildForecast(vilageFcstItems, ultraFcstItems);
+    const data = { current, forecast };
 
-    return res.status(200).json({ current, forecast });
+    // KV에 저장 (최신 캐시 + 히스토리 스냅샷)
+    if (process.env.KV_REST_API_URL) {
+      try {
+        const now = Date.now();
+        // 최신 캐시
+        await kv.set(cacheKey, { savedAt: now, data }, { ex: CACHE_TTL_SEC + 3600 });
+
+        // 히스토리: 2시간 버킷 단위 키
+        const bucket = Math.floor(now / (CACHE_TTL_SEC * 1000));
+        const histKey = `kma:history:${grid.x}:${grid.y}:${bucket}`;
+        await kv.set(histKey, { savedAt: now, data }, { ex: HISTORY_TTL_SEC });
+
+        // 히스토리 인덱스 (최신 36개 버킷 목록)
+        const idxKey = `kma:index:${grid.x}:${grid.y}`;
+        const idx = (await kv.get(idxKey)) || [];
+        const newIdx = [bucket, ...idx.filter(b => b !== bucket)].slice(0, HISTORY_MAX);
+        await kv.set(idxKey, newIdx, { ex: HISTORY_TTL_SEC });
+      } catch (e) {
+        console.warn("[KMA cache] KV write failed:", e.message);
+      }
+    }
+
+    res.setHeader("X-Cache", "MISS");
+    return res.status(200).json(data);
   } catch (err) {
     console.error("[KMA] error:", err.message);
     return res.status(502).json({ error: err.message });
@@ -284,27 +329,3 @@ function parseKmaDate(date, time) {
   );
 }
 
-function dfsXyConv(lat, lon) {
-  const RE = 6371.00877, GRID = 5.0, SLAT1 = 30.0, SLAT2 = 60.0;
-  const OLON = 126.0, OLAT = 38.0, XO = 43, YO = 136;
-  const DEGRAD = Math.PI / 180.0;
-  const re = RE / GRID;
-  const slat1 = SLAT1 * DEGRAD, slat2 = SLAT2 * DEGRAD;
-  const olon = OLON * DEGRAD, olat = OLAT * DEGRAD;
-
-  let sn = Math.log(Math.cos(slat1) / Math.cos(slat2)) /
-    Math.log(Math.tan(Math.PI * 0.25 + slat2 * 0.5) / Math.tan(Math.PI * 0.25 + slat1 * 0.5));
-  let sf = (Math.pow(Math.tan(Math.PI * 0.25 + slat1 * 0.5), sn) * Math.cos(slat1)) / sn;
-  let ro = (re * sf) / Math.pow(Math.tan(Math.PI * 0.25 + olat * 0.5), sn);
-
-  let ra = (re * sf) / Math.pow(Math.tan(Math.PI * 0.25 + lat * DEGRAD * 0.5), sn);
-  let theta = lon * DEGRAD - olon;
-  if (theta > Math.PI) theta -= 2.0 * Math.PI;
-  if (theta < -Math.PI) theta += 2.0 * Math.PI;
-  theta *= sn;
-
-  return {
-    x: Math.floor(ra * Math.sin(theta) + XO + 0.5),
-    y: Math.floor(ro - ra * Math.cos(theta) + YO + 0.5),
-  };
-}
