@@ -19,6 +19,8 @@ export function WeatherProvider({ children }) {
   const [forecast, setForecast] = useState([]);
   const [compareWeather, setCompareWeather] = useState(null);
   const [meteoWeather, setMeteoWeather] = useState(null);
+  const [owForecast, setOwForecast] = useState([]);
+  const [meteoForecast, setMeteoForecast] = useState([]);
   const [displayLocation, setDisplayLocation] = useState("서울");
   const [weatherSource, setWeatherSource] = useState("");
   const [loading, setLoading] = useState(true);
@@ -91,13 +93,14 @@ export function WeatherProvider({ children }) {
 
         if (meteoRes.status === "fulfilled" && meteoRes.value.ok) {
           const meteoData = await meteoRes.value.json();
-          if (!meteoData.error) setMeteoWeather(meteoData);
+          if (!meteoData.error) {
+            setMeteoWeather(meteoData);
+            setMeteoForecast(meteoData.forecast || []);
+          }
         }
 
         if (owRes.status === "fulfilled" && owRes.value.ok) {
           const owData = await owRes.value.json();
-          // OW는 미래 예보만 반환 → 저녁엔 오늘 슬롯이 1~2개뿐
-          // → 다음 24h(8슬롯) 범위로 계산해야 의미있는 최고/최저
           const next24 = (owData.forecast || []).slice(0, 8);
           const owCurrent = { ...owData.current };
           if (next24.length) {
@@ -105,6 +108,13 @@ export function WeatherProvider({ children }) {
             owCurrent.low  = Math.min(...next24.map(f => f.tempMin ?? f.temp));
           }
           setCompareWeather(owCurrent);
+          // OW 시간별 예보 저장 (다음 6슬롯)
+          setOwForecast((owData.forecast || []).slice(0, 6).map(f => ({
+            timeLabel:  f.timeLabel,
+            temp:       f.temp,
+            rainChance: f.rainChance,
+            condition:  f.condition,
+          })));
         }
 
         const shortForecast = data.forecast || [];
@@ -181,7 +191,8 @@ export function WeatherProvider({ children }) {
   return (
     <WeatherContext.Provider value={{
       coords, currentWeather, weather, forecast, todayForecasts, dailyForecasts,
-      compareWeather, meteoWeather, displayLocation, weatherSource, loading, error, air, airOw, theme, speech,
+      compareWeather, meteoWeather, owForecast, meteoForecast,
+      displayLocation, weatherSource, loading, error, air, airOw, theme, speech,
       requestCurrentLocation,
     }}>
       {children}

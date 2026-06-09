@@ -45,16 +45,35 @@ export default async function handler(req, res) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
       `&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code,precipitation_probability` +
+      `&hourly=temperature_2m,precipitation_probability,weather_code,apparent_temperature` +
       `&daily=temperature_2m_max,temperature_2m_min` +
-      `&timezone=Asia%2FSeoul&forecast_days=1`;
+      `&timezone=Asia%2FSeoul&forecast_days=2`;
 
     const data = await httpsGetJson(url);
     const c = data.current;
     const d = data.daily;
+    const h = data.hourly;
 
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
+    const nowHour = now.getFullYear() + "-" +
+      String(now.getMonth()+1).padStart(2,"0") + "-" +
+      String(now.getDate()).padStart(2,"0") + "T" +
+      String(now.getHours()).padStart(2,"0") + ":00";
+
+    // 현재 시각 이후 6슬롯
+    const startIdx = (h.time || []).findIndex(t => t >= nowHour);
+    const forecast = [];
+    for (let i = Math.max(0, startIdx); i < Math.min((h.time || []).length, startIdx + 6); i++) {
+      const t = new Date(h.time[i]);
+      forecast.push({
+        timeLabel: `${String(t.getHours()).padStart(2,"0")}:00`,
+        temp:       h.temperature_2m[i],
+        rainChance: h.precipitation_probability[i] ?? 0,
+        condition:  wmoToCondition(h.weather_code[i]),
+      });
+    }
 
     return res.status(200).json({
       condition:   wmoToCondition(c.weather_code),
@@ -66,6 +85,7 @@ export default async function handler(req, res) {
       wind:        c.wind_speed_10m,
       rainChance:  c.precipitation_probability ?? 0,
       observedAt:  `${hh}:${mm} (Open-Meteo 모델)`,
+      forecast,
     });
   } catch (err) {
     return res.status(502).json({ error: err.message });

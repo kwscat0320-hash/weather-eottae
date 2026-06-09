@@ -8,8 +8,9 @@ import AirDot from "../components/AirDot";
 export default function HomePage() {
   const {
     weather, theme, speech, todayForecasts, dailyForecasts,
-    compareWeather, meteoWeather, displayLocation, loading, error,
-    coords, requestCurrentLocation, air,
+    compareWeather, meteoWeather, owForecast, meteoForecast,
+    displayLocation, loading, error,
+    coords, requestCurrentLocation, air, airOw,
   } = useWeather();
 
   const dateStr = new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
@@ -100,21 +101,54 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* 시간대별 예보 */}
+        {/* 시간대별 예보 — 3소스 비교 */}
         <div className="rounded-3xl p-4" style={{ background: theme.card }}>
           <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 예보</p>
-          <div className="flex gap-3 overflow-x-auto pb-1">
-            {todayForecasts.map((item) => (
-              <div key={`${item.dateLabel}-${item.timeLabel}`}
-                className="flex-shrink-0 rounded-2xl p-2 text-center"
-                style={{ width: 64, height: 75, background: "rgba(255,254,254,0.3)" }}>
-                <p className="text-[11px]" style={{ color: theme.sub }}>{item.timeLabel}</p>
-                <p className="font-bold text-sm mt-2" style={{ color: theme.text }}>{Math.round(item.temp)}°</p>
-                <p className="text-[10px] mt-1" style={{ color: theme.sub }}>비 {item.rainChance}%</p>
+          {[
+            { name: "기상청",       data: todayForecasts },
+            { name: "OpenWeather", data: owForecast },
+            { name: "Open-Meteo",  data: meteoForecast },
+          ].filter(s => s.data?.length > 0).map(source => (
+            <div key={source.name} className="mb-3 last:mb-0">
+              <p className="text-[10px] font-semibold mb-1.5" style={{ color: theme.sub, opacity: 0.8 }}>{source.name}</p>
+              <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                {source.data.map((item, i) => (
+                  <div key={i} className="flex-shrink-0 rounded-xl p-2 text-center"
+                    style={{ width: 60, background: "rgba(255,254,254,0.25)" }}>
+                    <p className="text-[10px]" style={{ color: theme.sub }}>{item.timeLabel}</p>
+                    <p className="font-bold text-sm mt-1" style={{ color: theme.text }}>{Math.round(item.temp)}°</p>
+                    <p className="text-[9px] mt-0.5" style={{ color: theme.sub }}>{item.rainChance}%</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
+
+        {/* 공기질 비교 카드 */}
+        {(air || airOw) && (
+          <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+            <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>공기질 비교</p>
+            <div className="overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+              <div className="flex gap-2" style={{ minWidth: air && airOw ? 280 : "auto" }}>
+                {air && (
+                  <div className="flex-1 rounded-2xl p-3 min-w-[100px]" style={{ background: "rgba(255,254,254,0.3)" }}>
+                    <p className="text-[10px] font-bold mb-2" style={{ color: theme.sub }}>에어코리아</p>
+                    <AirRow label="PM10" value={air.pm10} grade={air.pm10Grade} sub={theme.sub} text={theme.text} />
+                    <AirRow label="PM2.5" value={air.pm25} grade={air.pm25Grade} sub={theme.sub} text={theme.text} />
+                  </div>
+                )}
+                {airOw && (
+                  <div className="flex-1 rounded-2xl p-3 min-w-[100px]" style={{ background: "rgba(255,254,254,0.3)" }}>
+                    <p className="text-[10px] font-bold mb-2" style={{ color: theme.sub }}>OpenWeather</p>
+                    <AirRow label="PM10" value={airOw.pm10} grade={airOw.pm10Grade} sub={theme.sub} text={theme.text} />
+                    <AirRow label="PM2.5" value={airOw.pm25} grade={airOw.pm25Grade} sub={theme.sub} text={theme.text} />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 기상청 5일 예보 */}
         <div className="rounded-3xl p-4" style={{ background: theme.card }}>
@@ -164,6 +198,19 @@ function AirCard({ label, value, grade, sub }) {
       </div>
       <p className="text-xs font-bold mt-0.5" style={{ color: dotColor }}>{gradeLabel}</p>
       <p className="text-[10px] mt-0.5" style={{ color: sub }}>{value !== "-" ? `${value}㎍/㎥` : "-"}</p>
+    </div>
+  );
+}
+
+function AirRow({ label, value, grade, sub, text }) {
+  const { dotColor, label: gradeLabel } = gradeInfo(grade ?? "0");
+  return (
+    <div className="flex justify-between items-center mt-1">
+      <span className="text-[10px]" style={{ color: sub }}>{label}</span>
+      <div className="flex items-center gap-1">
+        <AirDot color={dotColor} size={14} />
+        <span className="text-[10px] font-bold" style={{ color: text }}>{value}㎍</span>
+      </div>
     </div>
   );
 }
