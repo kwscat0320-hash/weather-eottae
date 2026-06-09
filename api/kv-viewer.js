@@ -8,12 +8,6 @@ import { dfsXyConv } from "./_kma-utils.js";
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
-  // 인증
-  const secret = req.query.secret;
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
-    return res.status(401).json({ error: "secret 파라미터가 올바르지 않습니다." });
-  }
-
   if (!process.env.KV_REST_API_URL) {
     return res.status(503).json({ error: "KV_REST_API_URL 환경변수가 없습니다. Vercel 대시보드에서 KV 스토어를 연결해주세요." });
   }
