@@ -151,7 +151,7 @@ function AirCard({ label, value, grade, sub }) {
   return (
     <div className="text-center">
       <p className="text-xs" style={{ color: sub }}>{label}</p>
-      <img src={img} alt={gradeLabel} className="w-10 h-10 mx-auto mt-1 object-contain" style={{ mixBlendMode: "multiply" }} />
+      <img src={img} alt={gradeLabel} className="w-10 h-10 mx-auto mt-1 object-contain" style={{ filter: "grayscale(1) opacity(0.75)", mixBlendMode: "multiply" }} />
       <p className="text-xs font-bold mt-0.5" style={{ color }}>{gradeLabel}</p>
       <p className="text-[10px] mt-0.5" style={{ color: sub }}>{value !== "-" ? `${value}㎍/㎥` : "-"}</p>
     </div>
