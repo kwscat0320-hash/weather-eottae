@@ -161,7 +161,14 @@ export default function WeatherApp() {
 
         if (owRes.status === "fulfilled" && owRes.value.ok) {
           const owData = await owRes.value.json();
-          setCompareWeather(owData.current);
+          const todayLabel = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+          const todayFcst = (owData.forecast || []).filter(f => f.dateLabel === todayLabel);
+          const owCurrent = { ...owData.current };
+          if (todayFcst.length) {
+            owCurrent.high = Math.max(...todayFcst.map(f => f.tempMax ?? f.temp));
+            owCurrent.low = Math.min(...todayFcst.map(f => f.tempMin ?? f.temp));
+          }
+          setCompareWeather(owCurrent);
         }
 
         const shortForecast = data.forecast || [];
@@ -356,7 +363,7 @@ export default function WeatherApp() {
 
         {/* 5일 예보 */}
         <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 예보</p>
+          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>기상청 5일 예보</p>
           <div className="space-y-3">
             {dailyForecasts.map((day) => (
               <div key={day.date} className="flex items-center justify-between">
@@ -383,14 +390,22 @@ function CompareCard({ kma, ow, theme }) {
     { label: "날씨", kmaVal: kma.condition, owVal: ow.condition },
     { label: "기온", kmaVal: `${Math.round(kma.temp)}°`, owVal: `${Math.round(ow.temp)}°` },
     { label: "체감", kmaVal: `${Math.round(kma.feelsLike)}°`, owVal: `${Math.round(ow.feelsLike)}°` },
-    { label: "최고/최저", kmaVal: `${Math.round(kma.high)}°/${Math.round(kma.low)}°`, owVal: `${Math.round(ow.high)}°/${Math.round(ow.low)}°` },
+    { label: "오늘 최고", kmaVal: `${Math.round(kma.high)}°`, owVal: `${Math.round(ow.high)}°` },
+    { label: "오늘 최저", kmaVal: `${Math.round(kma.low)}°`, owVal: `${Math.round(ow.low)}°` },
     { label: "습도", kmaVal: `${kma.humidity}%`, owVal: `${ow.humidity}%` },
     { label: "바람", kmaVal: `${Number(kma.wind).toFixed(1)}m/s`, owVal: `${Number(ow.wind).toFixed(1)}m/s` },
     { label: "강수확률", kmaVal: `${kma.rainChance}%`, owVal: `${ow.rainChance}%` },
   ];
   return (
     <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-      <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>기상청 vs OpenWeather 비교</p>
+      <p className="text-xs font-semibold mb-1" style={{ color: theme.sub }}>기상청 vs OpenWeather 비교</p>
+      {(kma.observedAt || ow.observedAt) && (
+        <p className="text-[10px] mb-3" style={{ color: theme.sub }}>
+          {kma.observedAt && <span>기상청 {kma.observedAt}</span>}
+          {kma.observedAt && ow.observedAt && <span> · </span>}
+          {ow.observedAt && <span>OW {ow.observedAt}</span>}
+        </p>
+      )}
       <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
         <div className="font-semibold" style={{ color: theme.sub }}></div>
         <div className="font-semibold text-center" style={{ color: theme.sub }}>기상청</div>
@@ -407,7 +422,6 @@ function CompareCard({ kma, ow, theme }) {
   );
 }
 
-}
 
 function AirCard({ label, value, grade, sub }) {
   const { emoji, color, label: gradeLabel } = gradeInfo(grade);

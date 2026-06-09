@@ -74,6 +74,10 @@ function buildCurrent(d) {
   const desc = d.weather?.[0]?.description ?? "";
   const temp = d.main?.temp ?? 0;
   const wind = d.wind?.speed ?? 0;
+  const dt = d.dt ? new Date(d.dt * 1000) : new Date();
+  const hh = String(dt.getUTCHours() + 9).padStart(2, "0").replace(/^2[4-9]/, h => String(h - 24).padStart(2, "0"));
+  const mm = String(dt.getUTCMinutes()).padStart(2, "0");
+  const observedAt = `${hh}:${mm} (OpenWeather 모델)`;
   return {
     condition: owCondition(icon, desc),
     icon,
@@ -84,6 +88,7 @@ function buildCurrent(d) {
     rainChance: Math.round((d.rain?.["1h"] ?? 0) > 0 ? 80 : 0),
     humidity: d.main?.humidity ?? 0,
     wind,
+    observedAt,
   };
 }
 

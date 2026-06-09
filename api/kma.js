@@ -139,6 +139,11 @@ function buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems) {
   const sky = firstUltra.SKY ?? firstVillage.SKY;
   const pty = nowMap.PTY ?? firstUltra.PTY ?? firstVillage.PTY ?? "0";
 
+  const ncst0 = ncstItems[0];
+  const observedAt = ncst0
+    ? `${ncst0.baseTime.slice(0, 2)}:${ncst0.baseTime.slice(2, 4)} (기상청 실측)`
+    : null;
+
   return {
     condition: getCondition(sky, pty),
     icon: getIcon(sky, pty),
@@ -149,6 +154,7 @@ function buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems) {
     rainChance: Number(firstUltra.POP ?? firstVillage.POP ?? 0),
     humidity,
     wind,
+    observedAt,
   };
 }
 
