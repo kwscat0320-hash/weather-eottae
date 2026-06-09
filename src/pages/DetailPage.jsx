@@ -166,8 +166,8 @@ function SourceCard({ source, color, rows }) {
           return (
             <div key={label} className="flex justify-between items-center">
               <span className="text-xs text-slate-400">{label}</span>
-              <div className="flex items-center gap-1">
-                {g && <img src={g.img} alt={g.label} className="w-6 h-6 object-contain" style={{ mixBlendMode: "multiply" }} />}
+              <div className="flex items-center gap-1.5">
+                {g && <span className="text-xs font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background: g.color, fontSize: 10 }}>{g.label}</span>}
                 <span className="text-sm font-semibold text-slate-800">{value}</span>
               </div>
             </div>

@@ -78,11 +78,11 @@ export function getTheme(condition = "") {
 }
 
 export function gradeInfo(grade) {
-  if (grade === "1") return { img: "/air/air-good.png",     color: "#2563eb", label: "좋음" };
-  if (grade === "2") return { img: "/air/air-normal.png",   color: "#16a34a", label: "보통" };
-  if (grade === "3") return { img: "/air/air-bad.png",      color: "#ea580c", label: "나쁨" };
-  if (grade === "4") return { img: "/air/air-very-bad.png", color: "#dc2626", label: "매우나쁨" };
-  return { img: "/air/air-good.png", color: "#6b7280", label: "-" };
+  if (grade === "1") return { emoji: "😊", color: "#2563eb", label: "좋음" };
+  if (grade === "2") return { emoji: "🙂", color: "#16a34a", label: "보통" };
+  if (grade === "3") return { emoji: "😟", color: "#ea580c", label: "나쁨" };
+  if (grade === "4") return { emoji: "😷", color: "#dc2626", label: "매우나쁨" };
+  return { emoji: "😊", color: "#6b7280", label: "-" };
 }
 
 export function getSpeech(theme, weather) {
