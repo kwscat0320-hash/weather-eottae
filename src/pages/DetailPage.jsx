@@ -4,7 +4,7 @@ import { gradeInfo } from "../utils/weather";
 import AirDot from "../components/AirDot";
 
 export default function DetailPage() {
-  const { weather, compareWeather, meteoWeather, theme, displayLocation, loading, air, airOw } = useWeather();
+  const { weather, compareWeather, meteoWeather, theme, displayLocation, loading, air, airOw, airMeteo } = useWeather();
 
   if (loading) {
     return (
@@ -106,36 +106,34 @@ export default function DetailPage() {
         )}
 
         {/* 대기질 비교 */}
-        {airOw && (
+        {(airOw || airMeteo) && (
           <>
             <SectionTitle>대기질 비교</SectionTitle>
-            <div className="grid grid-cols-2 gap-3">
-              <SourceCard
-                source="에어코리아"
-                color="#2563eb"
-                rows={air ? [
-                  { label: "미세먼지", value: `${air.pm10}㎍/㎥`, grade: air.pm10Grade },
-                  { label: "초미세먼지", value: `${air.pm25}㎍/㎥`, grade: air.pm25Grade },
-                  { label: "측정소", value: air.stationName },
-                ] : [
-                  { label: "상태", value: "대기 중..." },
-                ]}
-              />
-              <SourceCard
-                source="OpenWeather"
-                color="#ea580c"
-                rows={[
-                  { label: "미세먼지", value: `${airOw.pm10}㎍/㎥`, grade: airOw.pm10Grade },
-                  { label: "초미세먼지", value: `${airOw.pm25}㎍/㎥`, grade: airOw.pm25Grade },
-                  { label: "NO₂", value: `${airOw.no2}㎍/㎥` },
-                ]}
-              />
-            </div>
-            {air && (
+            <ScrollCompare
+              sources={[
+                { name: "에어코리아", color: "#2563eb", rows: air ? [
+                  { label: "미세먼지",   value: `${air.pm10}㎍/㎥`,  grade: air.pm10Grade },
+                  { label: "초미세먼지", value: `${air.pm25}㎍/㎥`,  grade: air.pm25Grade },
+                  { label: "측정소",    value: air.stationName },
+                ] : [{ label: "상태", value: "대기 중..." }]},
+                ...(airOw ? [{ name: "OpenWeather", color: "#ea580c", rows: [
+                  { label: "미세먼지",   value: `${airOw.pm10}㎍/㎥`,  grade: airOw.pm10Grade },
+                  { label: "초미세먼지", value: `${airOw.pm25}㎍/㎥`,  grade: airOw.pm25Grade },
+                  { label: "NO₂",       value: `${airOw.no2}㎍/㎥` },
+                ]}] : []),
+                ...(airMeteo ? [{ name: "Open-Meteo", color: "#059669", rows: [
+                  { label: "미세먼지",   value: `${airMeteo.pm10}㎍/㎥`,  grade: airMeteo.pm10Grade },
+                  { label: "초미세먼지", value: `${airMeteo.pm25}㎍/㎥`,  grade: airMeteo.pm25Grade },
+                ]}] : []),
+              ]}
+            />
+            {air && airOw && (
               <div className="rounded-2xl p-4 bg-white space-y-2">
-                <p className="text-xs font-semibold text-slate-500 mb-2">미세먼지 차이</p>
-                <DiffRow label="PM10 차이" diff={Math.abs(air.pm10 - airOw.pm10)} unit="㎍/㎥" />
-                <DiffRow label="PM2.5 차이" diff={Math.abs(air.pm25 - airOw.pm25)} unit="㎍/㎥" />
+                <p className="text-xs font-semibold text-slate-500 mb-2">에어코리아 기준 차이</p>
+                <DiffRow label="PM10 (OW)"    diff={Math.abs(air.pm10 - airOw.pm10)}    unit="㎍/㎥" />
+                <DiffRow label="PM2.5 (OW)"   diff={Math.abs(air.pm25 - airOw.pm25)}    unit="㎍/㎥" />
+                {airMeteo && <DiffRow label="PM10 (Meteo)"  diff={Math.abs(air.pm10 - airMeteo.pm10)}  unit="㎍/㎥" />}
+                {airMeteo && <DiffRow label="PM2.5 (Meteo)" diff={Math.abs(air.pm25 - airMeteo.pm25)}  unit="㎍/㎥" />}
               </div>
             )}
           </>

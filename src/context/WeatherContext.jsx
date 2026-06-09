@@ -27,6 +27,7 @@ export function WeatherProvider({ children }) {
   const [error, setError] = useState("");
   const [air, setAir] = useState(null);
   const [airOw, setAirOw] = useState(null);
+  const [airMeteo, setAirMeteo] = useState(null);
 
   useEffect(() => { requestCurrentLocation(); }, []);
 
@@ -96,6 +97,7 @@ export function WeatherProvider({ children }) {
           if (!meteoData.error) {
             setMeteoWeather(meteoData);
             setMeteoForecast(meteoData.forecast || []);
+            if (meteoData.air) setAirMeteo(meteoData.air);
           }
         }
 
@@ -192,7 +194,7 @@ export function WeatherProvider({ children }) {
     <WeatherContext.Provider value={{
       coords, currentWeather, weather, forecast, todayForecasts, dailyForecasts,
       compareWeather, meteoWeather, owForecast, meteoForecast,
-      displayLocation, weatherSource, loading, error, air, airOw, theme, speech,
+      displayLocation, weatherSource, loading, error, air, airOw, airMeteo, theme, speech,
       requestCurrentLocation,
     }}>
       {children}

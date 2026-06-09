@@ -21,6 +21,11 @@ function httpsGetJson(urlStr) {
   });
 }
 
+// PM10 수치 → 한국 등급
+function pm10ToGrade(v) { return v <= 30 ? "1" : v <= 80 ? "2" : v <= 150 ? "3" : "4"; }
+// PM2.5 수치 → 한국 등급
+function pm25ToGrade(v) { return v <= 15 ? "1" : v <= 35 ? "2" : v <= 75 ? "3" : "4"; }
+
 // WMO weather code → 한국어 날씨
 function wmoToCondition(code) {
   if (code === 0) return "맑음";
@@ -43,13 +48,19 @@ export default async function handler(req, res) {
   if (!lat || !lon) return res.status(400).json({ error: "lat, lon 필요" });
 
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
       `&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code,precipitation_probability` +
       `&hourly=temperature_2m,precipitation_probability,weather_code,apparent_temperature` +
       `&daily=temperature_2m_max,temperature_2m_min` +
       `&timezone=Asia%2FSeoul&forecast_days=2`;
 
-    const data = await httpsGetJson(url);
+    const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}` +
+      `&current=pm10,pm2_5,european_aqi&domains=cams_europe`;
+
+    const [data, airData] = await Promise.all([
+      httpsGetJson(weatherUrl),
+      httpsGetJson(airUrl).catch(() => null),
+    ]);
     const c = data.current;
     const d = data.daily;
     const h = data.hourly;
@@ -86,6 +97,13 @@ export default async function handler(req, res) {
       rainChance:  c.precipitation_probability ?? 0,
       observedAt:  `${hh}:${mm} (Open-Meteo 모델)`,
       forecast,
+      air: airData?.current ? {
+        pm10:      Math.round(airData.current.pm10 ?? 0),
+        pm25:      Math.round(airData.current.pm2_5 ?? 0),
+        pm10Grade: pm10ToGrade(airData.current.pm10 ?? 0),
+        pm25Grade: pm25ToGrade(airData.current.pm2_5 ?? 0),
+        source:    "Open-Meteo",
+      } : null,
     });
   } catch (err) {
     return res.status(502).json({ error: err.message });

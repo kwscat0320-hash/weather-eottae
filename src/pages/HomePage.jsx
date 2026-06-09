@@ -10,7 +10,7 @@ export default function HomePage() {
     weather, theme, speech, todayForecasts, dailyForecasts,
     compareWeather, meteoWeather, owForecast, meteoForecast,
     displayLocation, loading, error,
-    coords, requestCurrentLocation, air, airOw,
+    coords, requestCurrentLocation, air, airOw, airMeteo,
   } = useWeather();
 
   const dateStr = new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
@@ -126,25 +126,23 @@ export default function HomePage() {
         </div>
 
         {/* 공기질 비교 카드 */}
-        {(air || airOw) && (
+        {(air || airOw || airMeteo) && (
           <div className="rounded-3xl p-4" style={{ background: theme.card }}>
             <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>공기질 비교</p>
             <div className="overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-              <div className="flex gap-2" style={{ minWidth: air && airOw ? 280 : "auto" }}>
-                {air && (
-                  <div className="flex-1 rounded-2xl p-3 min-w-[100px]" style={{ background: "rgba(255,254,254,0.3)" }}>
-                    <p className="text-[10px] font-bold mb-2" style={{ color: theme.sub }}>에어코리아</p>
-                    <AirRow label="PM10" value={air.pm10} grade={air.pm10Grade} sub={theme.sub} text={theme.text} />
-                    <AirRow label="PM2.5" value={air.pm25} grade={air.pm25Grade} sub={theme.sub} text={theme.text} />
+              <div className="flex gap-2">
+                {[
+                  { name: "에어코리아", data: air },
+                  { name: "OpenWeather", data: airOw },
+                  { name: "Open-Meteo", data: airMeteo },
+                ].filter(s => s.data).map(({ name, data }) => (
+                  <div key={name} className="flex-1 rounded-2xl p-3 min-w-[95px]"
+                    style={{ background: "rgba(255,254,254,0.3)" }}>
+                    <p className="text-[10px] font-bold mb-2" style={{ color: theme.sub }}>{name}</p>
+                    <AirRow label="PM10"  value={data.pm10} grade={data.pm10Grade} sub={theme.sub} text={theme.text} />
+                    <AirRow label="PM2.5" value={data.pm25} grade={data.pm25Grade} sub={theme.sub} text={theme.text} />
                   </div>
-                )}
-                {airOw && (
-                  <div className="flex-1 rounded-2xl p-3 min-w-[100px]" style={{ background: "rgba(255,254,254,0.3)" }}>
-                    <p className="text-[10px] font-bold mb-2" style={{ color: theme.sub }}>OpenWeather</p>
-                    <AirRow label="PM10" value={airOw.pm10} grade={airOw.pm10Grade} sub={theme.sub} text={theme.text} />
-                    <AirRow label="PM2.5" value={airOw.pm25} grade={airOw.pm25Grade} sub={theme.sub} text={theme.text} />
-                  </div>
-                )}
+                ))}
               </div>
             </div>
           </div>
