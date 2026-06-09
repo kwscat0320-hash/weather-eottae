@@ -41,20 +41,26 @@ export default async function handler(req, res) {
   }
 
   const trimmedKey = rawKey.trim();
-  const { date, ultraDate, ultraTime, vilageTime } = getKmaBaseDateTime();
+  const { date, ultraDate, ultraTime, vilageTime, tmxDate, tmxTime } = getKmaBaseDateTime();
 
-  const [ncstRes, ultraFcstRes, vilageFcstRes] = await Promise.allSettled([
+  const [ncstRes, ultraFcstRes, vilageFcstRes, tmxFcstRes] = await Promise.allSettled([
     httpsGet(buildKmaUrl("getUltraSrtNcst", trimmedKey, ultraDate, ultraTime, grid, 100)),
     httpsGet(buildKmaUrl("getUltraSrtFcst", trimmedKey, ultraDate, ultraTime, grid, 200)),
-    httpsGet(buildKmaUrl("getVilageFcst", trimmedKey, date, vilageTime, grid, 1000)),
+    httpsGet(buildKmaUrl("getVilageFcst",   trimmedKey, date,      vilageTime, grid, 1000)),
+    // 전날 23:00 발표 → 오늘 TMX(15:00)/TMN(06:00) 슬롯이 반드시 포함됨
+    httpsGet(buildKmaUrl("getVilageFcst",   trimmedKey, tmxDate,   tmxTime,    grid, 300)),
   ]);
 
   try {
-    const ncstItems = await parseKmaResult(ncstRes, "초단기실황");
+    const ncstItems      = await parseKmaResult(ncstRes,      "초단기실황");
     const ultraFcstItems = await parseKmaResult(ultraFcstRes, "초단기예보");
     const vilageFcstItems = await parseKmaResult(vilageFcstRes, "단기예보");
+    // TMX/TMN 전용 — 실패해도 무시 (메인 예보에 영향 없음)
+    const tmxFcstItems   = tmxFcstRes.status === "fulfilled"
+      ? await parseKmaResult(tmxFcstRes, "TMX/TMN 보조예보").catch(() => [])
+      : [];
 
-    const current = buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems);
+    const current = buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems, tmxFcstItems);
     const forecast = buildForecast(vilageFcstItems, ultraFcstItems);
     const data = { current, forecast };
 
@@ -164,7 +170,7 @@ async function parseKmaResult(result, label) {
 
 // ── 현재 날씨 빌드 ────────────────────────────────────────────────────────────
 
-function buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems) {
+function buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems, tmxFcstItems = []) {
   const nowMap = toMap(ncstItems, "category", "obsrValue");
 
   const ultraGroups = groupByDateTime(ultraFcstItems);
@@ -180,23 +186,26 @@ function buildCurrent(ncstItems, ultraFcstItems, vilageFcstItems) {
   const sky = firstUltra.SKY ?? firstVillage.SKY;
   const pty = nowMap.PTY ?? firstUltra.PTY ?? firstVillage.PTY ?? "0";
 
-  // ── 오늘 최고/최저 (단기예보 TMX/TMN 우선, 없으면 TMP 전체 범위) ──
-  const today = formatYMD(new Date());
-  const todayVillage = vilageFcstItems.filter((i) => i.fcstDate === today);
+  // ── 오늘 최고/최저 ────────────────────────────────────────────────
+  // 우선순위: 전날 23:00 발표 TMX/TMN → 당일 발표 TMX/TMN → 오늘 TMP 범위
+  const today = formatYMD(new Date(Date.now() + 9 * 60 * 60 * 1000));
 
-  const tmx = todayVillage.find((i) => i.category === "TMX")?.fcstValue;
-  const tmn = todayVillage.find((i) => i.category === "TMN")?.fcstValue;
+  const allTodayItems = [...tmxFcstItems, ...vilageFcstItems]
+    .filter((i) => i.fcstDate === today);
 
-  const todayTmps = todayVillage
+  const tmxItem = allTodayItems.find((i) => i.category === "TMX");
+  const tmnItem = allTodayItems.find((i) => i.category === "TMN");
+
+  const todayTmps = allTodayItems
     .filter((i) => i.category === "TMP")
     .map((i) => Number(i.fcstValue))
     .filter((v) => !isNaN(v));
 
-  const high = tmx != null ? Number(tmx)
-    : todayTmps.length > 0 ? Math.max(...todayTmps)
+  const high = tmxItem != null ? Number(tmxItem.fcstValue)
+    : todayTmps.length > 0   ? Math.max(...todayTmps)
     : temp;
-  const low  = tmn != null ? Number(tmn)
-    : todayTmps.length > 0 ? Math.min(...todayTmps)
+  const low  = tmnItem != null ? Number(tmnItem.fcstValue)
+    : todayTmps.length > 0   ? Math.min(...todayTmps)
     : temp;
 
   // ── 관측 시각 ────────────────────────────────────────────────────
@@ -320,11 +329,18 @@ function getKmaBaseDateTime() {
     selected = 2300;
   }
 
+  // 오늘 TMX(15:00)/TMN(06:00) 확보용: 전날 23:00 발표 기준
+  // → 해당 발표는 다음날 전체 슬롯(00~23시)을 포함하므로 TMX/TMN이 반드시 존재
+  const prevDay = new Date(now);
+  prevDay.setUTCDate(prevDay.getUTCDate() - 1);
+
   return {
     date: formatYMD(village),
     ultraDate: formatYMD(ultra),
     ultraTime: `${String(ultra.getUTCHours()).padStart(2, "0")}00`,
     vilageTime: String(selected).padStart(4, "0"),
+    tmxDate: formatYMD(prevDay),   // 전날 날짜
+    tmxTime: "2300",               // 전날 23:00 발표
   };
 }
 
