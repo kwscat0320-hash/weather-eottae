@@ -147,11 +147,11 @@ function Metric({ icon, label, value, sub, text }) {
 }
 
 function AirCard({ label, value, grade, sub }) {
-  const { emoji, color, label: gradeLabel } = gradeInfo(grade);
+  const { img, color, label: gradeLabel } = gradeInfo(grade);
   return (
     <div className="text-center">
       <p className="text-xs" style={{ color: sub }}>{label}</p>
-      <div className="text-2xl mt-1">{emoji}</div>
+      <img src={img} alt={gradeLabel} className="w-10 h-10 mx-auto mt-1 object-contain" />
       <p className="text-xs font-bold mt-0.5" style={{ color }}>{gradeLabel}</p>
       <p className="text-[10px] mt-0.5" style={{ color: sub }}>{value !== "-" ? `${value}㎍/㎥` : "-"}</p>
     </div>

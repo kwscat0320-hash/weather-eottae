@@ -167,7 +167,7 @@ function SourceCard({ source, color, rows }) {
             <div key={label} className="flex justify-between items-center">
               <span className="text-xs text-slate-400">{label}</span>
               <div className="flex items-center gap-1">
-                {g && <span className="text-sm">{g.emoji}</span>}
+                {g && <img src={g.img} alt={g.label} className="w-6 h-6 object-contain" />}
                 <span className="text-sm font-semibold text-slate-800">{value}</span>
               </div>
             </div>
