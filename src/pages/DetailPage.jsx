@@ -1,8 +1,9 @@
 import React from "react";
 import { useWeather } from "../context/WeatherContext";
+import { gradeInfo } from "../utils/weather";
 
 export default function DetailPage() {
-  const { weather, compareWeather, theme, displayLocation, loading } = useWeather();
+  const { weather, compareWeather, theme, displayLocation, loading, air, airOw } = useWeather();
 
   if (loading) {
     return (
@@ -103,6 +104,42 @@ export default function DetailPage() {
           </div>
         )}
 
+        {/* 대기질 비교 */}
+        {airOw && (
+          <>
+            <SectionTitle>대기질 비교</SectionTitle>
+            <div className="grid grid-cols-2 gap-3">
+              <SourceCard
+                source="에어코리아"
+                color="#2563eb"
+                rows={air ? [
+                  { label: "미세먼지", value: `${air.pm10}㎍/㎥`, grade: air.pm10Grade },
+                  { label: "초미세먼지", value: `${air.pm25}㎍/㎥`, grade: air.pm25Grade },
+                  { label: "측정소", value: air.stationName },
+                ] : [
+                  { label: "상태", value: "대기 중..." },
+                ]}
+              />
+              <SourceCard
+                source="OpenWeather"
+                color="#ea580c"
+                rows={[
+                  { label: "미세먼지", value: `${airOw.pm10}㎍/㎥`, grade: airOw.pm10Grade },
+                  { label: "초미세먼지", value: `${airOw.pm25}㎍/㎥`, grade: airOw.pm25Grade },
+                  { label: "NO₂", value: `${airOw.no2}㎍/㎥` },
+                ]}
+              />
+            </div>
+            {air && (
+              <div className="rounded-2xl p-4 bg-white space-y-2">
+                <p className="text-xs font-semibold text-slate-500 mb-2">미세먼지 차이</p>
+                <DiffRow label="PM10 차이" diff={Math.abs(air.pm10 - airOw.pm10)} unit="㎍/㎥" />
+                <DiffRow label="PM2.5 차이" diff={Math.abs(air.pm25 - airOw.pm25)} unit="㎍/㎥" />
+              </div>
+            )}
+          </>
+        )}
+
         {/* 추가 데이터는 계속 추가될 예정 */}
         <div className="rounded-2xl p-4" style={{ background: "rgba(148,163,184,0.15)", border: "1px dashed #cbd5e1" }}>
           <p className="text-xs text-slate-400 text-center">추가 상세 데이터는 계속 업데이트됩니다</p>
@@ -124,12 +161,18 @@ function SourceCard({ source, color, rows }) {
         <p className="text-xs font-bold" style={{ color }}>{source}</p>
       </div>
       <div className="space-y-2">
-        {rows.map(({ label, value }) => (
-          <div key={label} className="flex justify-between items-baseline">
-            <span className="text-xs text-slate-400">{label}</span>
-            <span className="text-sm font-semibold text-slate-800">{value}</span>
-          </div>
-        ))}
+        {rows.map(({ label, value, grade }) => {
+          const g = grade ? gradeInfo(grade) : null;
+          return (
+            <div key={label} className="flex justify-between items-center">
+              <span className="text-xs text-slate-400">{label}</span>
+              <div className="flex items-center gap-1">
+                {g && <span className="text-sm">{g.emoji}</span>}
+                <span className="text-sm font-semibold text-slate-800">{value}</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

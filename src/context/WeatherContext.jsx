@@ -23,13 +23,20 @@ export function WeatherProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [air, setAir] = useState(null);
+  const [airOw, setAirOw] = useState(null);
 
   useEffect(() => { requestCurrentLocation(); }, []);
 
   const fetchAir = (lat, lon) => {
+    // 에어코리아
     fetch(`/api/air?lat=${lat}&lon=${lon}`)
       .then(r => r.json())
       .then(d => { if (d && !d.error) setAir(d); })
+      .catch(() => {});
+    // OpenWeather 대기오염 (비교용)
+    fetch(`/api/air-ow?lat=${lat}&lon=${lon}`)
+      .then(r => r.json())
+      .then(d => { if (d && !d.error) setAirOw(d); })
       .catch(() => {});
   };
 
@@ -167,7 +174,7 @@ export function WeatherProvider({ children }) {
   return (
     <WeatherContext.Provider value={{
       coords, currentWeather, weather, forecast, todayForecasts, dailyForecasts,
-      compareWeather, displayLocation, weatherSource, loading, error, air, theme, speech,
+      compareWeather, displayLocation, weatherSource, loading, error, air, airOw, theme, speech,
       requestCurrentLocation,
     }}>
       {children}
