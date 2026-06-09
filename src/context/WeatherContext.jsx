@@ -18,6 +18,7 @@ export function WeatherProvider({ children }) {
   const [currentWeather, setCurrentWeather] = useState(null);
   const [forecast, setForecast] = useState([]);
   const [compareWeather, setCompareWeather] = useState(null);
+  const [meteoWeather, setMeteoWeather] = useState(null);
   const [displayLocation, setDisplayLocation] = useState("서울");
   const [weatherSource, setWeatherSource] = useState("");
   const [loading, setLoading] = useState(true);
@@ -74,9 +75,10 @@ export function WeatherProvider({ children }) {
       const forceParam = force ? "&force=1" : "";
 
       if (korea) {
-        const [kmaRes, owRes] = await Promise.allSettled([
+        const [kmaRes, owRes, meteoRes] = await Promise.allSettled([
           fetch(`/api/kma?lat=${lat}&lon=${lon}${forceParam}`),
           fetch(`/api/openweather?lat=${lat}&lon=${lon}`),
+          fetch(`/api/openmeteo?lat=${lat}&lon=${lon}`),
         ]);
 
         if (kmaRes.status !== "fulfilled" || !kmaRes.value.ok) {
@@ -86,6 +88,11 @@ export function WeatherProvider({ children }) {
         const data = await kmaRes.value.json();
         setCurrentWeather(data.current);
         setWeatherSource("기상청");
+
+        if (meteoRes.status === "fulfilled" && meteoRes.value.ok) {
+          const meteoData = await meteoRes.value.json();
+          if (!meteoData.error) setMeteoWeather(meteoData);
+        }
 
         if (owRes.status === "fulfilled" && owRes.value.ok) {
           const owData = await owRes.value.json();
@@ -174,7 +181,7 @@ export function WeatherProvider({ children }) {
   return (
     <WeatherContext.Provider value={{
       coords, currentWeather, weather, forecast, todayForecasts, dailyForecasts,
-      compareWeather, displayLocation, weatherSource, loading, error, air, airOw, theme, speech,
+      compareWeather, meteoWeather, displayLocation, weatherSource, loading, error, air, airOw, theme, speech,
       requestCurrentLocation,
     }}>
       {children}

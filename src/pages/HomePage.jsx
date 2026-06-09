@@ -8,7 +8,7 @@ import AirDot from "../components/AirDot";
 export default function HomePage() {
   const {
     weather, theme, speech, todayForecasts, dailyForecasts,
-    compareWeather, displayLocation, loading, error,
+    compareWeather, meteoWeather, displayLocation, loading, error,
     coords, requestCurrentLocation, air,
   } = useWeather();
 
@@ -130,8 +130,15 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 기상청 vs OpenWeather 비교 */}
-        {compareWeather && <CompareCard kma={weather} ow={compareWeather} theme={theme} />}
+        {/* 날씨 소스 비교 */}
+        {compareWeather && (
+          <CompareCard
+            kma={weather}
+            ow={compareWeather}
+            meteo={meteoWeather}
+            theme={theme}
+          />
+        )}
       </div>
     </div>
   );
@@ -161,38 +168,102 @@ function AirCard({ label, value, grade, sub }) {
   );
 }
 
-function CompareCard({ kma, ow, theme }) {
+function CompareCard({ kma, ow, meteo, theme }) {
   const rows = [
-    { label: "날씨",    kmaVal: kma.condition,                         owVal: ow.condition },
-    { label: "기온",    kmaVal: `${Math.round(kma.temp)}°`,            owVal: `${Math.round(ow.temp)}°` },
-    { label: "체감",    kmaVal: `${Math.round(kma.feelsLike)}°`,       owVal: `${Math.round(ow.feelsLike)}°` },
-    { label: "오늘 최고", kmaVal: `${Math.round(kma.high)}°`,          owVal: `${Math.round(ow.high)}°` },
-    { label: "오늘 최저", kmaVal: `${Math.round(kma.low)}°`,           owVal: `${Math.round(ow.low)}°` },
-    { label: "습도",    kmaVal: `${kma.humidity}%`,                    owVal: `${ow.humidity}%` },
-    { label: "바람",    kmaVal: `${Number(kma.wind).toFixed(1)}m/s`,   owVal: `${Number(ow.wind).toFixed(1)}m/s` },
-    { label: "강수확률", kmaVal: `${kma.rainChance}%`,                 owVal: `${ow.rainChance}%` },
+    { label: "날씨" },
+    { label: "기온" },
+    { label: "체감" },
+    { label: "오늘 최고" },
+    { label: "오늘 최저" },
+    { label: "습도" },
+    { label: "바람" },
+    { label: "강수확률" },
   ];
+
+  const sources = [
+    {
+      name: "기상청",
+      obs: kma.observedAt,
+      vals: [
+        kma.condition,
+        `${Math.round(kma.temp)}°`,
+        `${Math.round(kma.feelsLike)}°`,
+        `${Math.round(kma.high)}°`,
+        `${Math.round(kma.low)}°`,
+        `${kma.humidity}%`,
+        `${Number(kma.wind).toFixed(1)}m/s`,
+        `${kma.rainChance}%`,
+      ],
+    },
+    {
+      name: "OpenWeather",
+      obs: ow.observedAt,
+      vals: [
+        ow.condition,
+        `${Math.round(ow.temp)}°`,
+        `${Math.round(ow.feelsLike)}°`,
+        `${Math.round(ow.high)}°`,
+        `${Math.round(ow.low)}°`,
+        `${ow.humidity}%`,
+        `${Number(ow.wind).toFixed(1)}m/s`,
+        `${ow.rainChance}%`,
+      ],
+    },
+    ...(meteo ? [{
+      name: "Open-Meteo",
+      obs: meteo.observedAt,
+      vals: [
+        meteo.condition,
+        `${Math.round(meteo.temp)}°`,
+        `${Math.round(meteo.feelsLike)}°`,
+        `${Math.round(meteo.high)}°`,
+        `${Math.round(meteo.low)}°`,
+        `${meteo.humidity}%`,
+        `${Number(meteo.wind).toFixed(1)}m/s`,
+        `${meteo.rainChance}%`,
+      ],
+    }] : []),
+  ];
+
   return (
     <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-      <p className="text-xs font-semibold mb-1" style={{ color: theme.sub }}>기상청 vs OpenWeather 비교</p>
-      {(kma.observedAt || ow.observedAt) && (
-        <p className="text-[10px] mb-3" style={{ color: theme.sub }}>
-          {kma.observedAt && <span>기상청 {kma.observedAt}</span>}
-          {kma.observedAt && ow.observedAt && <span> · </span>}
-          {ow.observedAt && <span>OW {ow.observedAt}</span>}
-        </p>
-      )}
-      <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
-        <div className="font-semibold" style={{ color: theme.sub }} />
-        <div className="font-semibold text-center" style={{ color: theme.sub }}>기상청</div>
-        <div className="font-semibold text-center" style={{ color: theme.sub }}>OpenWeather</div>
-        {rows.map(({ label, kmaVal, owVal }) => (
-          <React.Fragment key={label}>
-            <div className="py-1" style={{ color: theme.sub }}>{label}</div>
-            <div className="py-1 text-center font-medium" style={{ color: theme.text }}>{kmaVal}</div>
-            <div className="py-1 text-center font-medium" style={{ color: theme.text }}>{owVal}</div>
-          </React.Fragment>
-        ))}
+      <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>날씨 소스 비교</p>
+
+      {/* 횡 스크롤 테이블 */}
+      <div className="overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+        <div style={{ minWidth: sources.length > 2 ? 320 : "auto" }}>
+          {/* 헤더 */}
+          <div className="flex text-xs mb-2">
+            <div className="w-16 flex-shrink-0" />
+            {sources.map(s => (
+              <div key={s.name} className="flex-1 text-center font-semibold min-w-[72px]" style={{ color: theme.sub }}>
+                {s.name}
+              </div>
+            ))}
+          </div>
+
+          {/* 관측 시각 */}
+          <div className="flex text-[9px] mb-3">
+            <div className="w-16 flex-shrink-0" />
+            {sources.map(s => (
+              <div key={s.name} className="flex-1 text-center min-w-[72px]" style={{ color: theme.sub, opacity: 0.7 }}>
+                {s.obs ? s.obs.split(" (")[0] : ""}
+              </div>
+            ))}
+          </div>
+
+          {/* 데이터 행 */}
+          {rows.map((row, i) => (
+            <div key={row.label} className="flex text-xs py-1" style={{ borderTop: i > 0 ? `1px solid rgba(0,0,0,0.06)` : "none" }}>
+              <div className="w-16 flex-shrink-0" style={{ color: theme.sub }}>{row.label}</div>
+              {sources.map(s => (
+                <div key={s.name} className="flex-1 text-center font-medium min-w-[72px]" style={{ color: theme.text }}>
+                  {s.vals[i]}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

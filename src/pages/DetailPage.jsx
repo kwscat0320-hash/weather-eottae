@@ -4,7 +4,7 @@ import { gradeInfo } from "../utils/weather";
 import AirDot from "../components/AirDot";
 
 export default function DetailPage() {
-  const { weather, compareWeather, theme, displayLocation, loading, air, airOw } = useWeather();
+  const { weather, compareWeather, meteoWeather, theme, displayLocation, loading, air, airOw } = useWeather();
 
   if (loading) {
     return (
@@ -24,78 +24,78 @@ export default function DetailPage() {
       </div>
 
       <div className="px-4 py-4 pb-32 space-y-3">
-        {/* 현재 기온 비교 */}
+        {/* 소스 비교 */}
         {weather && compareWeather ? (
           <>
             <SectionTitle>현재 기온 비교</SectionTitle>
-            <div className="grid grid-cols-2 gap-3">
-              <SourceCard
-                source="기상청"
-                color="#2563eb"
-                rows={[
+            <ScrollCompare
+              sources={[
+                { name: "기상청",       color: "#2563eb", rows: [
                   { label: "현재 온도", value: `${Math.round(weather.temp)}°` },
-                  { label: "체감", value: `${Math.round(weather.feelsLike)}°` },
-                  { label: "최고", value: `${Math.round(weather.high)}°` },
-                  { label: "최저", value: `${Math.round(weather.low)}°` },
-                ]}
-              />
-              <SourceCard
-                source="OpenWeather"
-                color="#ea580c"
-                rows={[
+                  { label: "체감",      value: `${Math.round(weather.feelsLike)}°` },
+                  { label: "최고",      value: `${Math.round(weather.high)}°` },
+                  { label: "최저",      value: `${Math.round(weather.low)}°` },
+                ]},
+                { name: "OpenWeather", color: "#ea580c", rows: [
                   { label: "현재 온도", value: `${Math.round(compareWeather.temp)}°` },
-                  { label: "체감", value: `${Math.round(compareWeather.feelsLike)}°` },
-                  { label: "최고", value: `${Math.round(compareWeather.high)}°` },
-                  { label: "최저", value: `${Math.round(compareWeather.low)}°` },
-                ]}
-              />
-            </div>
+                  { label: "체감",      value: `${Math.round(compareWeather.feelsLike)}°` },
+                  { label: "최고",      value: `${Math.round(compareWeather.high)}°` },
+                  { label: "최저",      value: `${Math.round(compareWeather.low)}°` },
+                ]},
+                ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", rows: [
+                  { label: "현재 온도", value: `${Math.round(meteoWeather.temp)}°` },
+                  { label: "체감",      value: `${Math.round(meteoWeather.feelsLike)}°` },
+                  { label: "최고",      value: `${Math.round(meteoWeather.high)}°` },
+                  { label: "최저",      value: `${Math.round(meteoWeather.low)}°` },
+                ]}] : []),
+              ]}
+            />
 
             <SectionTitle>대기 환경 비교</SectionTitle>
-            <div className="grid grid-cols-2 gap-3">
-              <SourceCard
-                source="기상청"
-                color="#2563eb"
-                rows={[
-                  { label: "습도", value: `${weather.humidity}%` },
-                  { label: "바람", value: `${Number(weather.wind).toFixed(1)}m/s` },
-                  { label: "강수확률", value: `${weather.rainChance}%` },
-                  { label: "날씨", value: weather.condition },
-                ]}
-              />
-              <SourceCard
-                source="OpenWeather"
-                color="#ea580c"
-                rows={[
-                  { label: "습도", value: `${compareWeather.humidity}%` },
-                  { label: "바람", value: `${Number(compareWeather.wind).toFixed(1)}m/s` },
-                  { label: "강수확률", value: `${compareWeather.rainChance}%` },
-                  { label: "날씨", value: compareWeather.condition },
-                ]}
-              />
-            </div>
+            <ScrollCompare
+              sources={[
+                { name: "기상청",       color: "#2563eb", rows: [
+                  { label: "날씨",      value: weather.condition },
+                  { label: "습도",      value: `${weather.humidity}%` },
+                  { label: "바람",      value: `${Number(weather.wind).toFixed(1)}m/s` },
+                  { label: "강수확률",  value: `${weather.rainChance}%` },
+                ]},
+                { name: "OpenWeather", color: "#ea580c", rows: [
+                  { label: "날씨",      value: compareWeather.condition },
+                  { label: "습도",      value: `${compareWeather.humidity}%` },
+                  { label: "바람",      value: `${Number(compareWeather.wind).toFixed(1)}m/s` },
+                  { label: "강수확률",  value: `${compareWeather.rainChance}%` },
+                ]},
+                ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", rows: [
+                  { label: "날씨",      value: meteoWeather.condition },
+                  { label: "습도",      value: `${meteoWeather.humidity}%` },
+                  { label: "바람",      value: `${Number(meteoWeather.wind).toFixed(1)}m/s` },
+                  { label: "강수확률",  value: `${meteoWeather.rainChance}%` },
+                ]}] : []),
+              ]}
+            />
 
-            {/* 차이 요약 */}
-            <SectionTitle>두 소스의 차이</SectionTitle>
+            {/* 기상청 기준 차이 */}
+            <SectionTitle>기상청 기준 차이</SectionTitle>
             <div className="rounded-2xl p-4 bg-white space-y-2">
-              <DiffRow label="기온 차이" diff={Math.abs(weather.temp - compareWeather.temp).toFixed(1)} unit="°" />
-              <DiffRow label="체감온도 차이" diff={Math.abs(weather.feelsLike - compareWeather.feelsLike).toFixed(1)} unit="°" />
-              <DiffRow label="습도 차이" diff={Math.abs(weather.humidity - compareWeather.humidity)} unit="%" />
-              <DiffRow label="바람 차이" diff={Math.abs(weather.wind - compareWeather.wind).toFixed(1)} unit="m/s" />
+              <p className="text-[10px] text-slate-400 mb-2">기상청 실측값과의 차이</p>
+              {[
+                { label: "기온 (OW)",        diff: Math.abs(weather.temp - compareWeather.temp).toFixed(1), unit: "°" },
+                { label: "기온 (Meteo)",      diff: meteoWeather ? Math.abs(weather.temp - meteoWeather.temp).toFixed(1) : null, unit: "°" },
+                { label: "습도 (OW)",         diff: Math.abs(weather.humidity - compareWeather.humidity), unit: "%" },
+                { label: "습도 (Meteo)",      diff: meteoWeather ? Math.abs(weather.humidity - meteoWeather.humidity) : null, unit: "%" },
+              ].filter(r => r.diff !== null).map(r => (
+                <DiffRow key={r.label} label={r.label} diff={r.diff} unit={r.unit} />
+              ))}
             </div>
 
             {/* 관측 시각 */}
-            {(weather.observedAt || compareWeather.observedAt) && (
-              <div className="rounded-2xl p-4 bg-white">
-                <p className="text-xs font-semibold text-slate-500 mb-2">관측 시각</p>
-                {weather.observedAt && (
-                  <p className="text-xs text-slate-600">🇰🇷 {weather.observedAt}</p>
-                )}
-                {compareWeather.observedAt && (
-                  <p className="text-xs text-slate-600 mt-1">🌍 {compareWeather.observedAt}</p>
-                )}
-              </div>
-            )}
+            <div className="rounded-2xl p-4 bg-white">
+              <p className="text-xs font-semibold text-slate-500 mb-2">관측 시각</p>
+              {weather.observedAt && <p className="text-xs text-slate-600">🇰🇷 {weather.observedAt}</p>}
+              {compareWeather.observedAt && <p className="text-xs text-slate-600 mt-1">🌍 {compareWeather.observedAt}</p>}
+              {meteoWeather?.observedAt && <p className="text-xs text-slate-600 mt-1">🌿 {meteoWeather.observedAt}</p>}
+            </div>
           </>
         ) : (
           <div className="rounded-2xl p-6 bg-white text-center">
@@ -145,6 +145,37 @@ export default function DetailPage() {
         <div className="rounded-2xl p-4" style={{ background: "rgba(148,163,184,0.15)", border: "1px dashed #cbd5e1" }}>
           <p className="text-xs text-slate-400 text-center">추가 상세 데이터는 계속 업데이트됩니다</p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ScrollCompare({ sources }) {
+  return (
+    <div className="overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+      <div className="flex gap-3" style={{ minWidth: sources.length > 2 ? 340 : "auto" }}>
+        {sources.map(({ name, color, rows }) => (
+          <div key={name} className="rounded-2xl p-4 bg-white flex-1 min-w-[100px]">
+            <div className="flex items-center gap-1.5 mb-3">
+              <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+              <p className="text-xs font-bold" style={{ color }}>{name}</p>
+            </div>
+            <div className="space-y-2">
+              {rows.map(({ label, value, grade }) => {
+                const g = grade ? gradeInfo(grade) : null;
+                return (
+                  <div key={label} className="flex justify-between items-center gap-2">
+                    <span className="text-xs text-slate-400 whitespace-nowrap">{label}</span>
+                    <div className="flex items-center gap-1">
+                      {g && <span className="text-xs font-bold" style={{ color: g.dotColor }}>{g.label}</span>}
+                      <span className="text-sm font-semibold text-slate-800">{value}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
