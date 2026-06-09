@@ -196,9 +196,28 @@ export function WeatherProvider({ children }) {
     return slots;
   };
 
+  // OW(3h)는 빈 슬롯을 직전 예보로 forward-fill (시작이 비면 backfill로 보강)
+  const fillGaps = (slots) => {
+    const out = [...slots];
+    let last = null;
+    for (let i = 0; i < out.length; i++) {
+      if (out[i]) last = out[i];
+      else if (last) out[i] = { ...last, _filled: true };
+    }
+    if (!out[0]) {
+      const firstReal = out.find((v) => v);
+      if (firstReal) {
+        for (let i = 0; i < out.length && !out[i]; i++) {
+          out[i] = { ...firstReal, _filled: true };
+        }
+      }
+    }
+    return out;
+  };
+
   const alignedHourly = useMemo(() => ({
     kma:   alignForecast(todayForecasts),
-    ow:    alignForecast(owForecast),
+    ow:    fillGaps(alignForecast(owForecast)),
     meteo: alignForecast(meteoForecast),
   }), [todayForecasts, owForecast, meteoForecast, hourSlots]);
 

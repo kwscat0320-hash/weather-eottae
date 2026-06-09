@@ -134,7 +134,11 @@ export default function HomePage() {
                   </div>
                   {source.data.map((item, i) => (
                     <div key={i} className="flex-shrink-0 rounded-lg mx-0.5 py-1.5 text-center"
-                      style={{ width: 42, background: item ? "rgba(255,254,254,0.28)" : "transparent" }}>
+                      style={{
+                        width: 42,
+                        background: item ? "rgba(255,254,254,0.28)" : "transparent",
+                        opacity: item?._filled ? 0.55 : 1,
+                      }}>
                       {item ? (
                         <>
                           <p className="font-bold text-xs" style={{ color: theme.text }}>{Math.round(item.temp)}°</p>
