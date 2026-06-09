@@ -24,6 +24,8 @@ export default async function handler(req, res) {
   const grid = dfsXyConv(Number(lat), Number(lon));
   const cacheKey = `kma:latest:${grid.x}:${grid.y}`;
 
+  console.log(`[KMA] lat=${lat} lon=${lon} force=${force} grid=${grid.x},${grid.y}`);
+
   // KV 캐시 확인 (force=1 이면 강제 갱신)
   if (!force && process.env.KV_REST_API_URL) {
     try {
