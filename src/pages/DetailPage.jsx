@@ -8,27 +8,28 @@ export default function DetailPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center" style={{ background: "#f8fafc" }}>
-        <p className="text-slate-400 text-sm">데이터 로딩 중...</p>
+      <div className={`flex-1 bg-gradient-to-b ${theme.bg} flex items-center justify-center`}>
+        <p className="text-sm" style={{ color: theme.sub }}>데이터 로딩 중...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col" style={{ background: "#f1f5f9", fontFamily: "Inter, sans-serif" }}>
+    <div className={`flex-1 bg-gradient-to-b ${theme.bg} flex flex-col`} style={{ fontFamily: "Inter, sans-serif" }}>
       {/* 헤더 */}
-      <div className="px-6 pt-12 pb-4" style={{ background: "#0f172a" }}>
-        <p className="text-xs text-slate-400 mb-1">상세 비교</p>
-        <h1 className="text-white text-xl font-bold">{displayLocation}</h1>
-        <p className="text-slate-400 text-xs mt-1">기상청 · OpenWeather 데이터 비교</p>
+      <div className="px-6 pt-10 pb-4">
+        <p className="text-xs mb-1" style={{ color: theme.sub }}>상세 비교</p>
+        <h1 className="text-xl font-bold" style={{ color: theme.text }}>{displayLocation}</h1>
+        <p className="text-xs mt-1" style={{ color: theme.sub }}>기상청 · OpenWeather · Open-Meteo 비교</p>
       </div>
 
-      <div className="px-4 py-4 pb-32 space-y-3">
+      <div className="px-4 py-2 pb-32 space-y-3">
         {/* 소스 비교 */}
         {weather && compareWeather ? (
           <>
-            <SectionTitle>현재 기온 비교</SectionTitle>
+            <SectionTitle theme={theme}>현재 기온 비교</SectionTitle>
             <ScrollCompare
+              theme={theme}
               sources={[
                 { name: "기상청",       color: "#2563eb", rows: [
                   { label: "현재 온도", value: `${Math.round(weather.temp)}°` },
@@ -51,8 +52,9 @@ export default function DetailPage() {
               ]}
             />
 
-            <SectionTitle>대기 환경 비교</SectionTitle>
+            <SectionTitle theme={theme}>대기 환경 비교</SectionTitle>
             <ScrollCompare
+              theme={theme}
               sources={[
                 { name: "기상청",       color: "#2563eb", rows: [
                   { label: "날씨",      value: weather.condition },
@@ -76,30 +78,30 @@ export default function DetailPage() {
             />
 
             {/* 기상청 기준 차이 */}
-            <SectionTitle>기상청 기준 차이</SectionTitle>
-            <div className="rounded-2xl p-4 bg-white space-y-2">
-              <p className="text-[10px] text-slate-400 mb-2">기상청 실측값과의 차이</p>
+            <SectionTitle theme={theme}>기상청 기준 차이</SectionTitle>
+            <div className="rounded-2xl p-4 space-y-2" style={{ background: theme.card }}>
+              <p className="text-[10px] mb-2" style={{ color: theme.sub, opacity: 0.8 }}>기상청 실측값과의 차이</p>
               {[
                 { label: "기온 (OW)",        diff: Math.abs(weather.temp - compareWeather.temp).toFixed(1), unit: "°" },
                 { label: "기온 (Meteo)",      diff: meteoWeather ? Math.abs(weather.temp - meteoWeather.temp).toFixed(1) : null, unit: "°" },
                 { label: "습도 (OW)",         diff: Math.abs(weather.humidity - compareWeather.humidity), unit: "%" },
                 { label: "습도 (Meteo)",      diff: meteoWeather ? Math.abs(weather.humidity - meteoWeather.humidity) : null, unit: "%" },
               ].filter(r => r.diff !== null).map(r => (
-                <DiffRow key={r.label} label={r.label} diff={r.diff} unit={r.unit} />
+                <DiffRow key={r.label} theme={theme} label={r.label} diff={r.diff} unit={r.unit} />
               ))}
             </div>
 
             {/* 관측 시각 */}
-            <div className="rounded-2xl p-4 bg-white">
-              <p className="text-xs font-semibold text-slate-500 mb-2">관측 시각</p>
-              {weather.observedAt && <p className="text-xs text-slate-600">🇰🇷 {weather.observedAt}</p>}
-              {compareWeather.observedAt && <p className="text-xs text-slate-600 mt-1">🌍 {compareWeather.observedAt}</p>}
-              {meteoWeather?.observedAt && <p className="text-xs text-slate-600 mt-1">🌿 {meteoWeather.observedAt}</p>}
+            <div className="rounded-2xl p-4" style={{ background: theme.card }}>
+              <p className="text-xs font-semibold mb-2" style={{ color: theme.sub }}>관측 시각</p>
+              {weather.observedAt && <p className="text-xs" style={{ color: theme.text }}>🇰🇷 {weather.observedAt}</p>}
+              {compareWeather.observedAt && <p className="text-xs mt-1" style={{ color: theme.text }}>🌍 {compareWeather.observedAt}</p>}
+              {meteoWeather?.observedAt && <p className="text-xs mt-1" style={{ color: theme.text }}>🌿 {meteoWeather.observedAt}</p>}
             </div>
           </>
         ) : (
-          <div className="rounded-2xl p-6 bg-white text-center">
-            <p className="text-slate-400 text-sm">
+          <div className="rounded-2xl p-6 text-center" style={{ background: theme.card }}>
+            <p className="text-sm" style={{ color: theme.sub }}>
               한국 좌표에서만 비교 데이터가 제공됩니다.
             </p>
           </div>
@@ -108,8 +110,9 @@ export default function DetailPage() {
         {/* 대기질 비교 */}
         {(airOw || airMeteo) && (
           <>
-            <SectionTitle>대기질 비교</SectionTitle>
+            <SectionTitle theme={theme}>대기질 비교</SectionTitle>
             <ScrollCompare
+              theme={theme}
               sources={[
                 { name: "에어코리아", color: "#2563eb", rows: air ? [
                   { label: "미세먼지",   value: `${air.pm10}㎍/㎥`,  grade: air.pm10Grade },
@@ -128,32 +131,32 @@ export default function DetailPage() {
               ]}
             />
             {air && airOw && (
-              <div className="rounded-2xl p-4 bg-white space-y-2">
-                <p className="text-xs font-semibold text-slate-500 mb-2">에어코리아 기준 차이</p>
-                <DiffRow label="PM10 (OW)"    diff={Math.abs(air.pm10 - airOw.pm10)}    unit="㎍/㎥" />
-                <DiffRow label="PM2.5 (OW)"   diff={Math.abs(air.pm25 - airOw.pm25)}    unit="㎍/㎥" />
-                {airMeteo && <DiffRow label="PM10 (Meteo)"  diff={Math.abs(air.pm10 - airMeteo.pm10)}  unit="㎍/㎥" />}
-                {airMeteo && <DiffRow label="PM2.5 (Meteo)" diff={Math.abs(air.pm25 - airMeteo.pm25)}  unit="㎍/㎥" />}
+              <div className="rounded-2xl p-4 space-y-2" style={{ background: theme.card }}>
+                <p className="text-xs font-semibold mb-2" style={{ color: theme.sub }}>에어코리아 기준 차이</p>
+                <DiffRow theme={theme} label="PM10 (OW)"    diff={Math.abs(air.pm10 - airOw.pm10)}    unit="㎍/㎥" />
+                <DiffRow theme={theme} label="PM2.5 (OW)"   diff={Math.abs(air.pm25 - airOw.pm25)}    unit="㎍/㎥" />
+                {airMeteo && <DiffRow theme={theme} label="PM10 (Meteo)"  diff={Math.abs(air.pm10 - airMeteo.pm10)}  unit="㎍/㎥" />}
+                {airMeteo && <DiffRow theme={theme} label="PM2.5 (Meteo)" diff={Math.abs(air.pm25 - airMeteo.pm25)}  unit="㎍/㎥" />}
               </div>
             )}
           </>
         )}
 
         {/* 추가 데이터는 계속 추가될 예정 */}
-        <div className="rounded-2xl p-4" style={{ background: "rgba(148,163,184,0.15)", border: "1px dashed #cbd5e1" }}>
-          <p className="text-xs text-slate-400 text-center">추가 상세 데이터는 계속 업데이트됩니다</p>
+        <div className="rounded-2xl p-4" style={{ background: theme.card, border: `1px dashed ${theme.sub}`, opacity: 0.7 }}>
+          <p className="text-xs text-center" style={{ color: theme.sub }}>추가 상세 데이터는 계속 업데이트됩니다</p>
         </div>
       </div>
     </div>
   );
 }
 
-function ScrollCompare({ sources }) {
+function ScrollCompare({ sources, theme }) {
   return (
     <div className="overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
       <div className="flex gap-3" style={{ minWidth: sources.length > 2 ? 340 : "auto" }}>
         {sources.map(({ name, color, rows }) => (
-          <div key={name} className="rounded-2xl p-4 bg-white flex-1 min-w-[100px]">
+          <div key={name} className="rounded-2xl p-4 flex-1 min-w-[100px]" style={{ background: theme.card }}>
             <div className="flex items-center gap-1.5 mb-3">
               <div className="w-2 h-2 rounded-full" style={{ background: color }} />
               <p className="text-xs font-bold" style={{ color }}>{name}</p>
@@ -163,10 +166,10 @@ function ScrollCompare({ sources }) {
                 const g = grade ? gradeInfo(grade) : null;
                 return (
                   <div key={label} className="flex justify-between items-center gap-2">
-                    <span className="text-xs text-slate-400 whitespace-nowrap">{label}</span>
+                    <span className="text-xs whitespace-nowrap" style={{ color: theme.sub }}>{label}</span>
                     <div className="flex items-center gap-1">
                       {g && <span className="text-xs font-bold" style={{ color: g.dotColor }}>{g.label}</span>}
-                      <span className="text-sm font-semibold text-slate-800">{value}</span>
+                      <span className="text-sm font-semibold" style={{ color: theme.text }}>{value}</span>
                     </div>
                   </div>
                 );
@@ -179,41 +182,16 @@ function ScrollCompare({ sources }) {
   );
 }
 
-function SectionTitle({ children }) {
-  return <p className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1 pt-2">{children}</p>;
+function SectionTitle({ children, theme }) {
+  return <p className="text-xs font-bold uppercase tracking-widest px-1 pt-2" style={{ color: theme.sub }}>{children}</p>;
 }
 
-function SourceCard({ source, color, rows }) {
-  return (
-    <div className="rounded-2xl p-4 bg-white">
-      <div className="flex items-center gap-1.5 mb-3">
-        <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-        <p className="text-xs font-bold" style={{ color }}>{source}</p>
-      </div>
-      <div className="space-y-2">
-        {rows.map(({ label, value, grade }) => {
-          const g = grade ? gradeInfo(grade) : null;
-          return (
-            <div key={label} className="flex justify-between items-center">
-              <span className="text-xs text-slate-400">{label}</span>
-              <div className="flex items-center gap-1.5">
-                {g && <span className="text-xs font-bold" style={{ color: g.dotColor }}>{g.label}</span>}
-                <span className="text-sm font-semibold text-slate-800">{value}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function DiffRow({ label, diff, unit }) {
+function DiffRow({ label, diff, unit, theme }) {
   const val = Number(diff);
   const color = val === 0 ? "#16a34a" : val < 2 ? "#d97706" : "#dc2626";
   return (
     <div className="flex justify-between items-center">
-      <span className="text-xs text-slate-500">{label}</span>
+      <span className="text-xs" style={{ color: theme.sub }}>{label}</span>
       <span className="text-sm font-bold" style={{ color }}>
         {val === 0 ? "일치" : `${diff}${unit}`}
       </span>
