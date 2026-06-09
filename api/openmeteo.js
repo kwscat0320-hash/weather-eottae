@@ -55,7 +55,7 @@ export default async function handler(req, res) {
       `&timezone=Asia%2FSeoul&forecast_days=2`;
 
     const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}` +
-      `&current=pm10,pm2_5,european_aqi&domains=cams_europe`;
+      `&current=pm10,pm2_5,us_aqi&domains=cams_global`;
 
     const [data, airData] = await Promise.all([
       httpsGetJson(weatherUrl),
