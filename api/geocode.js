@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     const b = data.documents?.find(d => d.region_type === "B");
     const doc = h || b;
 
-    return res.status(200).json({ _debug: { documents: data.documents, doc } });
+    return res.status(200).json({ _debug: data });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
