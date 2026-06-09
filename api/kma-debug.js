@@ -64,34 +64,43 @@ export default async function handler(req, res) {
     return `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${ep}?serviceKey=${key}&${p}`;
   };
 
-  try {
-    // 단기예보만 가져와서 TMX/TMN/TMP 확인
-    const r = await httpsGet(makeUrl("getVilageFcst", date, vilageTime, 1000));
-    const raw = await r.json();
-    const items = raw?.response?.body?.items?.item ?? [];
+  // 전날 날짜 계산 (KST 기준)
+  const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const prevDay = new Date(nowKst);
+  prevDay.setUTCDate(prevDay.getUTCDate() - 1);
+  const prevDate = `${prevDay.getUTCFullYear()}${String(prevDay.getUTCMonth()+1).padStart(2,"0")}${String(prevDay.getUTCDate()).padStart(2,"0")}`;
 
-    const todayItems = items.filter(i => i.fcstDate === today);
+  try {
+    // 현재 발표 + 전날 23:00 발표 병렬 요청
+    const [r1, r2] = await Promise.all([
+      httpsGet(makeUrl("getVilageFcst", date, vilageTime, 1000)),
+      httpsGet(makeUrl("getVilageFcst", prevDate, "2300", 300)),
+    ]);
+
+    const items1 = (await r1.json())?.response?.body?.items?.item ?? [];
+    const items2 = (await r2.json())?.response?.body?.items?.item ?? [];
+
+    // 두 응답을 합쳐서 오늘 데이터 추출
+    const allItems = [...items2, ...items1];
+    const todayItems = allItems.filter(i => i.fcstDate === today);
+
     const tmxItem = todayItems.find(i => i.category === "TMX");
     const tmnItem = todayItems.find(i => i.category === "TMN");
     const tmpItems = todayItems.filter(i => i.category === "TMP");
-
     const tmpValues = tmpItems.map(i => Number(i.fcstValue));
 
     return res.status(200).json({
       grid,
-      baseDate: date,
-      baseTime: vilageTime,
+      current: { baseDate: date, baseTime: vilageTime, itemCount: items1.length },
+      prevDay: { baseDate: prevDate, baseTime: "2300", itemCount: items2.length },
       today,
       result: {
-        TMX: tmxItem ? { fcstTime: tmxItem.fcstTime, value: tmxItem.fcstValue } : null,
-        TMN: tmnItem ? { fcstTime: tmnItem.fcstTime, value: tmnItem.fcstValue } : null,
+        TMX: tmxItem ? { source: items2.includes(tmxItem) ? "전날2300" : "당일", fcstTime: tmxItem.fcstTime, value: tmxItem.fcstValue } : null,
+        TMN: tmnItem ? { source: items2.includes(tmnItem) ? "전날2300" : "당일", fcstTime: tmnItem.fcstTime, value: tmnItem.fcstValue } : null,
         TMP_count: tmpValues.length,
         TMP_max: tmpValues.length ? Math.max(...tmpValues) : null,
         TMP_min: tmpValues.length ? Math.min(...tmpValues) : null,
-        TMP_slots: tmpItems.map(i => ({ time: i.fcstTime, value: i.fcstValue })),
       },
-      totalItems: items.length,
-      todayItemCategories: [...new Set(todayItems.map(i => i.category))],
     });
   } catch (e) {
     return res.status(500).json({ error: e.message });
