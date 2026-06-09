@@ -62,7 +62,8 @@ export default function HomePage() {
       <div className="flex items-end px-6 pt-4 pb-2">
         <div className="flex-1">
           <p className="text-xl font-semibold" style={{ color: theme.text }}>{weather?.condition}</p>
-          <div className="font-bold leading-none mt-1" style={{ fontSize: 72, color: theme.text }}>{weather?.temp}°</div>
+          <p className="text-xs font-medium mt-1 opacity-70" style={{ color: theme.text }}>현재온도</p>
+          <div className="font-bold leading-none mt-0.5" style={{ fontSize: 72, color: theme.text }}>{weather?.temp}°</div>
           <p className="text-sm mt-2" style={{ color: theme.sub }}>
             최고 {weather?.high}° / 최저 {weather?.low}° · 체감 {weather?.feelsLike}°
           </p>
