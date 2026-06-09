@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     const { tmX, tmY } = wgs84ToTm(Number(lat), Number(lon));
 
     // 2. TM 좌표 → 가장 가까운 측정소
-    const stationUrl = `https://apis.data.go.kr/B552584/MsrstnInfoInqireSvc/getNearbyMsrstnList?serviceKey=${encodeURIComponent(key)}&returnType=json&tmX=${tmX}&tmY=${tmY}&ver=1.1`;
+    const stationUrl = `https://apis.data.go.kr/B552584/MsrstnInfoInqireSvc/getNearbyMsrstnList?serviceKey=${key.trim()}&returnType=json&tmX=${tmX}&tmY=${tmY}&ver=1.1`;
     const stationData = await httpsGetRaw(stationUrl);
     console.log("[AIR] stationRaw:", stationData.slice(0, 300));
     const stationJson = JSON.parse(stationData);
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     if (!stationName) throw new Error(`측정소 없음: ${stationData.slice(0, 200)}`);
 
     // 3. 측정소 → 실시간 대기오염 정보
-    const airUrl = `https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?serviceKey=${encodeURIComponent(key)}&returnType=json&numOfRows=1&pageNo=1&stationName=${encodeURIComponent(stationName)}&dataTerm=DAILY&ver=1.3`;
+    const airUrl = `https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?serviceKey=${key.trim()}&returnType=json&numOfRows=1&pageNo=1&stationName=${encodeURIComponent(stationName)}&dataTerm=DAILY&ver=1.3`;
     const airData = await httpsGetJson(airUrl);
     const item = airData?.response?.body?.items?.[0];
     if (!item) throw new Error("대기오염 데이터 없음");
