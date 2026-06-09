@@ -27,10 +27,10 @@ export default async function handler(req, res) {
   const { lat, lon } = req.query;
   if (!lat || !lon) return res.status(400).json({ error: "lat, lon 필요" });
 
-  const kakaoKey = process.env.KAKAO_KEY;
+  const kakaoKey = process.env.kakao_key;
   if (!kakaoKey) {
     const keys = Object.keys(process.env).filter(k => k.includes("KAKAO") || k.includes("kakao"));
-    return res.status(500).json({ error: "KAKAO_KEY 미설정", availableKakaoKeys: keys });
+    return res.status(500).json({ error: "kakao_key 미설정", availableKakaoKeys: keys });
   }
 
   try {
