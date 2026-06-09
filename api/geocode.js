@@ -29,8 +29,8 @@ export default async function handler(req, res) {
 
   const kakaoKey = process.env.kakao_key;
   if (!kakaoKey) {
-    const keys = Object.keys(process.env).filter(k => k.includes("KAKAO") || k.includes("kakao"));
-    return res.status(500).json({ error: "kakao_key 미설정", availableKakaoKeys: keys });
+    const keys = Object.keys(process.env).filter(k => k.toLowerCase().includes("kakao"));
+    return res.status(200).json({ error: "kakao_key 미설정", availableKakaoKeys: keys });
   }
 
   try {
@@ -55,6 +55,6 @@ export default async function handler(req, res) {
     const name = dong ? `${gu} ${dong}` : gu || "현재 위치";
     return res.status(200).json({ name });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    return res.status(200).json({ error: e.message, stack: e.stack?.slice(0, 200) });
   }
 }
