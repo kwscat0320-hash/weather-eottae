@@ -1,5 +1,15 @@
 ﻿import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { DEFAULT_LOCATION, reverseGeocode, getTheme, getSpeech, isKorea } from "../utils/weather";
+import { DEFAULT_LOCATION, getTheme, getSpeech, isKorea } from "../utils/weather";
+
+async function reverseGeocode(lat, lon) {
+  try {
+    const res = await fetch(`/api/geocode?lat=${lat}&lon=${lon}`);
+    const data = await res.json();
+    return data.name || "현재 위치";
+  } catch {
+    return "현재 위치";
+  }
+}
 
 const WeatherContext = createContext(null);
 
