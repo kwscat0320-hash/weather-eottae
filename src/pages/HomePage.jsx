@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { MapPin, RefreshCw, Droplets, Wind, Umbrella } from "lucide-react";
 import { useWeather } from "../context/WeatherContext";
 import { gradeInfo } from "../utils/weather";
+import AirDot from "../components/AirDot";
 
 export default function HomePage() {
   const {
@@ -147,12 +148,14 @@ function Metric({ icon, label, value, sub, text }) {
 }
 
 function AirCard({ label, value, grade, sub }) {
-  const { emoji, color, label: gradeLabel } = gradeInfo(grade);
+  const { dotColor, label: gradeLabel } = gradeInfo(grade);
   return (
     <div className="text-center">
       <p className="text-xs" style={{ color: sub }}>{label}</p>
-      <div className="text-2xl mt-1">{emoji}</div>
-      <p className="text-xs font-bold mt-0.5" style={{ color }}>{gradeLabel}</p>
+      <div className="flex justify-center mt-1">
+        <AirDot color={dotColor} size={36} />
+      </div>
+      <p className="text-xs font-bold mt-0.5" style={{ color: dotColor }}>{gradeLabel}</p>
       <p className="text-[10px] mt-0.5" style={{ color: sub }}>{value !== "-" ? `${value}㎍/㎥` : "-"}</p>
     </div>
   );
