@@ -9,6 +9,7 @@ export default function HomePage() {
   const {
     weather, theme, speech, todayForecasts, dailyForecasts,
     compareWeather, meteoWeather, owForecast, meteoForecast,
+    hourSlots, alignedHourly,
     displayLocation, loading, error,
     coords, requestCurrentLocation, air, airOw, airMeteo,
   } = useWeather();
@@ -101,29 +102,53 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* 시간대별 예보 — 3소스 24h 비교 */}
+        {/* 시간대별 예보 — 공통 24h 시간축으로 3소스 정렬 비교 */}
         <div className="rounded-3xl p-4" style={{ background: theme.card }}>
           <p className="text-xs font-semibold mb-1" style={{ color: theme.sub }}>시간대별 예보</p>
-          <p className="text-[9px] mb-3" style={{ color: theme.sub, opacity: 0.7 }}>현재 기준 24시간</p>
-          {[
-            { name: "기상청 (1h)",   data: todayForecasts },
-            { name: "OW (3h)",       data: owForecast },
-            { name: "Open-Meteo (1h)", data: meteoForecast },
-          ].filter(s => s.data?.length > 0).map(source => (
-            <div key={source.name} className="mb-3 last:mb-0">
-              <p className="text-[10px] font-semibold mb-1.5" style={{ color: theme.sub, opacity: 0.8 }}>{source.name}</p>
-              <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-                {source.data.map((item, i) => (
-                  <div key={i} className="flex-shrink-0 rounded-xl p-2 text-center"
-                    style={{ width: 56, background: "rgba(255,254,254,0.25)" }}>
-                    <p className="text-[10px]" style={{ color: theme.sub }}>{item.timeLabel}</p>
-                    <p className="font-bold text-sm mt-1" style={{ color: theme.text }}>{Math.round(item.temp)}°</p>
-                    <p className="text-[9px] mt-0.5" style={{ color: theme.sub }}>{item.rainChance}%</p>
+          <p className="text-[9px] mb-3" style={{ color: theme.sub, opacity: 0.7 }}>현재 기준 24시간 · 기관별 비교</p>
+          <div className="overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+            <div style={{ minWidth: 56 + 24 * 46 }}>
+              {/* 시간 헤더 */}
+              <div className="flex mb-2">
+                <div className="flex-shrink-0" style={{ width: 56 }} />
+                {(hourSlots || []).map((s, i) => (
+                  <div key={i} className="flex-shrink-0 text-center" style={{ width: 46 }}>
+                    <p className="text-[10px] font-semibold"
+                      style={{ color: theme.sub, opacity: s.isMidnight ? 1 : 0.7 }}>
+                      {s.label}
+                    </p>
                   </div>
                 ))}
               </div>
+
+              {/* 각 기관 행 */}
+              {[
+                { name: "기상청",     freq: "1h", data: alignedHourly?.kma },
+                { name: "OW",         freq: "3h", data: alignedHourly?.ow },
+                { name: "Open-Meteo", freq: "1h", data: alignedHourly?.meteo },
+              ].filter(s => s.data?.some(d => d != null)).map(source => (
+                <div key={source.name} className="flex mb-2 last:mb-0 items-stretch">
+                  <div className="flex-shrink-0 flex flex-col justify-center pr-2" style={{ width: 56 }}>
+                    <p className="text-[10px] font-bold" style={{ color: theme.sub }}>{source.name}</p>
+                    <p className="text-[8px]" style={{ color: theme.sub, opacity: 0.6 }}>{source.freq}</p>
+                  </div>
+                  {source.data.map((item, i) => (
+                    <div key={i} className="flex-shrink-0 rounded-lg mx-0.5 py-1.5 text-center"
+                      style={{ width: 42, background: item ? "rgba(255,254,254,0.28)" : "transparent" }}>
+                      {item ? (
+                        <>
+                          <p className="font-bold text-xs" style={{ color: theme.text }}>{Math.round(item.temp)}°</p>
+                          <p className="text-[9px] mt-0.5" style={{ color: theme.sub }}>{item.rainChance}%</p>
+                        </>
+                      ) : (
+                        <p className="text-[10px] py-1" style={{ color: theme.sub, opacity: 0.25 }}>·</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
 
         {/* 공기질 비교 카드 */}

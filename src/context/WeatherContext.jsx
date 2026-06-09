@@ -168,6 +168,40 @@ export function WeatherProvider({ children }) {
 
   const todayForecasts = useMemo(() => forecast.slice(0, 24), [forecast]);
 
+  // 24시간 공통 시간축 (현재시 ~ +23시) — 모든 기관 비교용
+  const hourSlots = useMemo(() => {
+    const now = new Date();
+    const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0);
+    return Array.from({ length: 24 }, (_, i) => {
+      const t = new Date(base.getTime() + i * 3600 * 1000);
+      return {
+        hour: t.getHours(),
+        label: i === 0 ? "지금" : `${t.getHours()}시`,
+        isMidnight: t.getHours() === 0,
+      };
+    });
+  }, [currentWeather]);
+
+  const alignForecast = (items) => {
+    const slots = Array(24).fill(null);
+    if (!items?.length) return slots;
+    const startH = hourSlots[0].hour;
+    items.forEach((f) => {
+      if (!f?.timeLabel) return;
+      const fh = parseInt(String(f.timeLabel).split(":")[0], 10);
+      if (isNaN(fh)) return;
+      const idx = (fh - startH + 24) % 24;
+      if (idx >= 0 && idx < 24 && !slots[idx]) slots[idx] = f;
+    });
+    return slots;
+  };
+
+  const alignedHourly = useMemo(() => ({
+    kma:   alignForecast(todayForecasts),
+    ow:    alignForecast(owForecast),
+    meteo: alignForecast(meteoForecast),
+  }), [todayForecasts, owForecast, meteoForecast, hourSlots]);
+
   const dailyForecasts = useMemo(() => {
     const todayLabel = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
     const grouped = {};
@@ -194,6 +228,7 @@ export function WeatherProvider({ children }) {
     <WeatherContext.Provider value={{
       coords, currentWeather, weather, forecast, todayForecasts, dailyForecasts,
       compareWeather, meteoWeather, owForecast, meteoForecast,
+      hourSlots, alignedHourly,
       displayLocation, weatherSource, loading, error, air, airOw, airMeteo, theme, speech,
       requestCurrentLocation,
     }}>
