@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+﻿import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { DEFAULT_LOCATION, reverseGeocode, getTheme, getSpeech, isKorea } from "../utils/weather";
 
 const WeatherContext = createContext(null);
@@ -23,9 +23,10 @@ export function WeatherProvider({ children }) {
       .catch(() => {});
   };
 
-  const requestCurrentLocation = () => {
+  // force=true 이면 KV 캐시 무시하고 기상청 직접 호출
+  const requestCurrentLocation = (force = false) => {
     if (!navigator.geolocation) {
-      fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
+      fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon, force);
       fetchAir(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
       return;
     }
@@ -35,28 +36,29 @@ export function WeatherProvider({ children }) {
         setCoords({ lat, lon });
         const name = await reverseGeocode(lat, lon);
         setDisplayLocation(name);
-        fetchWeatherData(lat, lon);
+        fetchWeatherData(lat, lon, force);
         fetchAir(lat, lon);
       },
       () => {
         setCoords(DEFAULT_LOCATION);
-        fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
+        fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon, force);
         fetchAir(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 600000 }
     );
   };
 
-  const fetchWeatherData = async (lat, lon) => {
+  const fetchWeatherData = async (lat, lon, force = false) => {
     try {
       setLoading(true);
       setError("");
       setCompareWeather(null);
       const korea = isKorea(lat, lon);
+      const forceParam = force ? "&force=1" : "";
 
       if (korea) {
         const [kmaRes, owRes] = await Promise.allSettled([
-          fetch(`/api/kma?lat=${lat}&lon=${lon}`),
+          fetch(`/api/kma?lat=${lat}&lon=${lon}${forceParam}`),
           fetch(`/api/openweather?lat=${lat}&lon=${lon}`),
         ]);
 
@@ -70,12 +72,13 @@ export function WeatherProvider({ children }) {
 
         if (owRes.status === "fulfilled" && owRes.value.ok) {
           const owData = await owRes.value.json();
-          const todayLabel = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
-          const todayFcst = (owData.forecast || []).filter(f => f.dateLabel === todayLabel);
+          // OW는 미래 예보만 반환 → 저녁엔 오늘 슬롯이 1~2개뿐
+          // → 다음 24h(8슬롯) 범위로 계산해야 의미있는 최고/최저
+          const next24 = (owData.forecast || []).slice(0, 8);
           const owCurrent = { ...owData.current };
-          if (todayFcst.length) {
-            owCurrent.high = Math.max(...todayFcst.map(f => f.tempMax ?? f.temp));
-            owCurrent.low = Math.min(...todayFcst.map(f => f.tempMin ?? f.temp));
+          if (next24.length) {
+            owCurrent.high = Math.max(...next24.map(f => f.tempMax ?? f.temp));
+            owCurrent.low  = Math.min(...next24.map(f => f.tempMin ?? f.temp));
           }
           setCompareWeather(owCurrent);
         }

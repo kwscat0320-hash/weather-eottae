@@ -51,7 +51,7 @@ export default function HomePage() {
             <span className="text-xs">{displayLocation}</span>
           </div>
         </div>
-        <button onClick={requestCurrentLocation}
+        <button onClick={() => requestCurrentLocation(true)}
           className="w-9 h-9 rounded-full flex items-center justify-center mt-1"
           style={{ background: "rgba(255,254,254,0.3)" }}>
           <RefreshCw size={16} style={{ color: theme.text }} />
