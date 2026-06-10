@@ -4,6 +4,7 @@ import { MapPin, RefreshCw, Droplets, Wind, Umbrella } from "lucide-react";
 import { useWeather } from "../context/WeatherContext";
 import { gradeInfo } from "../utils/weather";
 import AirDot from "../components/AirDot";
+import AirCompareCard from "../components/AirCompareCard";
 
 export default function HomePage({ scrollRef }) {
   const {
@@ -322,9 +323,9 @@ export default function HomePage({ scrollRef }) {
           theme={theme}
         />
 
-        {/* 공기질 비교 — 스와이프 카드 */}
-        {airSources.length >= 1 && (
-          <SwipeCompareCard title="공기질 비교" sources={airSources} theme={theme} />
+        {/* 공기질 비교 — 도넛 차트 */}
+        {(air || airOw || airMeteo) && (
+          <AirCompareCard air={air} airOw={airOw} airMeteo={airMeteo} theme={theme} />
         )}
 
         {/* 기상청 5일 예보 */}
