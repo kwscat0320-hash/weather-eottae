@@ -20,6 +20,7 @@ export function WeatherProvider({ children }) {
   const [compareWeather, setCompareWeather] = useState(null);
   const [meteoWeather, setMeteoWeather] = useState(null);
   const [owForecast, setOwForecast] = useState([]);
+  const [owDailyForecasts, setOwDailyForecasts] = useState([]);
   const [meteoForecast, setMeteoForecast] = useState([]);
   const [displayLocation, setDisplayLocation] = useState("서울");
   const [weatherSource, setWeatherSource] = useState("");
@@ -111,6 +112,31 @@ export function WeatherProvider({ children }) {
             owCurrent.low  = Math.min(...next24.map(f => f.tempMin ?? f.temp));
           }
           setCompareWeather(owCurrent);
+
+          // OW 일별 집계 (전체 40개 아이템 → 날짜별 min/max/rainChance)
+          const owDailyMap = {};
+          (owData.forecast || []).forEach(f => {
+            const key = f.dateLabel;
+            if (!owDailyMap[key]) owDailyMap[key] = { tempMins: [], tempMaxs: [], rainChances: [], conditions: [] };
+            owDailyMap[key].tempMins.push(f.tempMin ?? f.temp);
+            owDailyMap[key].tempMaxs.push(f.tempMax ?? f.temp);
+            owDailyMap[key].rainChances.push(f.rainChance ?? 0);
+            owDailyMap[key].conditions.push(f.condition);
+          });
+          const todayLbl = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+          setOwDailyForecasts(
+            Object.entries(owDailyMap)
+              .filter(([date]) => date !== todayLbl)
+              .map(([date, v]) => ({
+                date,
+                min: Math.min(...v.tempMins),
+                max: Math.max(...v.tempMaxs),
+                rainChance: Math.max(...v.rainChances),
+                condition: v.conditions[Math.floor(v.conditions.length / 2)],
+              }))
+              .slice(0, 5)
+          );
+
           // OW 시간별 예보 저장 (다음 8슬롯)
           setOwForecast((owData.forecast || []).slice(0, 8).map(f => ({
             timeLabel:     f.timeLabel,
@@ -312,7 +338,7 @@ export function WeatherProvider({ children }) {
   return (
     <WeatherContext.Provider value={{
       coords, currentWeather, weather, forecast, todayForecasts, dailyForecasts,
-      compareWeather, meteoWeather, owForecast, meteoForecast,
+      compareWeather, meteoWeather, owForecast, owDailyForecasts, meteoForecast,
       hourSlots, alignedHourly,
       displayLocation, weatherSource, loading, error, air, airOw, airMeteo, theme, speech,
       weatherHistory, forecastHistory,

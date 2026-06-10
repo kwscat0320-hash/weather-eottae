@@ -11,7 +11,7 @@ import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
 export default function HomePage({ scrollRef }) {
   const {
     weather, theme, speech, todayForecasts, dailyForecasts,
-    compareWeather, meteoWeather, owForecast, meteoForecast,
+    compareWeather, meteoWeather, owForecast, owDailyForecasts, meteoForecast,
     hourSlots, alignedHourly,
     displayLocation, loading, error,
     coords, requestCurrentLocation, air, airOw, airMeteo,
@@ -235,32 +235,21 @@ export default function HomePage({ scrollRef }) {
         />
 
 
-        {/* 기상청 5일 예보 */}
-        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>기상청 5일 예보</p>
-          <div className="space-y-3">
-            {dailyForecasts.map((day) => (
-              <div key={day.date} className="flex items-center justify-between"
-                style={{ opacity: day._fromHistory ? 0.65 : 1 }}>
-                <p className="text-sm font-medium w-28" style={{ color: theme.text }}>
-                  {day.date}
-                  {day._fromHistory && (
-                    <span className="text-[9px] ml-1" style={{ color: theme.sub, opacity: 0.7 }}>이력</span>
-                  )}
-                </p>
-                <p className="text-xs" style={{ color: theme.sub }}>비 {day.rainChance}%</p>
-                <p className="text-sm font-semibold" style={{ color: theme.text }}>
-                  {Number(day.min).toFixed(1)}° / {Number(day.max).toFixed(1)}°
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* 5일 예보 — 멀티소스 */}
+        <MultiDailyCard
+          dailyForecasts={dailyForecasts}
+          owDailyForecasts={owDailyForecasts}
+          meteoDaily={meteoWeather?.daily}
+          theme={theme}
+        />
 
-        {/* Open-Meteo 추가 정보 카드 */}
-        {meteoWeather && (
-          <MeteoExtraCard meteo={meteoWeather} theme={theme} />
-        )}
+        {/* 상세기상 — 멀티소스 */}
+        <DetailedWeatherCard
+          weather={weather}
+          compareWeather={compareWeather}
+          meteoWeather={meteoWeather}
+          theme={theme}
+        />
 
         {/* 최근 기상 기록 / 예보 이력 — 데이터만 유지, UI 미표시 */}
 
@@ -874,6 +863,187 @@ function WeatherHistoryCard({ history, theme }) {
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MultiDailyCard — 5일 예보 (기상청 / OW / Open-Meteo 탭+스와이프)
+// ══════════════════════════════════════════════════════════════════════════
+function MultiDailyCard({ dailyForecasts, owDailyForecasts, meteoDaily, theme }) {
+  const [active, setActive] = useState(0);
+  const [dir, setDir] = useState(1);
+
+  const sources = [
+    dailyForecasts?.length  ? { name: "기상청",     days: dailyForecasts.map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance, fromHistory: d._fromHistory })) } : null,
+    owDailyForecasts?.length ? { name: "OW",        days: owDailyForecasts.map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance })) } : null,
+    meteoDaily?.length       ? { name: "Open-Meteo", days: meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, min: d.tempMin, max: d.tempMax, rainChance: d.rainChance, condition: d.condition })) } : null,
+  ].filter(Boolean);
+
+  const goTo = (i) => { if (i === active) return; setDir(i > active ? 1 : -1); setActive(i); };
+  const handleDragEnd = (_, info) => {
+    if (info.offset.x < -50 && active < sources.length - 1) goTo(active + 1);
+    else if (info.offset.x > 50 && active > 0) goTo(active - 1);
+  };
+
+  if (!sources.length) return null;
+  const src = sources[active];
+
+  return (
+    <div className="rounded-3xl overflow-hidden" style={{ background: theme.card }}>
+      <div className="px-4 pt-4 pb-3">
+        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 예보</p>
+        <div className="flex gap-1.5">
+          {sources.map((s, i) => (
+            <button key={s.name} onClick={() => goTo(i)}
+              className="flex-1 py-1.5 rounded-2xl text-xs font-bold transition-all duration-200"
+              style={{
+                background: i === active ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.07)",
+                color: i === active ? theme.text : theme.sub,
+                boxShadow: i === active ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
+              }}>
+              {s.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <AnimatePresence mode="wait" custom={dir}>
+        <motion.div key={active} custom={dir}
+          variants={{ enter: (d) => ({ x: d * 48, opacity: 0 }), center: { x: 0, opacity: 1 }, exit: (d) => ({ x: d * -48, opacity: 0 }) }}
+          initial="enter" animate="center" exit="exit"
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.12}
+          onDragEnd={handleDragEnd}
+          className="px-4 pb-5 cursor-grab active:cursor-grabbing select-none"
+        >
+          <div className="space-y-3">
+            {src.days.map((day) => (
+              <div key={day.date} className="flex items-center justify-between"
+                style={{ opacity: day.fromHistory ? 0.65 : 1 }}>
+                <p className="text-sm font-medium w-28" style={{ color: theme.text }}>
+                  {day.date}
+                  {day.fromHistory && <span className="text-[9px] ml-1" style={{ color: theme.sub, opacity: 0.7 }}>이력</span>}
+                </p>
+                {day.condition && (
+                  <p className="text-xs flex-1 text-center truncate" style={{ color: theme.sub }}>{day.condition}</p>
+                )}
+                <p className="text-xs w-12 text-right" style={{ color: theme.sub }}>비 {day.rainChance ?? 0}%</p>
+                <p className="text-sm font-semibold w-24 text-right" style={{ color: theme.text }}>
+                  {day.min != null ? `${Number(day.min).toFixed(1)}°` : "—"} / {day.max != null ? `${Number(day.max).toFixed(1)}°` : "—"}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {sources.length > 1 && (
+            <div className="flex justify-center gap-1.5 mt-4">
+              {sources.map((_, i) => (
+                <motion.div key={i} animate={{ width: i === active ? 20 : 6 }} transition={{ duration: 0.25 }}
+                  className="rounded-full" style={{ height: 6, background: i === active ? theme.sub : `${theme.sub}55` }} />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DetailedWeatherCard — 상세기상 (기상청 / OW / Open-Meteo 탭+스와이프)
+// ══════════════════════════════════════════════════════════════════════════
+function DetailedWeatherCard({ weather, compareWeather, meteoWeather, theme }) {
+  const [active, setActive] = useState(0);
+  const [dir, setDir] = useState(1);
+
+  const commonRows = (w) => w ? [
+    { label: "날씨",     value: w.condition ?? "—" },
+    { label: "기온",     value: `${Number(w.temp).toFixed(1)}°` },
+    { label: "체감",     value: `${Number(w.feelsLike).toFixed(1)}°` },
+    { label: "최고",     value: `${Number(w.high).toFixed(1)}°` },
+    { label: "최저",     value: `${Number(w.low).toFixed(1)}°` },
+    { label: "습도",     value: `${w.humidity}%` },
+    { label: "바람",     value: `${Number(w.wind).toFixed(1)}m/s` },
+    { label: "강수확률", value: `${w.rainChance ?? 0}%` },
+  ] : null;
+
+  const meteoRows = meteoWeather ? [
+    { label: "일출",     value: meteoWeather.sunrise          ?? "—" },
+    { label: "일몰",     value: meteoWeather.sunset           ?? "—" },
+    { label: "일조",     value: meteoWeather.sunshineDuration ?? "—" },
+    { label: "자외선",   value: meteoWeather.uvIndex != null ? `${meteoWeather.uvIndex.toFixed(1)} (${meteoWeather.uvLevel})` : "—" },
+    { label: "가시거리", value: meteoWeather.visibility != null ? `${(meteoWeather.visibility / 1000).toFixed(1)}km` : "—" },
+    { label: "기압",     value: meteoWeather.pressureMsl != null ? `${Math.round(meteoWeather.pressureMsl)}hPa` : "—" },
+    { label: "풍향",     value: meteoWeather.windDirLabel ?? "—" },
+    { label: "돌풍",     value: meteoWeather.windGust != null ? `${Number(meteoWeather.windGust).toFixed(1)}m/s` : "—" },
+    { label: "운량",     value: meteoWeather.cloudCover != null ? `${meteoWeather.cloudCover}%` : "—" },
+    { label: "이슬점",   value: meteoWeather.dewPoint != null ? `${Math.round(meteoWeather.dewPoint)}°` : "—" },
+  ] : null;
+
+  const sources = [
+    weather      ? { name: "기상청",     rows: commonRows(weather) }      : null,
+    compareWeather ? { name: "OW",       rows: commonRows(compareWeather) } : null,
+    meteoRows      ? { name: "Open-Meteo", rows: meteoRows }               : null,
+  ].filter(Boolean);
+
+  const goTo = (i) => { if (i === active) return; setDir(i > active ? 1 : -1); setActive(i); };
+  const handleDragEnd = (_, info) => {
+    if (info.offset.x < -50 && active < sources.length - 1) goTo(active + 1);
+    else if (info.offset.x > 50 && active > 0) goTo(active - 1);
+  };
+
+  if (!sources.length) return null;
+  const src = sources[active];
+
+  return (
+    <div className="rounded-3xl overflow-hidden" style={{ background: theme.card }}>
+      <div className="px-4 pt-4 pb-3">
+        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>상세 기상</p>
+        <div className="flex gap-1.5">
+          {sources.map((s, i) => (
+            <button key={s.name} onClick={() => goTo(i)}
+              className="flex-1 py-1.5 rounded-2xl text-xs font-bold transition-all duration-200"
+              style={{
+                background: i === active ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.07)",
+                color: i === active ? theme.text : theme.sub,
+                boxShadow: i === active ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
+              }}>
+              {s.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <AnimatePresence mode="wait" custom={dir}>
+        <motion.div key={active} custom={dir}
+          variants={{ enter: (d) => ({ x: d * 48, opacity: 0 }), center: { x: 0, opacity: 1 }, exit: (d) => ({ x: d * -48, opacity: 0 }) }}
+          initial="enter" animate="center" exit="exit"
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.12}
+          onDragEnd={handleDragEnd}
+          className="px-4 pb-5 cursor-grab active:cursor-grabbing select-none"
+        >
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0">
+            {src.rows.map(({ label, value }, idx) => (
+              <div key={label} className="flex justify-between items-center py-1.5"
+                style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                <span className="text-xs" style={{ color: theme.sub }}>{label}</span>
+                <span className="text-xs font-semibold" style={{ color: theme.text }}>{value}</span>
+              </div>
+            ))}
+          </div>
+
+          {sources.length > 1 && (
+            <div className="flex justify-center gap-1.5 mt-4">
+              {sources.map((_, i) => (
+                <motion.div key={i} animate={{ width: i === active ? 20 : 6 }} transition={{ duration: 0.25 }}
+                  className="rounded-full" style={{ height: 6, background: i === active ? theme.sub : `${theme.sub}55` }} />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
