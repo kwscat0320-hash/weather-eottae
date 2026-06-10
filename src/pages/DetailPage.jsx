@@ -32,22 +32,22 @@ export default function DetailPage() {
               theme={theme}
               sources={[
                 { name: "기상청",       color: "#2563eb", rows: [
-                  { label: "현재 온도", value: `${Math.round(weather.temp)}°` },
-                  { label: "체감",      value: `${Math.round(weather.feelsLike)}°` },
-                  { label: "최고",      value: `${Math.round(weather.high)}°` },
-                  { label: "최저",      value: `${Math.round(weather.low)}°` },
+                  { label: "현재 온도", value: `${Number(weather.temp).toFixed(1)}°` },
+                  { label: "체감",      value: `${Number(weather.feelsLike).toFixed(1)}°` },
+                  { label: "최고",      value: `${Number(weather.high).toFixed(1)}°` },
+                  { label: "최저",      value: `${Number(weather.low).toFixed(1)}°` },
                 ]},
                 { name: "OpenWeather", color: "#ea580c", rows: [
-                  { label: "현재 온도", value: `${Math.round(compareWeather.temp)}°` },
-                  { label: "체감",      value: `${Math.round(compareWeather.feelsLike)}°` },
-                  { label: "최고",      value: `${Math.round(compareWeather.high)}°` },
-                  { label: "최저",      value: `${Math.round(compareWeather.low)}°` },
+                  { label: "현재 온도", value: `${Number(compareWeather.temp).toFixed(1)}°` },
+                  { label: "체감",      value: `${Number(compareWeather.feelsLike).toFixed(1)}°` },
+                  { label: "최고",      value: `${Number(compareWeather.high).toFixed(1)}°` },
+                  { label: "최저",      value: `${Number(compareWeather.low).toFixed(1)}°` },
                 ]},
                 ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", rows: [
-                  { label: "현재 온도", value: `${Math.round(meteoWeather.temp)}°` },
-                  { label: "체감",      value: `${Math.round(meteoWeather.feelsLike)}°` },
-                  { label: "최고",      value: `${Math.round(meteoWeather.high)}°` },
-                  { label: "최저",      value: `${Math.round(meteoWeather.low)}°` },
+                  { label: "현재 온도", value: `${Number(meteoWeather.temp).toFixed(1)}°` },
+                  { label: "체감",      value: `${Number(meteoWeather.feelsLike).toFixed(1)}°` },
+                  { label: "최고",      value: `${Number(meteoWeather.high).toFixed(1)}°` },
+                  { label: "최저",      value: `${Number(meteoWeather.low).toFixed(1)}°` },
                 ]}] : []),
               ]}
             />

@@ -153,10 +153,10 @@ export function WeatherProvider({ children }) {
     if (!currentWeather) return null;
     return {
       condition: currentWeather.condition || "날씨 정보 없음",
-      temp: Math.round(currentWeather.temp),
-      feelsLike: Math.round(currentWeather.feelsLike ?? currentWeather.temp),
-      high: Math.round(currentWeather.high ?? currentWeather.temp),
-      low: Math.round(currentWeather.low ?? currentWeather.temp),
+      temp: Number(currentWeather.temp),
+      feelsLike: Number(currentWeather.feelsLike ?? currentWeather.temp),
+      high: Number(currentWeather.high ?? currentWeather.temp),
+      low: Number(currentWeather.low ?? currentWeather.temp),
       rainChance: currentWeather.rainChance ?? 0,
       humidity: currentWeather.humidity ?? 0,
       wind: currentWeather.wind ?? 0,

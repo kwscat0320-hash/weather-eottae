@@ -66,9 +66,9 @@ export default function HomePage() {
         <div className="flex-1">
           <p className="text-xl font-semibold" style={{ color: theme.text }}>{weather?.condition}</p>
           <p className="text-xs font-semibold mt-1" style={{ color: theme.sub }}>현재온도</p>
-          <div className="font-bold leading-none mt-0.5" style={{ fontSize: 72, color: theme.text }}>{weather?.temp}°</div>
+          <div className="font-bold leading-none mt-0.5" style={{ fontSize: 72, color: theme.text }}>{weather?.temp.toFixed(1)}°</div>
           <p className="text-sm mt-2" style={{ color: theme.sub }}>
-            최고 {weather?.high}° / 최저 {weather?.low}° · 체감 {weather?.feelsLike}°
+            최고 {weather?.high.toFixed(1)}° / 최저 {weather?.low.toFixed(1)}° · 체감 {weather?.feelsLike.toFixed(1)}°
           </p>
         </div>
         <div className="relative flex flex-col items-end">
@@ -141,7 +141,7 @@ export default function HomePage() {
                       }}>
                       {item ? (
                         <>
-                          <p className="font-bold text-xs" style={{ color: theme.text }}>{Math.round(item.temp)}°</p>
+                          <p className="font-bold text-xs" style={{ color: theme.text }}>{Number(item.temp).toFixed(1)}°</p>
                           <p className="text-[9px] mt-0.5" style={{ color: theme.sub }}>{item.rainChance}%</p>
                         </>
                       ) : (
@@ -186,7 +186,7 @@ export default function HomePage() {
               <div key={day.date} className="flex items-center justify-between">
                 <p className="text-sm font-medium w-28" style={{ color: theme.text }}>{day.date}</p>
                 <p className="text-xs" style={{ color: theme.sub }}>비 {day.rainChance}%</p>
-                <p className="text-sm font-semibold" style={{ color: theme.text }}>{Math.round(day.min)}° / {Math.round(day.max)}°</p>
+                <p className="text-sm font-semibold" style={{ color: theme.text }}>{Number(day.min).toFixed(1)}° / {Number(day.max).toFixed(1)}°</p>
               </div>
             ))}
           </div>
@@ -296,10 +296,10 @@ function CompareCard({ kma, ow, meteo, theme }) {
       obs: kma.observedAt,
       vals: [
         kma.condition,
-        `${Math.round(kma.temp)}°`,
-        `${Math.round(kma.feelsLike)}°`,
-        `${Math.round(kma.high)}°`,
-        `${Math.round(kma.low)}°`,
+        `${Number(kma.temp).toFixed(1)}°`,
+        `${Number(kma.feelsLike).toFixed(1)}°`,
+        `${Number(kma.high).toFixed(1)}°`,
+        `${Number(kma.low).toFixed(1)}°`,
         `${kma.humidity}%`,
         `${Number(kma.wind).toFixed(1)}m/s`,
         `${kma.rainChance}%`,
@@ -310,10 +310,10 @@ function CompareCard({ kma, ow, meteo, theme }) {
       obs: ow.observedAt,
       vals: [
         ow.condition,
-        `${Math.round(ow.temp)}°`,
-        `${Math.round(ow.feelsLike)}°`,
-        `${Math.round(ow.high)}°`,
-        `${Math.round(ow.low)}°`,
+        `${Number(ow.temp).toFixed(1)}°`,
+        `${Number(ow.feelsLike).toFixed(1)}°`,
+        `${Number(ow.high).toFixed(1)}°`,
+        `${Number(ow.low).toFixed(1)}°`,
         `${ow.humidity}%`,
         `${Number(ow.wind).toFixed(1)}m/s`,
         `${ow.rainChance}%`,
@@ -324,10 +324,10 @@ function CompareCard({ kma, ow, meteo, theme }) {
       obs: meteo.observedAt,
       vals: [
         meteo.condition,
-        `${Math.round(meteo.temp)}°`,
-        `${Math.round(meteo.feelsLike)}°`,
-        `${Math.round(meteo.high)}°`,
-        `${Math.round(meteo.low)}°`,
+        `${Number(meteo.temp).toFixed(1)}°`,
+        `${Number(meteo.feelsLike).toFixed(1)}°`,
+        `${Number(meteo.high).toFixed(1)}°`,
+        `${Number(meteo.low).toFixed(1)}°`,
         `${meteo.humidity}%`,
         `${Number(meteo.wind).toFixed(1)}m/s`,
         `${meteo.rainChance}%`,

@@ -245,6 +245,17 @@ function buildForecast(vilageFcstItems, ultraFcstItems) {
     if (item.category === "TMX") officialByDate[d].TMX = Number(item.fcstValue);
   });
 
+  // POP(강수확률)은 3시간 간격으로만 제공됨
+  // → 01:00, 02:00 등 중간 슬롯에 POP 없으면 직전 값으로 forward-fill
+  let lastPop = null;
+  groups.forEach((g) => {
+    if (g.POP != null) {
+      lastPop = g.POP;
+    } else if (lastPop !== null) {
+      g.POP = lastPop;
+    }
+  });
+
   return groups.slice(0, 60).map((g) => {
     const date = parseKmaDate(g.fcstDate, g.fcstTime);
     const official = officialByDate[g.fcstDate] ?? {};
