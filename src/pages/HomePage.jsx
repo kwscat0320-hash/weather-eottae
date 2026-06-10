@@ -29,6 +29,45 @@ export default function HomePage({ scrollRef }) {
     return () => obs.disconnect();
   }, []);
 
+  // Pull-to-refresh: 최상단에서 위로 당기면 강제 갱신
+  const pullStartY = useRef(null);
+  const [pullDist, setPullDist] = useState(0);
+  const PULL_THRESHOLD = 72; // px
+
+  useEffect(() => {
+    const el = scrollRef?.current;
+    if (!el) return;
+
+    const onTouchStart = (e) => {
+      if (el.scrollTop === 0) {
+        pullStartY.current = e.touches[0].clientY;
+      }
+    };
+    const onTouchMove = (e) => {
+      if (pullStartY.current === null) return;
+      const dist = e.touches[0].clientY - pullStartY.current;
+      if (dist > 0) {
+        setPullDist(Math.min(dist, PULL_THRESHOLD + 24));
+      }
+    };
+    const onTouchEnd = () => {
+      if (pullDist >= PULL_THRESHOLD) {
+        requestCurrentLocation(true);
+      }
+      pullStartY.current = null;
+      setPullDist(0);
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove",  onTouchMove,  { passive: true });
+    el.addEventListener("touchend",   onTouchEnd);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove",  onTouchMove);
+      el.removeEventListener("touchend",   onTouchEnd);
+    };
+  }, [scrollRef, pullDist, requestCurrentLocation]);
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center" style={{ background: "#FFDF20" }}>
@@ -191,6 +230,24 @@ export default function HomePage({ scrollRef }) {
         className="absolute inset-0 z-20 overflow-y-auto"
         style={{ scrollbarWidth: "none" }}
       >
+        {/* Pull-to-refresh 인디케이터 */}
+        {pullDist > 0 && (
+          <div className="absolute top-0 left-0 right-0 flex justify-center z-30 pointer-events-none"
+            style={{ transform: `translateY(${Math.min(pullDist * 0.5, 36)}px)`, transition: "none" }}>
+            <div className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold"
+              style={{
+                background: "rgba(0,0,0,0.45)",
+                color: "#fff",
+                opacity: Math.min(pullDist / PULL_THRESHOLD, 1),
+              }}>
+              <RefreshCw size={13}
+                style={{ transform: `rotate(${pullDist * 3}deg)`,
+                  color: pullDist >= PULL_THRESHOLD ? "#4ade80" : "#fff" }} />
+              {pullDist >= PULL_THRESHOLD ? "놓으면 새로고침" : "당겨서 새로고침"}
+            </div>
+          </div>
+        )}
+
         {/* 투명 스페이서 — 날씨 섹션 높이만큼 띄워서 카드가 아래에서 시작 */}
         <div style={{ height: weatherHeight, flexShrink: 0 }} />
 
