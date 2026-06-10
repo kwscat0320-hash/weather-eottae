@@ -166,8 +166,6 @@ export function WeatherProvider({ children }) {
 
   const speech = getSpeech(theme, weather);
 
-  const todayForecasts = useMemo(() => forecast.slice(0, 24), [forecast]);
-
   // 24시간 공통 시간축 (현재시 ~ +23시) — 모든 기관 비교용
   const hourSlots = useMemo(() => {
     const now = new Date();
@@ -175,22 +173,45 @@ export function WeatherProvider({ children }) {
     return Array.from({ length: 24 }, (_, i) => {
       const t = new Date(base.getTime() + i * 3600 * 1000);
       return {
-        hour: t.getHours(),
-        label: i === 0 ? "지금" : `${t.getHours()}시`,
+        hour:      t.getHours(),
+        timestamp: t.getTime(),          // ← 날짜 경계 처리용 절대 ms
+        label:     i === 0 ? "지금" : `${t.getHours()}시`,
         isMidnight: t.getHours() === 0,
       };
     });
   }, [currentWeather]);
 
+  // KMA forecast: isoTime 기반으로 현재 24h 윈도우 정확히 필터
+  const todayForecasts = useMemo(() => {
+    if (!forecast.length) return [];
+    if (forecast[0]?.isoTime) {
+      const startMs = hourSlots[0]?.timestamp ?? Date.now();
+      const endMs   = startMs + 24 * 3600 * 1000;
+      return forecast.filter(f => {
+        const t = new Date(f.isoTime).getTime();
+        return t >= startMs && t < endMs;
+      });
+    }
+    return forecast.slice(0, 24);
+  }, [forecast, hourSlots]);
+
   const alignForecast = (items) => {
     const slots = Array(24).fill(null);
     if (!items?.length) return slots;
-    const startH = hourSlots[0].hour;
+    const startMs = hourSlots[0]?.timestamp;
+
     items.forEach((f) => {
       if (!f?.timeLabel) return;
-      const fh = parseInt(String(f.timeLabel).split(":")[0], 10);
-      if (isNaN(fh)) return;
-      const idx = (fh - startH + 24) % 24;
+      let idx;
+      if (f.isoTime && startMs) {
+        // isoTime이 있으면 ms 차이로 정확한 슬롯 계산 (날짜 경계 무관)
+        idx = Math.round((new Date(f.isoTime).getTime() - startMs) / 3600000);
+      } else {
+        // OW/Meteo: 시간 기반 폴백
+        const fh = parseInt(String(f.timeLabel).split(":")[0], 10);
+        if (isNaN(fh)) return;
+        idx = (fh - hourSlots[0].hour + 24) % 24;
+      }
       if (idx >= 0 && idx < 24 && !slots[idx]) slots[idx] = f;
     });
     return slots;

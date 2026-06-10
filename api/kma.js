@@ -2,7 +2,7 @@ import { request } from "https";
 import { kv } from "@vercel/kv";
 import { dfsXyConv } from "./_kma-utils.js";
 
-const CACHE_TTL_SEC = 7200;      // 캐시 유효 시간: 2시간
+const CACHE_TTL_SEC = 3600;      // 캐시 유효 시간: 1시간
 const HISTORY_TTL_SEC = 259200;  // 히스토리 보존: 3일
 const HISTORY_MAX = 36;          // 최대 스냅샷 수 (3일 × 12개/일)
 
@@ -266,6 +266,7 @@ function buildForecast(vilageFcstItems, ultraFcstItems) {
         weekday: "short",
       }),
       timeLabel: `${g.fcstTime.slice(0, 2)}:${g.fcstTime.slice(2, 4)}`,
+      isoTime: date.toISOString(),   // ← 날짜 경계 처리용 정확한 타임스탬프
       condition: getCondition(g.SKY, g.PTY),
       icon: getIcon(g.SKY, g.PTY),
       temp: Number(g.TMP ?? g.T1H ?? 0),
