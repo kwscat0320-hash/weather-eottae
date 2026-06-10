@@ -29,42 +29,13 @@ export default function DetailPage({ scrollRef }) {
       <div className="px-4 py-2 pb-32 space-y-3">
         {weather && compareWeather ? (
           <>
-            {/* 날씨 소스 비교 — 종합 */}
+            {/* 날씨 소스 비교 — 바 차트 */}
             <SectionTitle theme={theme}>날씨 소스 비교</SectionTitle>
-            <SwipeCompareCard
+            <WeatherSourcesChart
+              weather={weather}
+              compareWeather={compareWeather}
+              meteoWeather={meteoWeather}
               theme={theme}
-              sources={[
-                { name: "기상청", color: "#2563eb", rows: [
-                  { label: "날씨",     value: weather.condition },
-                  { label: "현재 기온", value: `${Number(weather.temp).toFixed(1)}°` },
-                  { label: "체감",     value: `${Number(weather.feelsLike).toFixed(1)}°` },
-                  { label: "최고",     value: `${Number(weather.high).toFixed(1)}°` },
-                  { label: "최저",     value: `${Number(weather.low).toFixed(1)}°` },
-                  { label: "습도",     value: `${weather.humidity}%` },
-                  { label: "바람",     value: `${Number(weather.wind).toFixed(1)}m/s` },
-                  { label: "강수확률", value: `${weather.rainChance}%` },
-                ]},
-                { name: "OW", color: "#ea580c", rows: [
-                  { label: "날씨",     value: compareWeather.condition },
-                  { label: "현재 기온", value: `${Number(compareWeather.temp).toFixed(1)}°` },
-                  { label: "체감",     value: `${Number(compareWeather.feelsLike).toFixed(1)}°` },
-                  { label: "최고",     value: `${Number(compareWeather.high).toFixed(1)}°` },
-                  { label: "최저",     value: `${Number(compareWeather.low).toFixed(1)}°` },
-                  { label: "습도",     value: `${compareWeather.humidity}%` },
-                  { label: "바람",     value: `${Number(compareWeather.wind).toFixed(1)}m/s` },
-                  { label: "강수확률", value: `${compareWeather.rainChance}%` },
-                ]},
-                ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", rows: [
-                  { label: "날씨",     value: meteoWeather.condition },
-                  { label: "현재 기온", value: `${Number(meteoWeather.temp).toFixed(1)}°` },
-                  { label: "체감",     value: `${Number(meteoWeather.feelsLike).toFixed(1)}°` },
-                  { label: "최고",     value: `${Number(meteoWeather.high).toFixed(1)}°` },
-                  { label: "최저",     value: `${Number(meteoWeather.low).toFixed(1)}°` },
-                  { label: "습도",     value: `${meteoWeather.humidity}%` },
-                  { label: "바람",     value: `${Number(meteoWeather.wind).toFixed(1)}m/s` },
-                  { label: "강수확률", value: `${meteoWeather.rainChance}%` },
-                ]}] : []),
-              ]}
             />
 
             {/* 현재 기온 비교 */}
@@ -281,6 +252,109 @@ function SwipeCompareCard({ sources, theme }) {
           )}
         </motion.div>
       </AnimatePresence>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// WeatherSourcesChart — 세 예보 모델 동시 바 차트 비교
+// ══════════════════════════════════════════════════════════════════════════
+const METRICS = [
+  { key: "temp",       label: "기온",    unit: "°",    fmt: v => Number(v).toFixed(1) },
+  { key: "feelsLike",  label: "체감",    unit: "°",    fmt: v => Number(v).toFixed(1) },
+  { key: "high",       label: "최고",    unit: "°",    fmt: v => Number(v).toFixed(1) },
+  { key: "low",        label: "최저",    unit: "°",    fmt: v => Number(v).toFixed(1) },
+  { key: "humidity",   label: "습도",    unit: "%",    fmt: v => Math.round(v), fixedMax: 100 },
+  { key: "wind",       label: "바람",    unit: "m/s",  fmt: v => Number(v).toFixed(1) },
+  { key: "rainChance", label: "강수확률", unit: "%",   fmt: v => Math.round(v), fixedMax: 100 },
+];
+
+function WeatherSourcesChart({ weather, compareWeather, meteoWeather, theme }) {
+  const sources = [
+    { name: "기상청",     color: "#2563eb", w: weather },
+    { name: "OW",         color: "#ea580c", w: compareWeather },
+    ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", w: meteoWeather }] : []),
+  ].filter(s => s.w);
+
+  return (
+    <div className="rounded-3xl p-5" style={{ background: theme.card }}>
+
+      {/* 범례 */}
+      <div className="flex gap-4 mb-5 flex-wrap">
+        {sources.map(s => (
+          <div key={s.name} className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: s.color }} />
+            <span className="text-xs font-semibold" style={{ color: theme.sub }}>{s.name}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* 날씨(텍스트) */}
+      <div className="mb-5">
+        <p className="text-[10px] font-semibold mb-2 uppercase tracking-wide" style={{ color: theme.sub, opacity: 0.55 }}>날씨</p>
+        <div className="flex gap-2 flex-wrap">
+          {sources.map(s => (
+            <span key={s.name} className="text-xs font-bold px-3 py-1 rounded-full"
+              style={{ background: `${s.color}22`, color: s.color }}>
+              {s.w.condition || "—"}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-5" style={{ height: 1, background: "rgba(0,0,0,0.07)" }} />
+
+      {/* 수치 메트릭 바 차트 */}
+      <div className="space-y-5">
+        {METRICS.map(metric => {
+          const vals = sources.map(s => ({ ...s, num: Number(s.w[metric.key]) || 0 }));
+          const allNums = vals.map(v => v.num);
+          const rawMax  = Math.max(...allNums);
+          const rawMin  = Math.min(...allNums);
+          // 온도: 값 범위를 넓혀 상대적 차이 부각, 퍼센트/기타: 0 기저
+          const baseMin = metric.unit === "°"
+            ? Math.max(0, rawMin - (rawMax - rawMin + 2) * 0.8)
+            : 0;
+          const scaleMax = metric.fixedMax ?? Math.max(rawMax * 1.15, baseMin + 1);
+
+          return (
+            <div key={metric.key}>
+              <p className="text-[10px] font-semibold mb-2 uppercase tracking-wide"
+                style={{ color: theme.sub, opacity: 0.55 }}>
+                {metric.label}
+              </p>
+              <div className="space-y-2">
+                {vals.map(v => {
+                  const pct = Math.min(
+                    Math.max(((v.num - baseMin) / (scaleMax - baseMin)) * 100, 5),
+                    100
+                  );
+                  const label = `${metric.fmt(v.num)}${metric.unit}`;
+                  return (
+                    <div key={v.name} className="flex items-center gap-2">
+                      <div className="flex-1 rounded-full overflow-hidden"
+                        style={{ height: 24, background: "rgba(0,0,0,0.07)" }}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.55, ease: "easeOut" }}
+                          className="h-full rounded-full flex items-center justify-end pr-2.5"
+                          style={{ background: v.color, minWidth: 48 }}
+                        >
+                          <span className="text-xs font-bold leading-none"
+                            style={{ color: "rgba(255,255,255,0.95)" }}>
+                            {label}
+                          </span>
+                        </motion.div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
