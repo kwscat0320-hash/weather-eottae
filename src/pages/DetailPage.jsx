@@ -4,9 +4,14 @@ import { useWeather } from "../context/WeatherContext";
 import { gradeInfo } from "../utils/weather";
 import AirDot from "../components/AirDot";
 import AirCompareCard from "../components/AirCompareCard";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
 
 export default function DetailPage({ scrollRef }) {
-  const { weather, compareWeather, meteoWeather, theme, displayLocation, loading, air, airOw, airMeteo } = useWeather();
+  const { weather, compareWeather, meteoWeather, theme, displayLocation, loading, air, airOw, airMeteo, requestCurrentLocation } = useWeather();
+
+  const handleForceRefresh = () => requestCurrentLocation(true);
+  const { pullDist, PULL_THRESHOLD, showToast } = usePullToRefresh(scrollRef, handleForceRefresh, loading);
 
   if (loading) {
     return (
@@ -17,8 +22,11 @@ export default function DetailPage({ scrollRef }) {
   }
 
   return (
-    <div ref={scrollRef} className={`flex-1 bg-gradient-to-b ${theme.bg} flex flex-col overflow-y-auto`}
-      style={{ fontFamily: "Inter, sans-serif", scrollbarWidth: "none" }}>
+    <div className={`flex-1 bg-gradient-to-b ${theme.bg} relative overflow-hidden`}
+      style={{ fontFamily: "Inter, sans-serif" }}>
+      <RefreshToast show={showToast} />
+      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+        <PullIndicator pullDist={pullDist} PULL_THRESHOLD={PULL_THRESHOLD} />
       {/* 헤더 */}
       <div className="px-6 pt-10 pb-4">
         <p className="text-xs mb-1" style={{ color: theme.sub }}>상세 비교</p>
@@ -133,6 +141,7 @@ export default function DetailPage({ scrollRef }) {
           <p className="text-xs text-center" style={{ color: theme.sub }}>추가 상세 데이터는 계속 업데이트됩니다</p>
         </div>
       </div>
+      </div>{/* 스크롤 레이어 끝 */}
     </div>
   );
 }

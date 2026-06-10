@@ -5,6 +5,8 @@ import { useWeather } from "../context/WeatherContext";
 import { gradeInfo } from "../utils/weather";
 import AirDot from "../components/AirDot";
 import AirCompareCard from "../components/AirCompareCard";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
 
 export default function HomePage({ scrollRef }) {
   const {
@@ -18,21 +20,8 @@ export default function HomePage({ scrollRef }) {
 
   const dateStr = new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
 
-  // 강제 새로고침 완료 시 토스트
-  const wasForceRef = useRef(false);
-  const [showToast, setShowToast] = useState(false);
-  const handleForceRefresh = () => {
-    wasForceRef.current = true;
-    requestCurrentLocation(true);
-  };
-  useEffect(() => {
-    if (!loading && wasForceRef.current) {
-      wasForceRef.current = false;
-      setShowToast(true);
-      const t = setTimeout(() => setShowToast(false), 1500);
-      return () => clearTimeout(t);
-    }
-  }, [loading]);
+  const handleForceRefresh = () => requestCurrentLocation(true);
+  const { pullDist, PULL_THRESHOLD, showToast } = usePullToRefresh(scrollRef, handleForceRefresh, loading);
 
   // 날씨 섹션 높이 측정 → 카드 스페이서에 사용
   const weatherRef = useRef(null);
@@ -45,45 +34,6 @@ export default function HomePage({ scrollRef }) {
     obs.observe(weatherRef.current);
     return () => obs.disconnect();
   }, []);
-
-  // Pull-to-refresh: 최상단에서 위로 당기면 강제 갱신
-  const pullStartY = useRef(null);
-  const [pullDist, setPullDist] = useState(0);
-  const PULL_THRESHOLD = 72; // px
-
-  useEffect(() => {
-    const el = scrollRef?.current;
-    if (!el) return;
-
-    const onTouchStart = (e) => {
-      if (el.scrollTop === 0) {
-        pullStartY.current = e.touches[0].clientY;
-      }
-    };
-    const onTouchMove = (e) => {
-      if (pullStartY.current === null) return;
-      const dist = e.touches[0].clientY - pullStartY.current;
-      if (dist > 0) {
-        setPullDist(Math.min(dist, PULL_THRESHOLD + 24));
-      }
-    };
-    const onTouchEnd = () => {
-      if (pullDist >= PULL_THRESHOLD) {
-        handleForceRefresh();
-      }
-      pullStartY.current = null;
-      setPullDist(0);
-    };
-
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove",  onTouchMove,  { passive: true });
-    el.addEventListener("touchend",   onTouchEnd);
-    return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove",  onTouchMove);
-      el.removeEventListener("touchend",   onTouchEnd);
-    };
-  }, [scrollRef, pullDist, requestCurrentLocation]);
 
   if (loading) {
     return (
@@ -189,30 +139,7 @@ export default function HomePage({ scrollRef }) {
   return (
     <div className={`flex-1 bg-gradient-to-b ${theme.bg} relative overflow-hidden`}>
 
-      {/* 새로고침 완료 토스트 */}
-      <AnimatePresence>
-        {showToast && (
-          <motion.div
-            key="toast"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.22 }}
-            className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center z-50 pointer-events-none"
-          >
-            <div className="px-5 py-3 rounded-2xl text-sm font-semibold"
-              style={{
-                background: "rgba(15,23,42,0.82)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                color: "#fff",
-                boxShadow: "0 4px 24px rgba(0,0,0,0.25)",
-              }}>
-              최신 데이터로 업데이트 되었습니다.
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <RefreshToast show={showToast} />
 
       {/* ══════════════════════════════════════════════════════════════════
           고정 배경 영역 — 절대 위치, 스크롤에 영향받지 않음
@@ -272,23 +199,7 @@ export default function HomePage({ scrollRef }) {
         className="absolute inset-0 z-20 overflow-y-auto"
         style={{ scrollbarWidth: "none" }}
       >
-        {/* Pull-to-refresh 인디케이터 */}
-        {pullDist > 0 && (
-          <div className="absolute top-0 left-0 right-0 flex justify-center z-30 pointer-events-none"
-            style={{ transform: `translateY(${Math.min(pullDist * 0.5, 36)}px)`, transition: "none" }}>
-            <div className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold"
-              style={{
-                background: "rgba(0,0,0,0.45)",
-                color: "#fff",
-                opacity: Math.min(pullDist / PULL_THRESHOLD, 1),
-              }}>
-              <RefreshCw size={13}
-                style={{ transform: `rotate(${pullDist * 3}deg)`,
-                  color: pullDist >= PULL_THRESHOLD ? "#4ade80" : "#fff" }} />
-              {pullDist >= PULL_THRESHOLD ? "놓으면 새로고침" : "당겨서 새로고침"}
-            </div>
-          </div>
-        )}
+        <PullIndicator pullDist={pullDist} PULL_THRESHOLD={PULL_THRESHOLD} />
 
         {/* 투명 스페이서 — 날씨 섹션 높이만큼 띄워서 카드가 아래에서 시작 */}
         <div style={{ height: weatherHeight, flexShrink: 0 }} />
