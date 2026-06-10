@@ -95,7 +95,7 @@ export function WeatherProvider({ children }) {
         if (meteoRes.status === "fulfilled" && meteoRes.value.ok) {
           const meteoData = await meteoRes.value.json();
           if (!meteoData.error) {
-            setMeteoWeather(meteoData);
+            setMeteoWeather(meteoData);           // current + 신규 필드 전체
             setMeteoForecast(meteoData.forecast || []);
             if (meteoData.air) setAirMeteo(meteoData.air);
           }

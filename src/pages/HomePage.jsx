@@ -192,6 +192,11 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Open-Meteo 추가 정보 카드 */}
+        {meteoWeather && (
+          <MeteoExtraCard meteo={meteoWeather} theme={theme} />
+        )}
+
         {/* 날씨 소스 비교 */}
         {compareWeather && (
           <CompareCard
@@ -238,6 +243,36 @@ function AirRow({ label, value, grade, sub, text }) {
       <div className="flex items-center gap-1">
         <AirDot color={dotColor} size={14} />
         <span className="text-[10px] font-bold" style={{ color: text }}>{value}㎍</span>
+      </div>
+    </div>
+  );
+}
+
+function MeteoExtraCard({ meteo, theme }) {
+  const items = [
+    { label: "일출",     value: meteo.sunrise    ?? "—" },
+    { label: "일몰",     value: meteo.sunset     ?? "—" },
+    { label: "일조",     value: meteo.sunshineDuration ?? "—" },
+    { label: "자외선",   value: meteo.uvIndex != null ? `${meteo.uvIndex.toFixed(1)} (${meteo.uvLevel})` : "—" },
+    { label: "가시거리", value: meteo.visibility != null ? `${(meteo.visibility / 1000).toFixed(1)}km` : "—" },
+    { label: "기압",     value: meteo.pressureMsl != null ? `${Math.round(meteo.pressureMsl)}hPa` : "—" },
+    { label: "풍향",     value: meteo.windDirLabel ?? "—" },
+    { label: "돌풍",     value: meteo.windGust != null ? `${Number(meteo.windGust).toFixed(1)}m/s` : "—" },
+    { label: "운량",     value: meteo.cloudCover != null ? `${meteo.cloudCover}%` : "—" },
+    { label: "이슬점",   value: meteo.dewPoint != null ? `${Math.round(meteo.dewPoint)}°` : "—" },
+  ];
+
+  return (
+    <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+      <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>상세 기상 (Open-Meteo)</p>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+        {items.map(({ label, value }) => (
+          <div key={label} className="flex justify-between items-center py-1"
+            style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+            <span className="text-xs" style={{ color: theme.sub }}>{label}</span>
+            <span className="text-xs font-semibold" style={{ color: theme.text }}>{value}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
