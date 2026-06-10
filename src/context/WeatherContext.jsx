@@ -111,31 +111,16 @@ export function WeatherProvider({ children }) {
             owCurrent.low  = Math.min(...next24.map(f => f.tempMin ?? f.temp));
           }
           setCompareWeather(owCurrent);
-          // OW 시간별 예보 — 현재 시 슬롯을 compareWeather 기준으로 주입해 일관성 확보
-          const nowHourMs = Date.now() - (Date.now() % (3600 * 1000));
-          const nowHourDate = new Date(nowHourMs);
-          const currentOwSlot = {
-            isoTime:       nowHourDate.toISOString(),
-            timeLabel:     nowHourDate.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
-            temp:          owCurrent.temp,
-            rainChance:    owCurrent.rainChance,
-            condition:     owCurrent.condition,
-            humidity:      owCurrent.humidity      ?? 0,
-            wind:          owCurrent.wind          ?? 0,
-            precipitation: 0,
-          };
-          setOwForecast([
-            currentOwSlot,
-            ...(owData.forecast || []).slice(0, 8).map(f => ({
-              timeLabel:     f.timeLabel,
-              temp:          f.temp,
-              rainChance:    f.rainChance,
-              condition:     f.condition,
-              humidity:      f.humidity      ?? 0,
-              wind:          f.wind          ?? 0,
-              precipitation: f.precipitation ?? 0,
-            })),
-          ]);
+          // OW 시간별 예보 저장 (다음 8슬롯)
+          setOwForecast((owData.forecast || []).slice(0, 8).map(f => ({
+            timeLabel:     f.timeLabel,
+            temp:          f.temp,
+            rainChance:    f.rainChance,
+            condition:     f.condition,
+            humidity:      f.humidity      ?? 0,
+            wind:          f.wind          ?? 0,
+            precipitation: f.precipitation ?? 0,
+          })));
         }
 
         // 이력 조회 (비동기 — 실패해도 무시)
