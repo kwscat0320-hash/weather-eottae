@@ -69,6 +69,7 @@ function secToHM(sec) {
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
 
   const { lat, lon } = req.query;
   if (!lat || !lon) return res.status(400).json({ error: "lat, lon 필요" });
@@ -110,12 +111,16 @@ export default async function handler(req, res) {
     const h = data.hourly;
 
     const now = new Date();
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
     const nowHour = now.getFullYear() + "-" +
       String(now.getMonth() + 1).padStart(2, "0") + "-" +
       String(now.getDate()).padStart(2, "0") + "T" +
       String(now.getHours()).padStart(2, "0") + ":00";
+
+    // Open-Meteo current.time = 모델이 유효한 시각 (ex. "2025-06-10T14:00")
+    // 이걸 observedAt으로 사용해야 "얼마나 최신인지" 정직하게 표시됨
+    const modelTime = c.time ? new Date(c.time) : now;
+    const mHH = String(modelTime.getHours()).padStart(2, "0");
+    const mMM = String(modelTime.getMinutes()).padStart(2, "0");
 
     // ── 시간별 예보 (현재 ~ +23h) ─────────────────────────────────────────
     const startIdx = (h.time || []).findIndex(t => t >= nowHour);
@@ -196,7 +201,7 @@ export default async function handler(req, res) {
       humidity:    c.relative_humidity_2m,
       wind:        c.wind_speed_10m,
       rainChance:  c.precipitation_probability ?? 0,
-      observedAt:  `${hh}:${mm} (Open-Meteo 모델)`,
+      observedAt:  `${mHH}:${mMM} (Open-Meteo 모델)`,
       // 신규 현재 날씨 필드
       dewPoint:       c.dew_point_2m,
       precipitation:  c.precipitation ?? 0,
