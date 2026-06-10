@@ -270,12 +270,43 @@ export function WeatherProvider({ children }) {
         grouped[key].tmps.push(item.temp);
       }
     });
-    return Object.values(grouped).slice(0, 5).map(({ tmps, min, max, ...rest }) => ({
+    const base = Object.values(grouped).slice(0, 5).map(({ tmps, min, max, ...rest }) => ({
       ...rest,
       min: min ?? Math.min(...tmps),
       max: max ?? Math.max(...tmps),
     }));
-  }, [forecast]);
+
+    // ── 오전 빈칸 보완: 5일치가 부족하면 최근 이력 예보에서 gap-fill ──────────
+    if (base.length < 5 && weatherHistory.length > 0) {
+      const existingDates = new Set(base.map(d => d.date));
+      // 예보 포함 이력 중 가장 최신 스냅샷
+      const latestWithFcst = weatherHistory.find(h => h.dailySummary?.length >= 2);
+      if (latestWithFcst) {
+        const fillers = latestWithFcst.dailySummary
+          .filter(d => !existingDates.has(d.dateLabel) && d.dateLabel !== todayLabel)
+          .map(d => ({ date: d.dateLabel, min: d.min, max: d.max, rainChance: d.rainChance, _fromHistory: true }));
+        return [...base, ...fillers].slice(0, 5);
+      }
+    }
+    return base;
+  }, [forecast, weatherHistory]);
+
+  // ── 날짜별 최신 예보 스냅샷 (예보 이력 카드용) ───────────────────────────
+  const forecastHistory = useMemo(() => {
+    if (!weatherHistory.length) return [];
+    const byDay = {};
+    weatherHistory.forEach(snap => {
+      if (!snap.dailySummary?.length) return;
+      const d = new Date(snap.savedAt);
+      const dayKey = d.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+      if (!byDay[dayKey] || snap.savedAt > byDay[dayKey].savedAt) {
+        byDay[dayKey] = { ...snap, dayKey };
+      }
+    });
+    return Object.values(byDay)
+      .sort((a, b) => b.savedAt - a.savedAt)
+      .slice(0, 3);    // 최근 3일
+  }, [weatherHistory]);
 
   return (
     <WeatherContext.Provider value={{
@@ -283,7 +314,7 @@ export function WeatherProvider({ children }) {
       compareWeather, meteoWeather, owForecast, meteoForecast,
       hourSlots, alignedHourly,
       displayLocation, weatherSource, loading, error, air, airOw, airMeteo, theme, speech,
-      weatherHistory,
+      weatherHistory, forecastHistory,
       requestCurrentLocation,
     }}>
       {children}

@@ -12,7 +12,7 @@ export default function HomePage() {
     hourSlots, alignedHourly,
     displayLocation, loading, error,
     coords, requestCurrentLocation, air, airOw, airMeteo,
-    weatherHistory,
+    weatherHistory, forecastHistory,
   } = useWeather();
 
   const dateStr = new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
@@ -211,8 +211,14 @@ export default function HomePage() {
           <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>기상청 5일 예보</p>
           <div className="space-y-3">
             {dailyForecasts.map((day) => (
-              <div key={day.date} className="flex items-center justify-between">
-                <p className="text-sm font-medium w-28" style={{ color: theme.text }}>{day.date}</p>
+              <div key={day.date} className="flex items-center justify-between"
+                style={{ opacity: day._fromHistory ? 0.65 : 1 }}>
+                <p className="text-sm font-medium w-28" style={{ color: theme.text }}>
+                  {day.date}
+                  {day._fromHistory && (
+                    <span className="text-[9px] ml-1" style={{ color: theme.sub, opacity: 0.7 }}>이력</span>
+                  )}
+                </p>
                 <p className="text-xs" style={{ color: theme.sub }}>비 {day.rainChance}%</p>
                 <p className="text-sm font-semibold" style={{ color: theme.text }}>
                   {Number(day.min).toFixed(1)}° / {Number(day.max).toFixed(1)}°
@@ -230,6 +236,11 @@ export default function HomePage() {
         {/* 최근 기상 기록 */}
         {weatherHistory && weatherHistory.length > 0 && (
           <WeatherHistoryCard history={weatherHistory} theme={theme} />
+        )}
+
+        {/* 예보 이력 — 그제/어제/오늘 저장된 3일치 예보 비교 */}
+        {forecastHistory && forecastHistory.length > 0 && (
+          <ForecastHistoryCard history={forecastHistory} theme={theme} />
         )}
 
       </div>
@@ -558,6 +569,131 @@ function AirCard({ label, value, grade, sub }) {
 // ══════════════════════════════════════════════════════════════════════════
 // WeatherHistoryCard — 최근 3일치 시간별 기상 이력
 // ══════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
+// ForecastHistoryCard — 그제/어제/오늘 저장된 예보 스와이프 비교
+// ══════════════════════════════════════════════════════════════════════════
+function ForecastHistoryCard({ history, theme }) {
+  const [active, setActive] = useState(0);
+  const [dir, setDir]       = useState(1);
+
+  const goTo = (i) => {
+    if (i === active) return;
+    setDir(i > active ? 1 : -1);
+    setActive(i);
+  };
+
+  const handleDragEnd = (_, info) => {
+    if (info.offset.x < -50 && active < history.length - 1) goTo(active + 1);
+    else if (info.offset.x > 50 && active > 0) goTo(active - 1);
+  };
+
+  const today     = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+  const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+
+  const tabLabel = (snap) => {
+    if (!snap.dayKey) return "—";
+    if (snap.dayKey === today) return "오늘 예보";
+    if (snap.dayKey === yesterday) return "어제 예보";
+    return snap.dayKey.replace(/\(.+\)/, "").trim() + " 예보";
+  };
+
+  const snap = history[active];
+  if (!snap) return null;
+
+  const savedTime = (() => {
+    const d = new Date(snap.savedAt);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")} 기준`;
+  })();
+
+  return (
+    <div className="rounded-3xl overflow-hidden" style={{ background: theme.card }}>
+
+      {/* 제목 + 탭 */}
+      <div className="px-4 pt-4 pb-3">
+        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>예보 이력</p>
+        <div className="flex gap-1.5">
+          {history.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i)}
+              className="flex-1 py-1.5 rounded-2xl text-xs font-bold transition-all duration-200"
+              style={{
+                background: i === active ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.07)",
+                color: i === active ? theme.text : theme.sub,
+                boxShadow: i === active ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
+              }}
+            >
+              {tabLabel(s)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 슬라이드 컨텐츠 */}
+      <AnimatePresence mode="wait" custom={dir}>
+        <motion.div
+          key={active}
+          custom={dir}
+          variants={{
+            enter:  (d) => ({ x: d * 48, opacity: 0 }),
+            center: { x: 0, opacity: 1 },
+            exit:   (d) => ({ x: d * -48, opacity: 0 }),
+          }}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.12}
+          onDragEnd={handleDragEnd}
+          className="px-4 pb-5 cursor-grab active:cursor-grabbing select-none"
+        >
+          {/* 저장 시각 */}
+          <p className="text-[10px] mb-3" style={{ color: theme.sub, opacity: 0.65 }}>
+            {savedTime} 저장된 예보
+          </p>
+
+          {/* 예보 행 */}
+          {(snap.dailySummary || []).map((day, idx) => (
+            <div key={day.dateLabel} className="flex items-center py-2"
+              style={{ borderBottom: idx < snap.dailySummary.length - 1 ? "1px solid rgba(0,0,0,0.06)" : "none" }}>
+              {/* 날짜 */}
+              <p className="text-xs font-medium flex-1" style={{ color: theme.text }}>
+                {day.dateLabel}
+              </p>
+              {/* 강수확률 */}
+              <p className="text-xs w-10 text-right" style={{ color: theme.sub }}>
+                비 {day.rainChance}%
+              </p>
+              {/* 최저 / 최고 */}
+              <p className="text-xs font-semibold w-24 text-right" style={{ color: theme.text }}>
+                {day.min != null ? `${Number(day.min).toFixed(1)}°` : "—"}
+                {" / "}
+                {day.max != null ? `${Number(day.max).toFixed(1)}°` : "—"}
+              </p>
+            </div>
+          ))}
+
+          {/* 인디케이터 */}
+          {history.length > 1 && (
+            <div className="flex justify-center gap-1.5 mt-4">
+              {history.map((_, i) => (
+                <motion.div key={i}
+                  animate={{ width: i === active ? 20 : 6 }}
+                  transition={{ duration: 0.25 }}
+                  className="rounded-full"
+                  style={{ height: 6, background: i === active ? theme.sub : `${theme.sub}55` }}
+                />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function WeatherHistoryCard({ history, theme }) {
   // savedAt 기준 내림차순 (최신 먼저)
   const sorted = [...history].sort((a, b) => b.savedAt - a.savedAt);
