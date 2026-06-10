@@ -4,7 +4,7 @@ import { useWeather } from "../context/WeatherContext";
 import { gradeInfo } from "../utils/weather";
 import AirDot from "../components/AirDot";
 
-export default function DetailPage() {
+export default function DetailPage({ scrollRef }) {
   const { weather, compareWeather, meteoWeather, theme, displayLocation, loading, air, airOw, airMeteo } = useWeather();
 
   if (loading) {
@@ -16,7 +16,8 @@ export default function DetailPage() {
   }
 
   return (
-    <div className={`flex-1 bg-gradient-to-b ${theme.bg} flex flex-col`} style={{ fontFamily: "Inter, sans-serif" }}>
+    <div ref={scrollRef} className={`flex-1 bg-gradient-to-b ${theme.bg} flex flex-col overflow-y-auto`}
+      style={{ fontFamily: "Inter, sans-serif", scrollbarWidth: "none" }}>
       {/* 헤더 */}
       <div className="px-6 pt-10 pb-4">
         <p className="text-xs mb-1" style={{ color: theme.sub }}>상세 비교</p>

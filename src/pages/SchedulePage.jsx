@@ -2,11 +2,12 @@ import React from "react";
 import { Calendar as CalendarIcon, Upload } from "lucide-react";
 import { useWeather } from "../context/WeatherContext";
 
-export default function SchedulePage() {
+export default function SchedulePage({ scrollRef }) {
   const { theme } = useWeather();
 
   return (
-    <div className={`flex-1 bg-gradient-to-b ${theme.bg} flex flex-col`}>
+    <div ref={scrollRef} className={`flex-1 bg-gradient-to-b ${theme.bg} flex flex-col overflow-y-auto`}
+      style={{ scrollbarWidth: "none" }}>
       <div className="px-6 pt-10 pb-4">
         <p className="text-xs mb-1" style={{ color: theme.sub }}>일정</p>
         <h1 className="text-xl font-bold" style={{ color: theme.text }}>일정별 날씨</h1>

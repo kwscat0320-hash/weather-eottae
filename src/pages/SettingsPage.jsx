@@ -1,8 +1,9 @@
 import React from "react";
 
-export default function SettingsPage() {
+export default function SettingsPage({ scrollRef }) {
   return (
-    <div className="flex-1 flex flex-col" style={{ background: "#f1f5f9", fontFamily: "Inter, sans-serif" }}>
+    <div ref={scrollRef} className="flex-1 flex flex-col overflow-y-auto"
+      style={{ background: "#f1f5f9", fontFamily: "Inter, sans-serif", scrollbarWidth: "none" }}>
       <div className="px-6 pt-12 pb-4" style={{ background: "#0f172a" }}>
         <p className="text-xs text-slate-400 mb-1">환경설정</p>
         <h1 className="text-white text-xl font-bold">설정</h1>

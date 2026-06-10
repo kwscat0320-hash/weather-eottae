@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, RefreshCw, Droplets, Wind, Umbrella } from "lucide-react";
 import { useWeather } from "../context/WeatherContext";
 import { gradeInfo } from "../utils/weather";
 import AirDot from "../components/AirDot";
 
-export default function HomePage() {
+export default function HomePage({ scrollRef }) {
   const {
     weather, theme, speech, todayForecasts, dailyForecasts,
     compareWeather, meteoWeather, owForecast, meteoForecast,
@@ -16,6 +16,18 @@ export default function HomePage() {
   } = useWeather();
 
   const dateStr = new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
+
+  // 날씨 섹션 높이 측정 → 카드 스페이서에 사용
+  const weatherRef = useRef(null);
+  const [weatherHeight, setWeatherHeight] = useState(340);
+  useEffect(() => {
+    if (!weatherRef.current) return;
+    const obs = new ResizeObserver(entries => {
+      setWeatherHeight(entries[0].contentRect.height);
+    });
+    obs.observe(weatherRef.current);
+    return () => obs.disconnect();
+  }, []);
 
   if (loading) {
     return (
@@ -119,12 +131,12 @@ export default function HomePage() {
   ];
 
   return (
-    <div className={`flex-1 bg-gradient-to-b ${theme.bg} flex flex-col`}>
+    <div className={`flex-1 bg-gradient-to-b ${theme.bg} relative overflow-hidden`}>
 
       {/* ══════════════════════════════════════════════════════════════════
-          고정 배경 영역 — 카드가 스크롤되어도 이 섹션은 상단에 고정됩니다
+          고정 배경 영역 — 절대 위치, 스크롤에 영향받지 않음
       ══════════════════════════════════════════════════════════════════ */}
-      <div className={`sticky top-0 z-20 bg-gradient-to-b ${theme.bg}`}>
+      <div ref={weatherRef} className="absolute top-0 left-0 right-0 z-10 pointer-events-auto">
 
         {/* 상단 바 */}
         <div className="flex items-start justify-between px-6 pt-10 pb-0">
@@ -169,10 +181,21 @@ export default function HomePage() {
         </div>
 
       </div>
-      {/* ═══════════════════════════════ 고정 영역 끝 ════════════════════ */}
+      {/* ═══════════════════════════════ 고정 배경 끝 ════════════════════ */}
 
-      {/* ── 스크롤 카드 영역 ─────────────────────────────────────────────── */}
-      <div className="px-4 pb-32 space-y-3 mt-1">
+      {/* ══════════════════════════════════════════════════════════════════
+          스크롤 레이어 — 카드들만 위로 올라가며 배경을 덮음
+      ══════════════════════════════════════════════════════════════════ */}
+      <div
+        ref={scrollRef}
+        className="absolute inset-0 z-20 overflow-y-auto"
+        style={{ scrollbarWidth: "none" }}
+      >
+        {/* 투명 스페이서 — 날씨 섹션 높이만큼 띄워서 카드가 아래에서 시작 */}
+        <div style={{ height: weatherHeight, flexShrink: 0 }} />
+
+        {/* 카드 래퍼 — 여기서부터 올라오며 배경을 덮음 */}
+        <div className="px-4 pb-32 space-y-3">
 
         {/* 요약 카드 */}
         <div className="rounded-3xl p-4" style={{ background: theme.card }}>
@@ -243,7 +266,8 @@ export default function HomePage() {
           <ForecastHistoryCard history={forecastHistory} theme={theme} />
         )}
 
-      </div>
+        </div>{/* 카드 래퍼 끝 */}
+      </div>{/* 스크롤 레이어 끝 */}
     </div>
   );
 }

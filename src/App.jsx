@@ -29,11 +29,9 @@ export default function App() {
     <WeatherProvider>
       <div className="min-h-screen bg-slate-300 flex justify-center" style={{ fontFamily: "Inter, sans-serif" }}>
         <div
-          ref={scrollRef}
-          className="w-full max-w-[393px] min-h-screen flex flex-col overflow-y-auto relative"
-          style={{ scrollbarWidth: "none" }}
+          className="w-full max-w-[393px] h-screen flex flex-col overflow-hidden relative"
         >
-          <PageComponent />
+          <PageComponent scrollRef={scrollRef} />
           <BottomNav current={currentPage} onChange={handlePageChange} scrollRef={scrollRef} />
         </div>
       </div>
