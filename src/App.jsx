@@ -2,10 +2,18 @@
 import { WeatherProvider } from "./context/WeatherContext";
 import BottomNav from "./components/BottomNav";
 import HomePage from "./pages/HomePage";
+import FavoritesPage from "./pages/FavoritesPage";
+import SchedulePage from "./pages/SchedulePage";
 import DetailPage from "./pages/DetailPage";
 import SettingsPage from "./pages/SettingsPage";
 
-const PAGES = { home: HomePage, detail: DetailPage, settings: SettingsPage };
+const PAGES = {
+  home: HomePage,
+  favorites: FavoritesPage,
+  schedule: SchedulePage,
+  detail: DetailPage,
+  settings: SettingsPage,
+};
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState("home");

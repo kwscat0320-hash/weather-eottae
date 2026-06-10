@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Home, BarChart2, Settings } from "lucide-react";
+import { Home, MapPin, Calendar, BarChart2, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const TABS = [
-  { id: "home",     label: "홈",   Icon: Home },
-  { id: "detail",   label: "상세", Icon: BarChart2 },
-  { id: "settings", label: "설정", Icon: Settings },
+  { id: "home",      label: "홈",     Icon: Home },
+  { id: "favorites", label: "관심",   Icon: MapPin },
+  { id: "schedule",  label: "일정",   Icon: Calendar },
+  { id: "detail",    label: "상세",   Icon: BarChart2 },
+  { id: "settings",  label: "설정",   Icon: Settings },
 ];
 
 export default function BottomNav({ current, onChange, scrollRef }) {
@@ -60,7 +62,7 @@ export default function BottomNav({ current, onChange, scrollRef }) {
             <button
               key={id}
               onClick={() => onChange(id)}
-              className="flex flex-col items-center gap-1 px-6 py-2 rounded-2xl transition-all duration-200"
+              className="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 flex-1"
               style={{
                 background: active ? "rgba(255,255,255,0.14)" : "transparent",
                 color: active ? "#ffffff" : "rgba(255,255,255,0.45)",
