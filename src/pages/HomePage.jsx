@@ -17,6 +17,22 @@ export default function HomePage({ scrollRef }) {
 
   const dateStr = new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
 
+  // 강제 새로고침 완료 시 토스트
+  const wasForceRef = useRef(false);
+  const [showToast, setShowToast] = useState(false);
+  const handleForceRefresh = () => {
+    wasForceRef.current = true;
+    requestCurrentLocation(true);
+  };
+  useEffect(() => {
+    if (!loading && wasForceRef.current) {
+      wasForceRef.current = false;
+      setShowToast(true);
+      const t = setTimeout(() => setShowToast(false), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [loading]);
+
   // 날씨 섹션 높이 측정 → 카드 스페이서에 사용
   const weatherRef = useRef(null);
   const [weatherHeight, setWeatherHeight] = useState(340);
@@ -52,7 +68,7 @@ export default function HomePage({ scrollRef }) {
     };
     const onTouchEnd = () => {
       if (pullDist >= PULL_THRESHOLD) {
-        requestCurrentLocation(true);
+        handleForceRefresh();
       }
       pullStartY.current = null;
       setPullDist(0);
@@ -172,6 +188,31 @@ export default function HomePage({ scrollRef }) {
   return (
     <div className={`flex-1 bg-gradient-to-b ${theme.bg} relative overflow-hidden`}>
 
+      {/* 새로고침 완료 토스트 */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            key="toast"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.22 }}
+            className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center z-50 pointer-events-none"
+          >
+            <div className="px-5 py-3 rounded-2xl text-sm font-semibold"
+              style={{
+                background: "rgba(15,23,42,0.82)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                color: "#fff",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.25)",
+              }}>
+              최신 데이터로 업데이트 되었습니다.
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ══════════════════════════════════════════════════════════════════
           고정 배경 영역 — 절대 위치, 스크롤에 영향받지 않음
       ══════════════════════════════════════════════════════════════════ */}
@@ -186,7 +227,7 @@ export default function HomePage({ scrollRef }) {
               <span className="text-xs">{displayLocation}</span>
             </div>
           </div>
-          <button onClick={() => requestCurrentLocation(true)}
+          <button onClick={handleForceRefresh}
             className="w-9 h-9 rounded-full flex items-center justify-center mt-1"
             style={{ background: "rgba(255,254,254,0.3)" }}>
             <RefreshCw size={16} style={{ color: theme.text }} />
