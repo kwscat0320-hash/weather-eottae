@@ -322,11 +322,6 @@ export default function HomePage({ scrollRef }) {
           theme={theme}
         />
 
-        {/* 날씨 소스 비교 — 스와이프 카드 */}
-        {weatherSources.length >= 1 && (
-          <SwipeCompareCard title="날씨 소스 비교" sources={weatherSources} theme={theme} />
-        )}
-
         {/* 공기질 비교 — 스와이프 카드 */}
         {airSources.length >= 1 && (
           <SwipeCompareCard title="공기질 비교" sources={airSources} theme={theme} />
@@ -511,8 +506,8 @@ const HOURLY_ROWS = [
     fmt: (v) => (v != null && v !== 0) ? `${Number(v).toFixed(1)}` : "—" },
 ];
 
-const COL_W    = 52;   // 데이터 컬럼 너비 (px)
-const LABEL_W  = 44;   // 행 레이블 너비 (px)
+const COL_W    = 64;   // 데이터 컬럼 너비 (px)
+const LABEL_W  = 52;   // 행 레이블 너비 (px)
 
 function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
   const [active, setActive] = useState(0);
@@ -596,7 +591,7 @@ function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
                 <div className="flex-shrink-0" style={{ width: LABEL_W }} />
                 {(hourSlots || []).map((s, i) => (
                   <div key={i} className="flex-shrink-0 text-center" style={{ width: COL_W }}>
-                    <p className="text-xs font-semibold"
+                    <p className="text-sm font-semibold"
                       style={{ color: theme.sub, opacity: s.isMidnight ? 1 : 0.65 }}>
                       {s.label}
                     </p>
@@ -610,10 +605,10 @@ function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
               {/* 데이터 행 */}
               {HOURLY_ROWS.map((row, rowIdx) => (
                 <div key={row.key} className="flex items-center"
-                  style={{ marginBottom: rowIdx < HOURLY_ROWS.length - 1 ? 8 : 0 }}>
+                  style={{ marginBottom: rowIdx < HOURLY_ROWS.length - 1 ? 12 : 0 }}>
                   {/* 행 레이블 */}
                   <div className="flex-shrink-0 flex items-center" style={{ width: LABEL_W }}>
-                    <p className="text-[10px] font-semibold" style={{ color: theme.sub, opacity: 0.7 }}>
+                    <p className="text-xs font-semibold" style={{ color: theme.sub, opacity: 0.7 }}>
                       {row.label}
                     </p>
                   </div>
@@ -623,15 +618,15 @@ function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
                     const val = item ? row.fmt(item[row.key]) : null;
                     const isFilled = item?._filled;
                     return (
-                      <div key={colIdx} className="flex-shrink-0 text-center rounded-md py-0.5"
+                      <div key={colIdx} className="flex-shrink-0 text-center rounded-md py-1"
                         style={{ width: COL_W, opacity: isFilled ? 0.5 : 1 }}>
                         {val != null ? (
-                          <p className={`text-xs ${row.bold ? "font-bold" : "font-medium"}`}
+                          <p className={`text-sm ${row.bold ? "font-bold" : "font-medium"}`}
                             style={{ color: row.bold ? theme.text : theme.sub }}>
                             {val}
                           </p>
                         ) : (
-                          <p className="text-xs" style={{ color: theme.sub, opacity: 0.2 }}>·</p>
+                          <p className="text-sm" style={{ color: theme.sub, opacity: 0.2 }}>·</p>
                         )}
                       </div>
                     );
