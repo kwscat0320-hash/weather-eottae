@@ -22,6 +22,10 @@ export function WeatherProvider({ children }) {
   const [owForecast, setOwForecast] = useState([]);
   const [owDailyForecasts, setOwDailyForecasts] = useState([]);
   const [meteoForecast, setMeteoForecast] = useState([]);
+  const [wapiWeather, setWapiWeather] = useState(null);
+  const [wapiForecast, setWapiForecast] = useState([]);
+  const [wapiDailyForecasts, setWapiDailyForecasts] = useState([]);
+  const [airWapi, setAirWapi] = useState(null);
   const [displayLocation, setDisplayLocation] = useState("서울");
   const [weatherSource, setWeatherSource] = useState("");
   const [loading, setLoading] = useState(true);
@@ -80,10 +84,11 @@ export function WeatherProvider({ children }) {
       const forceParam = force ? "&force=1" : "";
 
       if (korea) {
-        const [kmaRes, owRes, meteoRes] = await Promise.allSettled([
+        const [kmaRes, owRes, meteoRes, wapiRes] = await Promise.allSettled([
           fetch(`/api/kma?lat=${lat}&lon=${lon}${forceParam}`),
           fetch(`/api/openweather?lat=${lat}&lon=${lon}`),
           fetch(`/api/openmeteo?lat=${lat}&lon=${lon}`),
+          fetch(`/api/weatherapi?lat=${lat}&lon=${lon}`),
         ]);
 
         if (kmaRes.status !== "fulfilled" || !kmaRes.value.ok) {
@@ -97,9 +102,19 @@ export function WeatherProvider({ children }) {
         if (meteoRes.status === "fulfilled" && meteoRes.value.ok) {
           const meteoData = await meteoRes.value.json();
           if (!meteoData.error) {
-            setMeteoWeather(meteoData);           // current + 신규 필드 전체
+            setMeteoWeather(meteoData);
             setMeteoForecast(meteoData.forecast || []);
             if (meteoData.air) setAirMeteo(meteoData.air);
+          }
+        }
+
+        if (wapiRes.status === "fulfilled" && wapiRes.value.ok) {
+          const wapiData = await wapiRes.value.json();
+          if (!wapiData.error) {
+            setWapiWeather(wapiData.current);
+            setWapiForecast(wapiData.forecast || []);
+            setWapiDailyForecasts(wapiData.daily || []);
+            if (wapiData.air) setAirWapi(wapiData.air);
           }
         }
 
@@ -280,7 +295,8 @@ export function WeatherProvider({ children }) {
     kma:   alignForecast(todayForecasts),
     ow:    fillGaps(alignForecast(owForecast)),
     meteo: alignForecast(meteoForecast),
-  }), [todayForecasts, owForecast, meteoForecast, hourSlots]);
+    wapi:  alignForecast(wapiForecast),
+  }), [todayForecasts, owForecast, meteoForecast, wapiForecast, hourSlots]);
 
   const dailyForecasts = useMemo(() => {
     const todayLabel = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
@@ -339,8 +355,9 @@ export function WeatherProvider({ children }) {
     <WeatherContext.Provider value={{
       coords, currentWeather, weather, forecast, todayForecasts, dailyForecasts,
       compareWeather, meteoWeather, owForecast, owDailyForecasts, meteoForecast,
+      wapiWeather, wapiForecast, wapiDailyForecasts,
       hourSlots, alignedHourly,
-      displayLocation, weatherSource, loading, error, air, airOw, airMeteo, theme, speech,
+      displayLocation, weatherSource, loading, error, air, airOw, airMeteo, airWapi, theme, speech,
       weatherHistory, forecastHistory,
       requestCurrentLocation,
     }}>

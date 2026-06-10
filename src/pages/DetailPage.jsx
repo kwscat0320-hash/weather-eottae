@@ -8,7 +8,7 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
 
 export default function DetailPage({ scrollRef }) {
-  const { weather, compareWeather, meteoWeather, theme, displayLocation, loading, air, airOw, airMeteo, requestCurrentLocation } = useWeather();
+  const { weather, compareWeather, meteoWeather, wapiWeather, theme, displayLocation, loading, air, airOw, airMeteo, airWapi, requestCurrentLocation } = useWeather();
 
   const handleForceRefresh = () => requestCurrentLocation(true);
   const { pullDist, PULL_THRESHOLD, showToast } = usePullToRefresh(scrollRef, handleForceRefresh, loading);
@@ -45,6 +45,7 @@ export default function DetailPage({ scrollRef }) {
                   { name: "기상청",     color: "#2563eb", cond: weather.condition },
                   { name: "OW",         color: "#ea580c", cond: compareWeather.condition },
                   ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", cond: meteoWeather.condition }] : []),
+                  ...(wapiWeather  ? [{ name: "WeatherAPI", color: "#7c3aed", cond: wapiWeather.condition }] : []),
                 ];
                 return (
                   <div className="flex gap-2 flex-wrap">
@@ -70,6 +71,7 @@ export default function DetailPage({ scrollRef }) {
                   { name: "기상청", color: "#2563eb" },
                   { name: "OW",     color: "#ea580c" },
                   ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669" }] : []),
+                  ...(wapiWeather  ? [{ name: "WeatherAPI", color: "#7c3aed" }] : []),
                 ]}
                 theme={theme}
               />
@@ -77,6 +79,7 @@ export default function DetailPage({ scrollRef }) {
                 weather={weather}
                 compareWeather={compareWeather}
                 meteoWeather={meteoWeather}
+                wapiWeather={wapiWeather}
                 theme={theme}
               />
             </div>
@@ -89,6 +92,7 @@ export default function DetailPage({ scrollRef }) {
                   { name: "기상청", color: "#2563eb" },
                   { name: "OW",     color: "#ea580c" },
                   ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669" }] : []),
+                  ...(wapiWeather  ? [{ name: "WeatherAPI", color: "#7c3aed" }] : []),
                 ]}
                 theme={theme}
               />
@@ -96,6 +100,7 @@ export default function DetailPage({ scrollRef }) {
                 weather={weather}
                 compareWeather={compareWeather}
                 meteoWeather={meteoWeather}
+                wapiWeather={wapiWeather}
                 theme={theme}
               />
             </div>
@@ -115,10 +120,10 @@ export default function DetailPage({ scrollRef }) {
         )}
 
         {/* 대기질 비교 — 도넛 차트 */}
-        {(air || airOw || airMeteo) && (
+        {(air || airOw || airMeteo || airWapi) && (
           <>
             <SectionTitle theme={theme}>대기질 비교</SectionTitle>
-            <AirCompareCard air={air} airOw={airOw} airMeteo={airMeteo} theme={theme} />
+            <AirCompareCard air={air} airOw={airOw} airMeteo={airMeteo} airWapi={airWapi} theme={theme} />
           </>
         )}
       </div>

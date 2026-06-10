@@ -17,11 +17,12 @@ export function ChartLegend({ sources, theme }) {
 // ══════════════════════════════════════════════════════════════════════════
 // TemperatureBarChart — 세로 막대 그래프 (기온/체감/최고/최저 × 3소스)
 // ══════════════════════════════════════════════════════════════════════════
-export function TemperatureBarChart({ weather, compareWeather, meteoWeather, theme }) {
+export function TemperatureBarChart({ weather, compareWeather, meteoWeather, wapiWeather, theme }) {
   const sources = [
     { name: "기상청",     color: "#2563eb", w: weather },
     { name: "OW",         color: "#ea580c", w: compareWeather },
     ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", w: meteoWeather }] : []),
+    ...(wapiWeather  ? [{ name: "WeatherAPI", color: "#7c3aed", w: wapiWeather  }] : []),
   ].filter(s => s.w);
 
   const metrics = [
@@ -109,11 +110,12 @@ export function TemperatureBarChart({ weather, compareWeather, meteoWeather, the
 // ══════════════════════════════════════════════════════════════════════════
 // WeatherRadarChart — 레이더/거미줄 차트 (습도·바람·강수확률 × 3소스)
 // ══════════════════════════════════════════════════════════════════════════
-export function WeatherRadarChart({ weather, compareWeather, meteoWeather, theme }) {
+export function WeatherRadarChart({ weather, compareWeather, meteoWeather, wapiWeather, theme }) {
   const sources = [
     { name: "기상청",     color: "#2563eb", w: weather },
     { name: "OW",         color: "#ea580c", w: compareWeather },
     ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", w: meteoWeather }] : []),
+    ...(wapiWeather  ? [{ name: "WeatherAPI", color: "#7c3aed", w: wapiWeather  }] : []),
   ].filter(s => s.w);
 
   const allWind = sources.map(s => Number(s.w.wind) || 0);

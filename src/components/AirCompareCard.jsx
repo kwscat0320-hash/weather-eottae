@@ -5,7 +5,7 @@ import { gradeInfo } from "../utils/weather";
 // ══════════════════════════════════════════════════════════════════════════
 // AirCompareCard — 탭+스와이프, 소스별 도넛 차트 (미세먼지 / 초미세먼지)
 // ══════════════════════════════════════════════════════════════════════════
-export default function AirCompareCard({ air, airOw, airMeteo, theme }) {
+export default function AirCompareCard({ air, airOw, airMeteo, airWapi, theme }) {
   const [active, setActive] = useState(0);
   const [dir, setDir]       = useState(1);
 
@@ -23,6 +23,11 @@ export default function AirCompareCard({ air, airOw, airMeteo, theme }) {
     ...(airMeteo ? [{ name: "Open-Meteo", color: "#059669",
       pm10:  { value: airMeteo.pm10, grade: airMeteo.pm10Grade },
       pm25:  { value: airMeteo.pm25, grade: airMeteo.pm25Grade },
+      extra: null,
+    }] : []),
+    ...(airWapi ? [{ name: "WeatherAPI", color: "#7c3aed",
+      pm10:  { value: airWapi.pm10,  grade: airWapi.pm10Grade },
+      pm25:  { value: airWapi.pm25,  grade: airWapi.pm25Grade },
       extra: null,
     }] : []),
   ];
