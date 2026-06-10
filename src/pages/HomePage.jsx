@@ -323,10 +323,6 @@ export default function HomePage({ scrollRef }) {
           theme={theme}
         />
 
-        {/* 공기질 비교 — 도넛 차트 */}
-        {(air || airOw || airMeteo) && (
-          <AirCompareCard air={air} airOw={airOw} airMeteo={airMeteo} theme={theme} />
-        )}
 
         {/* 기상청 5일 예보 */}
         <div className="rounded-3xl p-4" style={{ background: theme.card }}>
