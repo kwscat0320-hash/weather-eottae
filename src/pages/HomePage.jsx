@@ -220,11 +220,11 @@ function AirCard({ label, value, grade, sub }) {
   const { dotColor, label: gradeLabel } = gradeInfo(grade);
   return (
     <div className="text-center">
-      <p className="text-xs font-bold" style={{ color: "#000000" }}>{label}</p>
+      <p className="text-xs" style={{ color: sub }}>{label}</p>
       <div className="flex justify-center mt-1">
         <AirDot color={dotColor} size={36} />
       </div>
-      <p className="text-xs font-bold mt-0.5" style={{ color: dotColor }}>{gradeLabel}</p>
+      <p className="text-xs font-bold mt-0.5" style={{ color: "#000000" }}>{gradeLabel}</p>
       <p className="text-[10px] mt-0.5" style={{ color: sub }}>{value !== "-" ? `${value}㎍/㎥` : "-"}</p>
     </div>
   );
