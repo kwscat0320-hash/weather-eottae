@@ -24,7 +24,8 @@ export function getTheme(condition = "") {
     return {
       img: "/characters/thunder.png",
       bg: "from-slate-900 via-indigo-950 to-slate-800",
-      card: "rgba(255,255,255,0.1)", text: "#ffffff", sub: "#a5b4fc",
+      card: "rgba(255,255,255,0.1)", cardsBg: "#1e2235",
+      text: "#ffffff", sub: "#a5b4fc",
       bubble: "bg-white", bubbleText: "#1C283C",
       speech: ["오늘 천둥번개 진짜 무서워요...", "절대 밖에 나가지 마세요!", "저 좀 안아주세요 🥺"],
     };
@@ -32,7 +33,8 @@ export function getTheme(condition = "") {
     return {
       img: "/characters/snow.png",
       bg: "from-sky-100 via-blue-50 to-indigo-100",
-      card: "rgba(255,255,255,0.6)", text: "#1e293b", sub: "#3b82f6",
+      card: "rgba(255,255,255,0.6)", cardsBg: "#dde8f8",
+      text: "#1e293b", sub: "#3b82f6",
       bubble: "bg-white", bubbleText: "#1C283C",
       speech: ["눈이 펑펑 와요! ❄️", "미끄러우니까 조심하세요~", "목도리 꼭 챙기기!"],
     };
@@ -40,7 +42,8 @@ export function getTheme(condition = "") {
     return {
       img: "/characters/shower.png",
       bg: "from-slate-700 via-slate-600 to-slate-800",
-      card: "rgba(255,255,255,0.1)", text: "#ffffff", sub: "#cbd5e1",
+      card: "rgba(255,255,255,0.1)", cardsBg: "#2d3748",
+      text: "#ffffff", sub: "#cbd5e1",
       bubble: "bg-white", bubbleText: "#1C283C",
       speech: ["갑자기 소나기 쏟아져요!", "우산 꼭 챙기세요 ☔", "저는 이미 다 젖었어요..."],
     };
@@ -48,7 +51,8 @@ export function getTheme(condition = "") {
     return {
       img: "/characters/rain.png",
       bg: "from-sky-500 via-blue-400 to-sky-600",
-      card: "rgba(255,255,255,0.2)", text: "#ffffff", sub: "#e0f2fe",
+      card: "rgba(255,255,255,0.2)", cardsBg: "#1d6fa8",
+      text: "#ffffff", sub: "#e0f2fe",
       bubble: "bg-white", bubbleText: "#1C283C",
       speech: ["비 오는 날도 나쁘지 않아요~ 🌧️", "우산 챙기셨나요?", "실내에서 따뜻하게 있어요!"],
     };
@@ -56,7 +60,8 @@ export function getTheme(condition = "") {
     return {
       img: "/characters/cloudy.png",
       bg: "from-slate-400 via-slate-300 to-slate-400",
-      card: "rgba(255,255,255,0.3)", text: "#0f172a", sub: "#475569",
+      card: "rgba(255,255,255,0.3)", cardsBg: "#a8b8cc",
+      text: "#0f172a", sub: "#475569",
       bubble: "bg-white", bubbleText: "#1C283C",
       speech: ["흐리고 우중충한 날이에요.", "기분도 같이 꿀꿀하네요...", "그래도 비는 안 와요!"],
     };
@@ -64,14 +69,17 @@ export function getTheme(condition = "") {
     return {
       img: "/characters/cloudy.png",
       bg: "from-slate-200 via-sky-100 to-slate-200",
-      card: "rgba(255,255,255,0.5)", text: "#1e293b", sub: "#64748b",
+      card: "rgba(255,255,255,0.5)", cardsBg: "#d8e6f0",
+      text: "#1e293b", sub: "#64748b",
       bubble: "bg-white", bubbleText: "#1C283C",
       speech: ["구름이 좀 있지만 괜찮아요!", "야외 활동 해볼 만해요 🐾", "가볍게 겉옷 하나 챙겨요~"],
     };
+  // 맑음 (기본)
   return {
     img: "/characters/sunny.png",
     bg: "from-[#FFDF20] to-[#FDE585]",
-    card: "rgba(255,254,254,0.4)", text: "#0E162B", sub: "#BA4C00",
+    card: "rgba(255,254,254,0.4)", cardsBg: "#FDE585",
+    text: "#0E162B", sub: "#BA4C00",
     bubble: "bg-white", bubbleText: "#1C283C",
     speech: ["오늘 날씨 너무 좋아요! ☀️", "나들이 가기 딱 좋은 날!", "저도 같이 나가고 싶어요 🐾"],
   };

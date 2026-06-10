@@ -194,8 +194,13 @@ export default function HomePage({ scrollRef }) {
         {/* 투명 스페이서 — 날씨 섹션 높이만큼 띄워서 카드가 아래에서 시작 */}
         <div style={{ height: weatherHeight, flexShrink: 0 }} />
 
-        {/* 카드 래퍼 — 여기서부터 올라오며 배경을 덮음 */}
-        <div className="px-4 pb-32 space-y-3">
+        {/* 카드 래퍼 — 여기서부터 올라오며 배경을 덮음 (불투명 배경으로 날씨 섹션 완전히 커버) */}
+        <div className="px-4 pb-32 space-y-3 pt-4"
+          style={{
+            background: theme.cardsBg,
+            borderRadius: "28px 28px 0 0",
+            minHeight: "100vh",
+          }}>
 
         {/* 요약 카드 */}
         <div className="rounded-3xl p-4" style={{ background: theme.card }}>
