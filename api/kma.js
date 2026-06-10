@@ -3,8 +3,8 @@ import { kv } from "@vercel/kv";
 import { dfsXyConv } from "./_kma-utils.js";
 
 const CACHE_TTL_SEC = 3600;      // 캐시 유효 시간: 1시간
-const HISTORY_TTL_SEC = 259200;  // 히스토리 보존: 3일
-const HISTORY_MAX = 36;          // 최대 스냅샷 수 (3일 × 12개/일)
+const HISTORY_TTL_SEC = 604800;  // 히스토리 보존: 7일
+const HISTORY_MAX = 72;          // 최대 스냅샷 수 (3일 × 24개/일)
 
 // Vercel 서버리스 프록시 — 브라우저 CORS 우회용
 

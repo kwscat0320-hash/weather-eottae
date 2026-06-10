@@ -28,6 +28,7 @@ export function WeatherProvider({ children }) {
   const [air, setAir] = useState(null);
   const [airOw, setAirOw] = useState(null);
   const [airMeteo, setAirMeteo] = useState(null);
+  const [weatherHistory, setWeatherHistory] = useState([]);
 
   useEffect(() => { requestCurrentLocation(); }, []);
 
@@ -120,6 +121,16 @@ export function WeatherProvider({ children }) {
             wind:       f.wind     ?? 0,
           })));
         }
+
+        // 이력 조회 (비동기 — 실패해도 무시)
+        fetch(`/api/kma-history?lat=${lat}&lon=${lon}`)
+          .then(r => r.json())
+          .then(d => {
+            if (Array.isArray(d)) {
+              setWeatherHistory(d.sort((a, b) => b.savedAt - a.savedAt));
+            }
+          })
+          .catch(() => {});
 
         const shortForecast = data.forecast || [];
         const shortLabels = new Set(shortForecast.map(f => f.dateLabel));
@@ -272,6 +283,7 @@ export function WeatherProvider({ children }) {
       compareWeather, meteoWeather, owForecast, meteoForecast,
       hourSlots, alignedHourly,
       displayLocation, weatherSource, loading, error, air, airOw, airMeteo, theme, speech,
+      weatherHistory,
       requestCurrentLocation,
     }}>
       {children}

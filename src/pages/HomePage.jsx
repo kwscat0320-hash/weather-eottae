@@ -12,6 +12,7 @@ export default function HomePage() {
     hourSlots, alignedHourly,
     displayLocation, loading, error,
     coords, requestCurrentLocation, air, airOw, airMeteo,
+    weatherHistory,
   } = useWeather();
 
   const dateStr = new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
@@ -224,6 +225,11 @@ export default function HomePage() {
         {/* Open-Meteo 추가 정보 카드 */}
         {meteoWeather && (
           <MeteoExtraCard meteo={meteoWeather} theme={theme} />
+        )}
+
+        {/* 최근 기상 기록 */}
+        {weatherHistory && weatherHistory.length > 0 && (
+          <WeatherHistoryCard history={weatherHistory} theme={theme} />
         )}
 
       </div>
@@ -545,6 +551,107 @@ function AirCard({ label, value, grade, sub }) {
       </div>
       <p className="text-xs font-bold mt-0.5" style={{ color: "#000000" }}>{gradeLabel}</p>
       <p className="text-[10px] mt-0.5" style={{ color: sub }}>{value !== "-" ? `${value}㎍/㎥` : "-"}</p>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// WeatherHistoryCard — 최근 3일치 시간별 기상 이력
+// ══════════════════════════════════════════════════════════════════════════
+function WeatherHistoryCard({ history, theme }) {
+  // savedAt 기준 내림차순 (최신 먼저)
+  const sorted = [...history].sort((a, b) => b.savedAt - a.savedAt);
+
+  // 날짜별로 그룹핑
+  const groups = [];
+  const seen = new Set();
+  sorted.forEach((snap) => {
+    if (!snap?.current || !snap.savedAt) return;
+    const d = new Date(snap.savedAt);
+    const dateKey = d.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+    const hourKey = `${snap.savedAt}-${dateKey}-${d.getHours()}`;
+    if (seen.has(hourKey)) return; // 같은 시간대 중복 제거
+    seen.add(hourKey);
+
+    const last = groups[groups.length - 1];
+    if (!last || last.dateKey !== dateKey) {
+      groups.push({ dateKey, items: [{ snap, d }] });
+    } else {
+      last.items.push({ snap, d });
+    }
+  });
+
+  const today    = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+  const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+
+  const dayLabel = (key) => {
+    if (key === today) return "오늘";
+    if (key === yesterday) return "어제";
+    return key;
+  };
+
+  return (
+    <div className="rounded-3xl overflow-hidden" style={{ background: theme.card }}>
+      <div className="px-4 pt-4 pb-3">
+        <p className="text-xs font-semibold" style={{ color: theme.sub }}>최근 기상 기록</p>
+        <p className="text-[9px] mt-0.5" style={{ color: theme.sub, opacity: 0.65 }}>
+          기상청 · 앱 접속 시 자동 저장 · 최근 3일
+        </p>
+      </div>
+
+      <div className="pb-4">
+        {groups.map(({ dateKey, items }) => (
+          <div key={dateKey}>
+            {/* 날짜 구분선 */}
+            <div className="flex items-center gap-2 px-4 py-1.5">
+              <div className="flex-1 h-px" style={{ background: `${theme.sub}30` }} />
+              <p className="text-[10px] font-bold" style={{ color: theme.sub }}>{dayLabel(dateKey)}</p>
+              <div className="flex-1 h-px" style={{ background: `${theme.sub}30` }} />
+            </div>
+
+            {/* 시간별 항목 */}
+            {items.map(({ snap, d }, idx) => {
+              const c = snap.current;
+              const hh = String(d.getHours()).padStart(2, "0");
+              const mm = String(d.getMinutes()).padStart(2, "0");
+              return (
+                <div key={idx}
+                  className="flex items-center px-4 py-2"
+                  style={{ borderBottom: idx < items.length - 1 ? `1px solid ${theme.sub}15` : "none" }}
+                >
+                  {/* 시각 */}
+                  <p className="text-xs font-bold w-12 flex-shrink-0" style={{ color: theme.sub }}>
+                    {hh}:{mm}
+                  </p>
+                  {/* 온도 */}
+                  <p className="text-sm font-bold w-16 flex-shrink-0" style={{ color: theme.text }}>
+                    {Number(c.temp).toFixed(1)}°
+                  </p>
+                  {/* 날씨 */}
+                  <p className="text-xs flex-1 truncate" style={{ color: theme.sub }}>
+                    {c.condition}
+                  </p>
+                  {/* 습도·바람 */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <p className="text-[10px]" style={{ color: theme.sub, opacity: 0.75 }}>
+                      💧{c.humidity}%
+                    </p>
+                    <p className="text-[10px]" style={{ color: theme.sub, opacity: 0.75 }}>
+                      🌬️{Number(c.wind).toFixed(1)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+
+        {groups.length === 0 && (
+          <p className="text-xs text-center py-4" style={{ color: theme.sub, opacity: 0.5 }}>
+            아직 저장된 기록이 없어요
+          </p>
+        )}
+      </div>
     </div>
   );
 }
