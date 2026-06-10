@@ -137,6 +137,12 @@ function BigAirDonut({ label, value, grade, maxScale, theme }) {
           )}
         </div>
       </div>
+      {/* min / max 레이블 — 열린 부분 양쪽 */}
+      <div style={{ width: size, display: "flex", justifyContent: "space-between", marginTop: -6 }}>
+        <span style={{ fontSize: 9, color: theme.sub, opacity: 0.5, fontWeight: 600 }}>0</span>
+        <span style={{ fontSize: 9, color: theme.sub, opacity: 0.5, fontWeight: 600 }}>{maxScale}</span>
+      </div>
+
       <p className="text-xs font-medium" style={{ color: theme.sub, opacity: 0.7 }}>
         {numVal > 0 ? `${numVal}㎍/㎥` : "—"}
       </p>
