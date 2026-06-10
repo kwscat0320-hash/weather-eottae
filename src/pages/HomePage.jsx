@@ -1,5 +1,5 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, RefreshCw, Droplets, Wind, Umbrella } from "lucide-react";
 import { useWeather } from "../context/WeatherContext";
 import { gradeInfo } from "../utils/weather";
@@ -43,50 +43,136 @@ export default function HomePage() {
     );
   }
 
+  // ── 날씨 소스 비교 데이터 ──────────────────────────────────────────────
+  const weatherSources = [
+    ...(weather ? [{
+      name: "기상청",
+      obs: weather.observedAt,
+      rows: [
+        { label: "날씨",     value: weather.condition },
+        { label: "기온",     value: `${Number(weather.temp).toFixed(1)}°` },
+        { label: "체감",     value: `${Number(weather.feelsLike).toFixed(1)}°` },
+        { label: "최고",     value: `${Number(weather.high).toFixed(1)}°` },
+        { label: "최저",     value: `${Number(weather.low).toFixed(1)}°` },
+        { label: "습도",     value: `${weather.humidity}%` },
+        { label: "바람",     value: `${Number(weather.wind).toFixed(1)}m/s` },
+        { label: "강수확률", value: `${weather.rainChance}%` },
+      ],
+    }] : []),
+    ...(compareWeather ? [{
+      name: "OW",
+      obs: compareWeather.observedAt,
+      rows: [
+        { label: "날씨",     value: compareWeather.condition },
+        { label: "기온",     value: `${Number(compareWeather.temp).toFixed(1)}°` },
+        { label: "체감",     value: `${Number(compareWeather.feelsLike).toFixed(1)}°` },
+        { label: "최고",     value: `${Number(compareWeather.high).toFixed(1)}°` },
+        { label: "최저",     value: `${Number(compareWeather.low).toFixed(1)}°` },
+        { label: "습도",     value: `${compareWeather.humidity}%` },
+        { label: "바람",     value: `${Number(compareWeather.wind).toFixed(1)}m/s` },
+        { label: "강수확률", value: `${compareWeather.rainChance}%` },
+      ],
+    }] : []),
+    ...(meteoWeather ? [{
+      name: "Open-Meteo",
+      obs: meteoWeather.observedAt,
+      rows: [
+        { label: "날씨",     value: meteoWeather.condition },
+        { label: "기온",     value: `${Number(meteoWeather.temp).toFixed(1)}°` },
+        { label: "체감",     value: `${Number(meteoWeather.feelsLike).toFixed(1)}°` },
+        { label: "최고",     value: `${Number(meteoWeather.high).toFixed(1)}°` },
+        { label: "최저",     value: `${Number(meteoWeather.low).toFixed(1)}°` },
+        { label: "습도",     value: `${meteoWeather.humidity}%` },
+        { label: "바람",     value: `${Number(meteoWeather.wind).toFixed(1)}m/s` },
+        { label: "강수확률", value: `${meteoWeather.rainChance}%` },
+      ],
+    }] : []),
+  ];
+
+  // ── 공기질 소스 비교 데이터 ────────────────────────────────────────────
+  const airSources = [
+    ...(air ? [{
+      name: "에어코리아",
+      obs: air.stationName ? `측정소: ${air.stationName}` : null,
+      rows: [
+        { label: "미세먼지",   value: air.pm10 !== "-" ? `${air.pm10}㎍/㎥` : "-", grade: air.pm10Grade },
+        { label: "초미세먼지", value: air.pm25 !== "-" ? `${air.pm25}㎍/㎥` : "-", grade: air.pm25Grade },
+      ],
+    }] : []),
+    ...(airOw ? [{
+      name: "OpenWeather",
+      obs: null,
+      rows: [
+        { label: "미세먼지",   value: `${airOw.pm10}㎍/㎥`, grade: airOw.pm10Grade },
+        { label: "초미세먼지", value: `${airOw.pm25}㎍/㎥`, grade: airOw.pm25Grade },
+      ],
+    }] : []),
+    ...(airMeteo ? [{
+      name: "Open-Meteo",
+      obs: null,
+      rows: [
+        { label: "미세먼지",   value: `${airMeteo.pm10}㎍/㎥`, grade: airMeteo.pm10Grade },
+        { label: "초미세먼지", value: `${airMeteo.pm25}㎍/㎥`, grade: airMeteo.pm25Grade },
+      ],
+    }] : []),
+  ];
+
   return (
     <div className={`flex-1 bg-gradient-to-b ${theme.bg} flex flex-col`}>
-      {/* 상단 바 */}
-      <div className="flex items-start justify-between px-6 pt-10 pb-0">
-        <div>
-          <p className="text-xs font-medium" style={{ color: theme.sub }}>{dateStr}</p>
-          <div className="flex items-center gap-1 mt-0.5" style={{ color: theme.sub }}>
-            <MapPin size={12} />
-            <span className="text-xs">{displayLocation}</span>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          고정 배경 영역 — 카드가 스크롤되어도 이 섹션은 상단에 고정됩니다
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className={`sticky top-0 z-20 bg-gradient-to-b ${theme.bg}`}>
+
+        {/* 상단 바 */}
+        <div className="flex items-start justify-between px-6 pt-10 pb-0">
+          <div>
+            <p className="text-xs font-medium" style={{ color: theme.sub }}>{dateStr}</p>
+            <div className="flex items-center gap-1 mt-0.5" style={{ color: theme.sub }}>
+              <MapPin size={12} />
+              <span className="text-xs">{displayLocation}</span>
+            </div>
+          </div>
+          <button onClick={() => requestCurrentLocation(true)}
+            className="w-9 h-9 rounded-full flex items-center justify-center mt-1"
+            style={{ background: "rgba(255,254,254,0.3)" }}>
+            <RefreshCw size={16} style={{ color: theme.text }} />
+          </button>
+        </div>
+
+        {/* 날씨 정보 + 캐릭터 */}
+        <div className="flex items-end px-6 pt-4 pb-4">
+          <div className="flex-1">
+            <p className="text-xl font-semibold" style={{ color: theme.text }}>{weather?.condition}</p>
+            <p className="text-xs font-semibold mt-1" style={{ color: theme.sub }}>현재온도</p>
+            <div className="font-bold leading-none mt-0.5" style={{ fontSize: 72, color: theme.text }}>
+              {weather?.temp.toFixed(1)}°
+            </div>
+            <p className="text-sm mt-2" style={{ color: theme.sub }}>
+              최고 {weather?.high.toFixed(1)}° / 최저 {weather?.low.toFixed(1)}° · 체감 {weather?.feelsLike.toFixed(1)}°
+            </p>
+          </div>
+          <div className="relative flex flex-col items-end">
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+              className="bg-white rounded-2xl px-3 py-2 shadow-md mb-2 max-w-[140px]"
+              style={{ borderBottomRightRadius: 4 }}>
+              <p className="text-xs font-semibold leading-relaxed" style={{ color: "#1C283C" }}>{speech}</p>
+            </motion.div>
+            <motion.img key={theme.img} src={theme.img} alt="날씨 캐릭터"
+              initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              style={{ width: 160, height: 160, objectFit: "contain" }}
+              className="drop-shadow-xl" />
           </div>
         </div>
-        <button onClick={() => requestCurrentLocation(true)}
-          className="w-9 h-9 rounded-full flex items-center justify-center mt-1"
-          style={{ background: "rgba(255,254,254,0.3)" }}>
-          <RefreshCw size={16} style={{ color: theme.text }} />
-        </button>
-      </div>
 
-      {/* 날씨 정보 + 캐릭터 */}
-      <div className="flex items-end px-6 pt-4 pb-2">
-        <div className="flex-1">
-          <p className="text-xl font-semibold" style={{ color: theme.text }}>{weather?.condition}</p>
-          <p className="text-xs font-semibold mt-1" style={{ color: theme.sub }}>현재온도</p>
-          <div className="font-bold leading-none mt-0.5" style={{ fontSize: 72, color: theme.text }}>{weather?.temp.toFixed(1)}°</div>
-          <p className="text-sm mt-2" style={{ color: theme.sub }}>
-            최고 {weather?.high.toFixed(1)}° / 최저 {weather?.low.toFixed(1)}° · 체감 {weather?.feelsLike.toFixed(1)}°
-          </p>
-        </div>
-        <div className="relative flex flex-col items-end">
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl px-3 py-2 shadow-md mb-2 max-w-[140px]"
-            style={{ borderBottomRightRadius: 4 }}>
-            <p className="text-xs font-semibold leading-relaxed" style={{ color: "#1C283C" }}>{speech}</p>
-          </motion.div>
-          <motion.img key={theme.img} src={theme.img} alt="날씨 캐릭터"
-            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            style={{ width: 160, height: 160, objectFit: "contain" }}
-            className="drop-shadow-xl" />
-        </div>
       </div>
+      {/* ═══════════════════════════════ 고정 영역 끝 ════════════════════ */}
 
-      {/* 카드들 */}
-      <div className="px-4 pb-32 space-y-3 mt-2">
+      {/* ── 스크롤 카드 영역 ─────────────────────────────────────────────── */}
+      <div className="px-4 pb-32 space-y-3 mt-1">
+
         {/* 요약 카드 */}
         <div className="rounded-3xl p-4" style={{ background: theme.card }}>
           <div className="grid grid-cols-3 gap-3">
@@ -96,8 +182,8 @@ export default function HomePage() {
           </div>
           {air && (
             <div className="grid grid-cols-2 gap-3 mt-3 pt-3" style={{ borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-              <AirCard label="미세먼지" value={air.pm10} grade={air.pm10Grade} sub={theme.sub} />
-              <AirCard label="초미세먼지" value={air.pm25} grade={air.pm25Grade} sub={theme.sub} />
+              <AirCard label="미세먼지"   value={air.pm10}  grade={air.pm10Grade}  sub={theme.sub} />
+              <AirCard label="초미세먼지" value={air.pm25}  grade={air.pm25Grade}  sub={theme.sub} />
             </div>
           )}
         </div>
@@ -155,27 +241,14 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 공기질 비교 카드 */}
-        {(air || airOw || airMeteo) && (
-          <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-            <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>공기질 비교</p>
-            <div className="overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-              <div className="flex gap-2">
-                {[
-                  { name: "에어코리아", data: air },
-                  { name: "OpenWeather", data: airOw },
-                  { name: "Open-Meteo", data: airMeteo },
-                ].filter(s => s.data).map(({ name, data }) => (
-                  <div key={name} className="flex-1 rounded-2xl p-3 min-w-[95px]"
-                    style={{ background: "rgba(255,254,254,0.3)" }}>
-                    <p className="text-[10px] font-bold mb-2" style={{ color: theme.sub }}>{name}</p>
-                    <AirRow label="PM10"  value={data.pm10} grade={data.pm10Grade} sub={theme.sub} text={theme.text} />
-                    <AirRow label="PM2.5" value={data.pm25} grade={data.pm25Grade} sub={theme.sub} text={theme.text} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* 날씨 소스 비교 — 스와이프 카드 */}
+        {weatherSources.length >= 1 && (
+          <SwipeCompareCard title="날씨 소스 비교" sources={weatherSources} theme={theme} />
+        )}
+
+        {/* 공기질 비교 — 스와이프 카드 */}
+        {airSources.length >= 1 && (
+          <SwipeCompareCard title="공기질 비교" sources={airSources} theme={theme} />
         )}
 
         {/* 기상청 5일 예보 */}
@@ -186,7 +259,9 @@ export default function HomePage() {
               <div key={day.date} className="flex items-center justify-between">
                 <p className="text-sm font-medium w-28" style={{ color: theme.text }}>{day.date}</p>
                 <p className="text-xs" style={{ color: theme.sub }}>비 {day.rainChance}%</p>
-                <p className="text-sm font-semibold" style={{ color: theme.text }}>{Number(day.min).toFixed(1)}° / {Number(day.max).toFixed(1)}°</p>
+                <p className="text-sm font-semibold" style={{ color: theme.text }}>
+                  {Number(day.min).toFixed(1)}° / {Number(day.max).toFixed(1)}°
+                </p>
               </div>
             ))}
           </div>
@@ -197,19 +272,138 @@ export default function HomePage() {
           <MeteoExtraCard meteo={meteoWeather} theme={theme} />
         )}
 
-        {/* 날씨 소스 비교 */}
-        {compareWeather && (
-          <CompareCard
-            kma={weather}
-            ow={compareWeather}
-            meteo={meteoWeather}
-            theme={theme}
-          />
-        )}
       </div>
     </div>
   );
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// SwipeCompareCard — 탭 버튼 + 좌우 스와이프로 소스 전환
+// ══════════════════════════════════════════════════════════════════════════
+function SwipeCompareCard({ title, sources, theme }) {
+  const [active, setActive] = useState(0);
+  const [dir, setDir]       = useState(1); // +1 = 앞으로, -1 = 뒤로
+
+  const goTo = (i) => {
+    if (i === active) return;
+    setDir(i > active ? 1 : -1);
+    setActive(i);
+  };
+
+  const handleDragEnd = (_, info) => {
+    if (info.offset.x < -50 && active < sources.length - 1) goTo(active + 1);
+    else if (info.offset.x > 50 && active > 0) goTo(active - 1);
+  };
+
+  const src = sources[active];
+  if (!src) return null;
+
+  return (
+    <div className="rounded-3xl overflow-hidden" style={{ background: theme.card }}>
+
+      {/* 제목 + 소스 탭 */}
+      <div className="px-4 pt-4 pb-3">
+        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>{title}</p>
+        <div className="flex gap-1.5">
+          {sources.map((s, i) => (
+            <button
+              key={s.name}
+              onClick={() => goTo(i)}
+              className="flex-1 py-1.5 rounded-2xl text-xs font-bold transition-all duration-200"
+              style={{
+                background: i === active
+                  ? "rgba(255,255,255,0.65)"
+                  : "rgba(0,0,0,0.07)",
+                color: i === active ? theme.text : theme.sub,
+                boxShadow: i === active ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
+              }}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 슬라이드 가능한 컨텐츠 */}
+      <AnimatePresence mode="wait" custom={dir}>
+        <motion.div
+          key={active}
+          custom={dir}
+          variants={{
+            enter:  (d) => ({ x: d * 48, opacity: 0 }),
+            center: { x: 0, opacity: 1 },
+            exit:   (d) => ({ x: d * -48, opacity: 0 }),
+          }}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.12}
+          onDragEnd={handleDragEnd}
+          className="px-4 pb-5 cursor-grab active:cursor-grabbing select-none"
+        >
+          {/* 관측 시각 */}
+          {src.obs && (
+            <p className="text-[10px] mb-2" style={{ color: theme.sub, opacity: 0.65 }}>
+              {src.obs.split(" (")[0]}
+            </p>
+          )}
+
+          {/* 데이터 행 */}
+          <div>
+            {src.rows.map(({ label, value, grade }, idx) => {
+              const g = grade ? gradeInfo(grade) : null;
+              return (
+                <div
+                  key={label}
+                  className="flex justify-between items-center py-2"
+                  style={{
+                    borderBottom: idx < src.rows.length - 1
+                      ? "1px solid rgba(0,0,0,0.06)"
+                      : "none",
+                  }}
+                >
+                  <span className="text-sm" style={{ color: theme.sub }}>{label}</span>
+                  <div className="flex items-center gap-1.5">
+                    {g && <AirDot color={g.dotColor} size={14} />}
+                    {g && (
+                      <span className="text-xs font-bold" style={{ color: "#000000" }}>
+                        {g.label}
+                      </span>
+                    )}
+                    <span className="text-sm font-bold" style={{ color: theme.text }}>{value}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 페이지 인디케이터 (소스 2개 이상) */}
+          {sources.length > 1 && (
+            <div className="flex justify-center gap-1.5 mt-4">
+              {sources.map((_, i) => (
+                <motion.div
+                  key={i}
+                  animate={{ width: i === active ? 20 : 6 }}
+                  transition={{ duration: 0.25 }}
+                  className="rounded-full"
+                  style={{
+                    height: 6,
+                    background: i === active ? theme.sub : `${theme.sub}55`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── 보조 컴포넌트들 ────────────────────────────────────────────────────────
 
 function Metric({ icon, label, value, sub, text }) {
   return (
@@ -231,19 +425,6 @@ function AirCard({ label, value, grade, sub }) {
       </div>
       <p className="text-xs font-bold mt-0.5" style={{ color: "#000000" }}>{gradeLabel}</p>
       <p className="text-[10px] mt-0.5" style={{ color: sub }}>{value !== "-" ? `${value}㎍/㎥` : "-"}</p>
-    </div>
-  );
-}
-
-function AirRow({ label, value, grade, sub, text }) {
-  const { dotColor, label: gradeLabel } = gradeInfo(grade ?? "0");
-  return (
-    <div className="flex justify-between items-center mt-1">
-      <span className="text-[10px]" style={{ color: sub }}>{label}</span>
-      <div className="flex items-center gap-1">
-        <AirDot color={dotColor} size={14} />
-        <span className="text-[10px] font-bold" style={{ color: text }}>{value}㎍</span>
-      </div>
     </div>
   );
 }
@@ -273,107 +454,6 @@ function MeteoExtraCard({ meteo, theme }) {
             <span className="text-xs font-semibold" style={{ color: theme.text }}>{value}</span>
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function CompareCard({ kma, ow, meteo, theme }) {
-  const rows = [
-    { label: "날씨" },
-    { label: "기온" },
-    { label: "체감" },
-    { label: "오늘 최고" },
-    { label: "오늘 최저" },
-    { label: "습도" },
-    { label: "바람" },
-    { label: "강수확률" },
-  ];
-
-  const sources = [
-    {
-      name: "기상청",
-      obs: kma.observedAt,
-      vals: [
-        kma.condition,
-        `${Number(kma.temp).toFixed(1)}°`,
-        `${Number(kma.feelsLike).toFixed(1)}°`,
-        `${Number(kma.high).toFixed(1)}°`,
-        `${Number(kma.low).toFixed(1)}°`,
-        `${kma.humidity}%`,
-        `${Number(kma.wind).toFixed(1)}m/s`,
-        `${kma.rainChance}%`,
-      ],
-    },
-    {
-      name: "OpenWeather",
-      obs: ow.observedAt,
-      vals: [
-        ow.condition,
-        `${Number(ow.temp).toFixed(1)}°`,
-        `${Number(ow.feelsLike).toFixed(1)}°`,
-        `${Number(ow.high).toFixed(1)}°`,
-        `${Number(ow.low).toFixed(1)}°`,
-        `${ow.humidity}%`,
-        `${Number(ow.wind).toFixed(1)}m/s`,
-        `${ow.rainChance}%`,
-      ],
-    },
-    ...(meteo ? [{
-      name: "Open-Meteo",
-      obs: meteo.observedAt,
-      vals: [
-        meteo.condition,
-        `${Number(meteo.temp).toFixed(1)}°`,
-        `${Number(meteo.feelsLike).toFixed(1)}°`,
-        `${Number(meteo.high).toFixed(1)}°`,
-        `${Number(meteo.low).toFixed(1)}°`,
-        `${meteo.humidity}%`,
-        `${Number(meteo.wind).toFixed(1)}m/s`,
-        `${meteo.rainChance}%`,
-      ],
-    }] : []),
-  ];
-
-  return (
-    <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-      <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>날씨 소스 비교</p>
-
-      {/* 횡 스크롤 테이블 */}
-      <div className="overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
-        <div style={{ minWidth: sources.length > 2 ? 320 : "auto" }}>
-          {/* 헤더 */}
-          <div className="flex text-xs mb-2">
-            <div className="w-16 flex-shrink-0" />
-            {sources.map(s => (
-              <div key={s.name} className="flex-1 text-center font-semibold min-w-[72px]" style={{ color: theme.sub }}>
-                {s.name}
-              </div>
-            ))}
-          </div>
-
-          {/* 관측 시각 */}
-          <div className="flex text-[9px] mb-3">
-            <div className="w-16 flex-shrink-0" />
-            {sources.map(s => (
-              <div key={s.name} className="flex-1 text-center min-w-[72px]" style={{ color: theme.sub, opacity: 0.7 }}>
-                {s.obs ? s.obs.split(" (")[0] : ""}
-              </div>
-            ))}
-          </div>
-
-          {/* 데이터 행 */}
-          {rows.map((row, i) => (
-            <div key={row.label} className="flex text-xs py-1" style={{ borderTop: i > 0 ? `1px solid rgba(0,0,0,0.06)` : "none" }}>
-              <div className="w-16 flex-shrink-0" style={{ color: theme.sub }}>{row.label}</div>
-              {sources.map(s => (
-                <div key={s.name} className="flex-1 text-center font-medium min-w-[72px]" style={{ color: theme.text }}>
-                  {s.vals[i]}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
