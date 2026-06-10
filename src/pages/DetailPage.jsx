@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWeather } from "../context/WeatherContext";
 import { gradeInfo } from "../utils/weather";
-import AirDot from "../components/AirDot";
 import AirCompareCard from "../components/AirCompareCard";
+import { TemperatureBarChart, WeatherRadarChart, ChartLegend } from "../components/WeatherCharts";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
 
@@ -37,118 +37,97 @@ export default function DetailPage({ scrollRef }) {
       <div className="px-4 py-2 pb-32 space-y-3">
         {weather && compareWeather ? (
           <>
-            {/* 날씨 소스 비교 — 바 차트 */}
-            <SectionTitle theme={theme}>날씨 소스 비교</SectionTitle>
-            <WeatherSourcesChart
-              weather={weather}
-              compareWeather={compareWeather}
-              meteoWeather={meteoWeather}
-              theme={theme}
-            />
+            {/* 날씨 상태 */}
+            <SectionTitle theme={theme}>날씨 상태</SectionTitle>
+            <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+              {(() => {
+                const src = [
+                  { name: "기상청",     color: "#2563eb", cond: weather.condition },
+                  { name: "OW",         color: "#ea580c", cond: compareWeather.condition },
+                  ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", cond: meteoWeather.condition }] : []),
+                ];
+                return (
+                  <div className="flex gap-2 flex-wrap">
+                    {src.map(s => (
+                      <div key={s.name} className="flex flex-col items-center gap-1.5 flex-1">
+                        <span className="text-[10px] font-semibold" style={{ color: s.color }}>{s.name}</span>
+                        <span className="text-sm font-bold px-3 py-1.5 rounded-2xl w-full text-center"
+                          style={{ background: `${s.color}18`, color: s.color }}>
+                          {s.cond || "—"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
 
-            {/* 현재 기온 비교 */}
-            <SectionTitle theme={theme}>현재 기온 비교</SectionTitle>
-            <SwipeCompareCard
-              theme={theme}
-              sources={[
-                { name: "기상청", color: "#2563eb", rows: [
-                  { label: "현재 온도", value: `${Number(weather.temp).toFixed(1)}°` },
-                  { label: "체감",      value: `${Number(weather.feelsLike).toFixed(1)}°` },
-                  { label: "최고",      value: `${Number(weather.high).toFixed(1)}°` },
-                  { label: "최저",      value: `${Number(weather.low).toFixed(1)}°` },
-                ]},
-                { name: "OW", color: "#ea580c", rows: [
-                  { label: "현재 온도", value: `${Number(compareWeather.temp).toFixed(1)}°` },
-                  { label: "체감",      value: `${Number(compareWeather.feelsLike).toFixed(1)}°` },
-                  { label: "최고",      value: `${Number(compareWeather.high).toFixed(1)}°` },
-                  { label: "최저",      value: `${Number(compareWeather.low).toFixed(1)}°` },
-                ]},
-                ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", rows: [
-                  { label: "현재 온도", value: `${Number(meteoWeather.temp).toFixed(1)}°` },
-                  { label: "체감",      value: `${Number(meteoWeather.feelsLike).toFixed(1)}°` },
-                  { label: "최고",      value: `${Number(meteoWeather.high).toFixed(1)}°` },
-                  { label: "최저",      value: `${Number(meteoWeather.low).toFixed(1)}°` },
-                ]}] : []),
-              ]}
-            />
+            {/* 온도 비교 — 세로 막대 */}
+            <SectionTitle theme={theme}>온도 비교</SectionTitle>
+            <div className="rounded-3xl px-4 pt-4 pb-2" style={{ background: theme.card }}>
+              <ChartLegend
+                sources={[
+                  { name: "기상청", color: "#2563eb" },
+                  { name: "OW",     color: "#ea580c" },
+                  ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669" }] : []),
+                ]}
+                theme={theme}
+              />
+              <TemperatureBarChart
+                weather={weather}
+                compareWeather={compareWeather}
+                meteoWeather={meteoWeather}
+                theme={theme}
+              />
+            </div>
 
-            {/* 대기 환경 비교 */}
-            <SectionTitle theme={theme}>대기 환경 비교</SectionTitle>
-            <SwipeCompareCard
-              theme={theme}
-              sources={[
-                { name: "기상청", color: "#2563eb", rows: [
-                  { label: "날씨",     value: weather.condition },
-                  { label: "습도",     value: `${weather.humidity}%` },
-                  { label: "바람",     value: `${Number(weather.wind).toFixed(1)}m/s` },
-                  { label: "강수확률", value: `${weather.rainChance}%` },
-                ]},
-                { name: "OW", color: "#ea580c", rows: [
-                  { label: "날씨",     value: compareWeather.condition },
-                  { label: "습도",     value: `${compareWeather.humidity}%` },
-                  { label: "바람",     value: `${Number(compareWeather.wind).toFixed(1)}m/s` },
-                  { label: "강수확률", value: `${compareWeather.rainChance}%` },
-                ]},
-                ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", rows: [
-                  { label: "날씨",     value: meteoWeather.condition },
-                  { label: "습도",     value: `${meteoWeather.humidity}%` },
-                  { label: "바람",     value: `${Number(meteoWeather.wind).toFixed(1)}m/s` },
-                  { label: "강수확률", value: `${meteoWeather.rainChance}%` },
-                ]}] : []),
-              ]}
-            />
-
-            {/* 기상청 기준 차이 */}
-            <SectionTitle theme={theme}>기상청 기준 차이</SectionTitle>
-            <div className="rounded-2xl p-4 space-y-2" style={{ background: theme.card }}>
-              <p className="text-[10px] mb-2" style={{ color: theme.sub, opacity: 0.8 }}>기상청 실측값과의 차이</p>
-              {[
-                { label: "기온 (OW)",     diff: Math.abs(weather.temp - compareWeather.temp).toFixed(1),                                  unit: "°" },
-                { label: "기온 (Meteo)",  diff: meteoWeather ? Math.abs(weather.temp - meteoWeather.temp).toFixed(1) : null,               unit: "°" },
-                { label: "습도 (OW)",     diff: Math.abs(weather.humidity - compareWeather.humidity),                                      unit: "%" },
-                { label: "습도 (Meteo)",  diff: meteoWeather ? Math.abs(weather.humidity - meteoWeather.humidity) : null,                  unit: "%" },
-              ].filter(r => r.diff !== null).map(r => (
-                <DiffRow key={r.label} theme={theme} label={r.label} diff={r.diff} unit={r.unit} />
-              ))}
+            {/* 대기환경 비교 — 레이더 차트 */}
+            <SectionTitle theme={theme}>대기환경 비교</SectionTitle>
+            <div className="rounded-3xl px-4 pt-4 pb-2" style={{ background: theme.card }}>
+              <ChartLegend
+                sources={[
+                  { name: "기상청", color: "#2563eb" },
+                  { name: "OW",     color: "#ea580c" },
+                  ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669" }] : []),
+                ]}
+                theme={theme}
+              />
+              <WeatherRadarChart
+                weather={weather}
+                compareWeather={compareWeather}
+                meteoWeather={meteoWeather}
+                theme={theme}
+              />
             </div>
 
             {/* 관측 시각 */}
             <div className="rounded-2xl p-4" style={{ background: theme.card }}>
               <p className="text-xs font-semibold mb-2" style={{ color: theme.sub }}>관측 시각</p>
-              {weather.observedAt      && <p className="text-xs" style={{ color: theme.text }}>🇰🇷 {weather.observedAt}</p>}
+              {weather.observedAt        && <p className="text-xs" style={{ color: theme.text }}>🇰🇷 {weather.observedAt}</p>}
               {compareWeather.observedAt && <p className="text-xs mt-1" style={{ color: theme.text }}>🌍 {compareWeather.observedAt}</p>}
               {meteoWeather?.observedAt  && <p className="text-xs mt-1" style={{ color: theme.text }}>🌿 {meteoWeather.observedAt}</p>}
             </div>
           </>
         ) : (
           <div className="rounded-2xl p-6 text-center" style={{ background: theme.card }}>
-            <p className="text-sm" style={{ color: theme.sub }}>
-              한국 좌표에서만 비교 데이터가 제공됩니다.
-            </p>
+            <p className="text-sm" style={{ color: theme.sub }}>한국 좌표에서만 비교 데이터가 제공됩니다.</p>
           </div>
         )}
 
-        {/* 대기질 비교 */}
+        {/* 대기질 비교 — 도넛 차트 */}
         {(air || airOw || airMeteo) && (
           <>
             <SectionTitle theme={theme}>대기질 비교</SectionTitle>
             <AirCompareCard air={air} airOw={airOw} airMeteo={airMeteo} theme={theme} />
           </>
         )}
-
-        {/* 추가 데이터 예고 */}
-        <div className="rounded-2xl p-4" style={{ background: theme.card, border: `1px dashed ${theme.sub}`, opacity: 0.7 }}>
-          <p className="text-xs text-center" style={{ color: theme.sub }}>추가 상세 데이터는 계속 업데이트됩니다</p>
-        </div>
       </div>
       </div>{/* 스크롤 레이어 끝 */}
     </div>
   );
 }
 
-// ══════════════════════════════════════════════════════════════════════════
-// SwipeCompareCard — 탭 버튼 + 좌우 스와이프로 소스 전환
-// ══════════════════════════════════════════════════════════════════════════
+// SwipeCompareCard — 더 이상 사용하지 않음 (하위 호환용으로만 남김)
 function SwipeCompareCard({ sources, theme }) {
   const [active, setActive] = useState(0);
   const [dir, setDir]       = useState(1);
