@@ -28,6 +28,44 @@ export default function DetailPage({ scrollRef }) {
       <div className="px-4 py-2 pb-32 space-y-3">
         {weather && compareWeather ? (
           <>
+            {/* 날씨 소스 비교 — 종합 */}
+            <SectionTitle theme={theme}>날씨 소스 비교</SectionTitle>
+            <SwipeCompareCard
+              theme={theme}
+              sources={[
+                { name: "기상청", color: "#2563eb", rows: [
+                  { label: "날씨",     value: weather.condition },
+                  { label: "현재 기온", value: `${Number(weather.temp).toFixed(1)}°` },
+                  { label: "체감",     value: `${Number(weather.feelsLike).toFixed(1)}°` },
+                  { label: "최고",     value: `${Number(weather.high).toFixed(1)}°` },
+                  { label: "최저",     value: `${Number(weather.low).toFixed(1)}°` },
+                  { label: "습도",     value: `${weather.humidity}%` },
+                  { label: "바람",     value: `${Number(weather.wind).toFixed(1)}m/s` },
+                  { label: "강수확률", value: `${weather.rainChance}%` },
+                ]},
+                { name: "OW", color: "#ea580c", rows: [
+                  { label: "날씨",     value: compareWeather.condition },
+                  { label: "현재 기온", value: `${Number(compareWeather.temp).toFixed(1)}°` },
+                  { label: "체감",     value: `${Number(compareWeather.feelsLike).toFixed(1)}°` },
+                  { label: "최고",     value: `${Number(compareWeather.high).toFixed(1)}°` },
+                  { label: "최저",     value: `${Number(compareWeather.low).toFixed(1)}°` },
+                  { label: "습도",     value: `${compareWeather.humidity}%` },
+                  { label: "바람",     value: `${Number(compareWeather.wind).toFixed(1)}m/s` },
+                  { label: "강수확률", value: `${compareWeather.rainChance}%` },
+                ]},
+                ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", rows: [
+                  { label: "날씨",     value: meteoWeather.condition },
+                  { label: "현재 기온", value: `${Number(meteoWeather.temp).toFixed(1)}°` },
+                  { label: "체감",     value: `${Number(meteoWeather.feelsLike).toFixed(1)}°` },
+                  { label: "최고",     value: `${Number(meteoWeather.high).toFixed(1)}°` },
+                  { label: "최저",     value: `${Number(meteoWeather.low).toFixed(1)}°` },
+                  { label: "습도",     value: `${meteoWeather.humidity}%` },
+                  { label: "바람",     value: `${Number(meteoWeather.wind).toFixed(1)}m/s` },
+                  { label: "강수확률", value: `${meteoWeather.rainChance}%` },
+                ]}] : []),
+              ]}
+            />
+
             {/* 현재 기온 비교 */}
             <SectionTitle theme={theme}>현재 기온 비교</SectionTitle>
             <SwipeCompareCard

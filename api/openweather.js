@@ -112,6 +112,7 @@ function buildForecast(d) {
       rainChance: Math.round((item.pop ?? 0) * 100),
       humidity: item.main?.humidity ?? 0,
       wind: item.wind?.speed ?? 0,
+      precipitation: item.rain?.["3h"] ?? item.rain?.["1h"] ?? item.snow?.["3h"] ?? 0,
     };
   });
 }

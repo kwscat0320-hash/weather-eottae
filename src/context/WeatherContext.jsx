@@ -113,12 +113,13 @@ export function WeatherProvider({ children }) {
           setCompareWeather(owCurrent);
           // OW 시간별 예보 저장 (다음 6슬롯)
           setOwForecast((owData.forecast || []).slice(0, 8).map(f => ({
-            timeLabel:  f.timeLabel,
-            temp:       f.temp,
-            rainChance: f.rainChance,
-            condition:  f.condition,
-            humidity:   f.humidity ?? 0,
-            wind:       f.wind     ?? 0,
+            timeLabel:     f.timeLabel,
+            temp:          f.temp,
+            rainChance:    f.rainChance,
+            condition:     f.condition,
+            humidity:      f.humidity      ?? 0,
+            wind:          f.wind          ?? 0,
+            precipitation: f.precipitation ?? 0,
           })));
         }
 

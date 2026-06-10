@@ -261,15 +261,7 @@ export default function HomePage({ scrollRef }) {
           <MeteoExtraCard meteo={meteoWeather} theme={theme} />
         )}
 
-        {/* 최근 기상 기록 */}
-        {weatherHistory && weatherHistory.length > 0 && (
-          <WeatherHistoryCard history={weatherHistory} theme={theme} />
-        )}
-
-        {/* 예보 이력 — 그제/어제/오늘 저장된 3일치 예보 비교 */}
-        {forecastHistory && forecastHistory.length > 0 && (
-          <ForecastHistoryCard history={forecastHistory} theme={theme} />
-        )}
+        {/* 최근 기상 기록 / 예보 이력 — 데이터만 유지, UI 미표시 */}
 
         </div>{/* 카드 래퍼 끝 */}
       </div>{/* 스크롤 레이어 끝 */}
@@ -407,12 +399,22 @@ function SwipeCompareCard({ title, sources, theme }) {
 // HourlyForecastCard — 탭 + 스와이프로 소스 전환, 5개 행 표시
 // ══════════════════════════════════════════════════════════════════════════
 const HOURLY_ROWS = [
-  { key: "temp",       label: "온도",     fmt: (v) => v != null ? `${Number(v).toFixed(1)}°` : "—" },
-  { key: "condition",  label: "날씨",     fmt: (v) => v || "—" },
-  { key: "rainChance", label: "강수%",    fmt: (v) => v != null ? `${v}%` : "—" },
-  { key: "humidity",   label: "습도",     fmt: (v) => v != null && v !== 0 ? `${v}%` : "—" },
-  { key: "wind",       label: "바람",     fmt: (v) => v != null && v !== 0 ? `${Number(v).toFixed(1)}` : "—" },
+  { key: "temp",          label: "온도",   bold: true,
+    fmt: (v) => v != null ? `${Number(v).toFixed(1)}°` : "—" },
+  { key: "condition",     label: "날씨",   bold: false,
+    fmt: (v) => v || "—" },
+  { key: "rainChance",    label: "강수%",  bold: false,
+    fmt: (v) => v != null ? `${v}%` : "—" },
+  { key: "precipitation", label: "강수량", bold: false,
+    fmt: (v) => (v != null && Number(v) > 0) ? `${Number(v).toFixed(1)}㎜` : "—" },
+  { key: "humidity",      label: "습도",   bold: false,
+    fmt: (v) => (v != null && v !== 0) ? `${v}%` : "—" },
+  { key: "wind",          label: "바람",   bold: false,
+    fmt: (v) => (v != null && v !== 0) ? `${Number(v).toFixed(1)}` : "—" },
 ];
+
+const COL_W    = 52;   // 데이터 컬럼 너비 (px)
+const LABEL_W  = 44;   // 행 레이블 너비 (px)
 
 function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
   const [active, setActive] = useState(0);
@@ -489,15 +491,14 @@ function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
 
           {/* 가로 스크롤 그리드 */}
           <div className="overflow-x-auto pb-4 px-4" style={{ scrollbarWidth: "none" }}>
-            <div style={{ minWidth: 44 + 24 * 44 }}>
+            <div style={{ minWidth: LABEL_W + 24 * COL_W }}>
 
-              {/* 행 레이블 열 + 시간 헤더 */}
+              {/* 시간 헤더 */}
               <div className="flex mb-1">
-                {/* 빈 레이블 셀 */}
-                <div className="flex-shrink-0" style={{ width: 44 }} />
+                <div className="flex-shrink-0" style={{ width: LABEL_W }} />
                 {(hourSlots || []).map((s, i) => (
-                  <div key={i} className="flex-shrink-0 text-center" style={{ width: 44 }}>
-                    <p className="text-[10px] font-semibold"
+                  <div key={i} className="flex-shrink-0 text-center" style={{ width: COL_W }}>
+                    <p className="text-xs font-semibold"
                       style={{ color: theme.sub, opacity: s.isMidnight ? 1 : 0.65 }}>
                       {s.label}
                     </p>
@@ -506,15 +507,15 @@ function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
               </div>
 
               {/* 구분선 */}
-              <div className="mb-2" style={{ height: 1, background: `rgba(0,0,0,0.07)`, marginLeft: 44 }} />
+              <div className="mb-2" style={{ height: 1, background: "rgba(0,0,0,0.07)", marginLeft: LABEL_W }} />
 
-              {/* 데이터 행 (온도 / 날씨 / 강수% / 습도 / 바람) */}
+              {/* 데이터 행 */}
               {HOURLY_ROWS.map((row, rowIdx) => (
                 <div key={row.key} className="flex items-center"
-                  style={{ marginBottom: rowIdx < HOURLY_ROWS.length - 1 ? 6 : 0 }}>
+                  style={{ marginBottom: rowIdx < HOURLY_ROWS.length - 1 ? 8 : 0 }}>
                   {/* 행 레이블 */}
-                  <div className="flex-shrink-0 flex items-center" style={{ width: 44 }}>
-                    <p className="text-[9px] font-semibold" style={{ color: theme.sub, opacity: 0.75 }}>
+                  <div className="flex-shrink-0 flex items-center" style={{ width: LABEL_W }}>
+                    <p className="text-[10px] font-semibold" style={{ color: theme.sub, opacity: 0.7 }}>
                       {row.label}
                     </p>
                   </div>
@@ -525,17 +526,14 @@ function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
                     const isFilled = item?._filled;
                     return (
                       <div key={colIdx} className="flex-shrink-0 text-center rounded-md py-0.5"
-                        style={{
-                          width: 44,
-                          opacity: isFilled ? 0.5 : 1,
-                        }}>
+                        style={{ width: COL_W, opacity: isFilled ? 0.5 : 1 }}>
                         {val != null ? (
-                          <p className={`text-[10px] ${row.key === "temp" ? "font-bold" : "font-medium"}`}
-                            style={{ color: row.key === "temp" ? theme.text : theme.sub }}>
+                          <p className={`text-xs ${row.bold ? "font-bold" : "font-medium"}`}
+                            style={{ color: row.bold ? theme.text : theme.sub }}>
                             {val}
                           </p>
                         ) : (
-                          <p className="text-[10px]" style={{ color: theme.sub, opacity: 0.2 }}>·</p>
+                          <p className="text-xs" style={{ color: theme.sub, opacity: 0.2 }}>·</p>
                         )}
                       </div>
                     );
@@ -583,14 +581,72 @@ function Metric({ icon, label, value, sub, text }) {
 
 function AirCard({ label, value, grade, sub }) {
   const { dotColor, label: gradeLabel } = gradeInfo(grade);
+
+  // 스케일: PM10 최대 150㎍, PM2.5 최대 75㎍ (나쁨 기준 = 100%)
+  const maxScale = label === "미세먼지" ? 150 : 75;
+  const numVal   = (value !== "-" && value != null) ? Number(value) : 0;
+  const pct      = Math.min(numVal / maxScale, 1);
+
+  const R   = 30;          // 원 반지름
+  const SW  = 7;           // stroke 두께
+  const r   = R - SW / 2;
+  const circ = 2 * Math.PI * r;
+  const gap  = circ * 0.18;           // 하단 18% 를 열어 놓음 (열린 도넛)
+  const full = circ - gap;
+  const dash = full * pct;
+  const size = R * 2 + SW;
+
+  // 12시 방향 기준 → 열린 부분이 하단 중앙에 오도록 회전
+  const rotate = 90 + (360 * 0.18) / 2;   // 90 + 32.4 = 122.4deg
+
   return (
-    <div className="text-center">
-      <p className="text-xs" style={{ color: sub }}>{label}</p>
-      <div className="flex justify-center mt-1">
-        <AirDot color={dotColor} size={36} />
+    <div className="flex flex-col items-center gap-1">
+      <p className="text-[10px] font-semibold" style={{ color: sub }}>{label}</p>
+
+      {/* 원 그래프 */}
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg
+          width={size} height={size}
+          style={{ transform: `rotate(${rotate}deg)` }}
+        >
+          {/* 배경 트랙 (열린 원호) */}
+          <circle
+            cx={R} cy={R} r={r}
+            fill="none"
+            stroke="rgba(0,0,0,0.12)"
+            strokeWidth={SW}
+            strokeDasharray={`${full} ${gap}`}
+            strokeLinecap="round"
+          />
+          {/* 값 트랙 */}
+          <circle
+            cx={R} cy={R} r={r}
+            fill="none"
+            stroke={dotColor}
+            strokeWidth={SW}
+            strokeDasharray={`${dash} ${circ - dash}`}
+            strokeDashoffset={0}
+            strokeLinecap="round"
+            style={{ transition: "stroke-dasharray 0.6s ease" }}
+          />
+        </svg>
+        {/* 중앙 텍스트 — SVG 회전에 영향 없음 */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center"
+          style={{ pointerEvents: "none" }}>
+          <p className="text-[11px] font-black leading-none" style={{ color: dotColor }}>
+            {gradeLabel}
+          </p>
+          {numVal > 0 && (
+            <p className="text-[8px] mt-0.5 font-medium" style={{ color: sub, opacity: 0.8 }}>
+              {numVal}
+            </p>
+          )}
+        </div>
       </div>
-      <p className="text-xs font-bold mt-0.5" style={{ color: "#000000" }}>{gradeLabel}</p>
-      <p className="text-[10px] mt-0.5" style={{ color: sub }}>{value !== "-" ? `${value}㎍/㎥` : "-"}</p>
+
+      <p className="text-[9px]" style={{ color: sub, opacity: 0.7 }}>
+        {numVal > 0 ? `${numVal}㎍/㎥` : "—"}
+      </p>
     </div>
   );
 }

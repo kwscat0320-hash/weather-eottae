@@ -3,11 +3,11 @@ import { Home, MapPin, Calendar, BarChart2, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const TABS = [
-  { id: "home",      label: "홈",     Icon: Home },
-  { id: "favorites", label: "관심",   Icon: MapPin },
-  { id: "schedule",  label: "일정",   Icon: Calendar },
-  { id: "detail",    label: "상세",   Icon: BarChart2 },
-  { id: "settings",  label: "설정",   Icon: Settings },
+  { id: "home",      label: "홈",   Icon: Home },
+  { id: "detail",    label: "상세", Icon: BarChart2 },
+  { id: "schedule",  label: "일정", Icon: Calendar },
+  { id: "favorites", label: "관심", Icon: MapPin },
+  { id: "settings",  label: "설정", Icon: Settings },
 ];
 
 export default function BottomNav({ current, onChange, scrollRef }) {

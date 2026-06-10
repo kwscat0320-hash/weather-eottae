@@ -272,9 +272,10 @@ function buildForecast(vilageFcstItems, ultraFcstItems) {
       temp: Number(g.TMP ?? g.T1H ?? 0),
       tempMin: official.TMN ?? Number(g.TMP ?? g.T1H ?? 0),
       tempMax: official.TMX ?? Number(g.TMP ?? g.T1H ?? 0),
-      rainChance: Number(g.POP ?? 0),
-      humidity:   Number(g.REH ?? 0),
-      wind:       Number(g.WSD ?? 0),
+      rainChance:    Number(g.POP ?? 0),
+      humidity:      Number(g.REH ?? 0),
+      wind:          Number(g.WSD ?? 0),
+      precipitation: (g.PCP && g.PCP !== "강수없음" ? Number(g.PCP) : 0),
     };
   });
 }
