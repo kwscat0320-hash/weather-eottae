@@ -2,7 +2,7 @@ import { request } from "https";
 import { kv } from "@vercel/kv";
 import { dfsXyConv } from "./_kma-utils.js";
 
-const CACHE_TTL_SEC = 3600;      // 캐시 유효 시간: 1시간
+const CACHE_TTL_SEC = 600;       // 캐시 유효 시간: 10분
 const HISTORY_TTL_SEC = 604800;  // 히스토리 보존: 7일
 const HISTORY_MAX = 72;          // 최대 스냅샷 수 (3일 × 24개/일)
 
@@ -43,10 +43,10 @@ export default async function handler(req, res) {
   }
 
   const trimmedKey = rawKey.trim();
-  const { date, ultraDate, ultraTime, vilageTime, tmxDate, tmxTime } = getKmaBaseDateTime();
+  const { date, ncstDate, ncstTime, ultraDate, ultraTime, vilageTime, tmxDate, tmxTime } = getKmaBaseDateTime();
 
   const [ncstRes, ultraFcstRes, vilageFcstRes, tmxFcstRes] = await Promise.allSettled([
-    httpsGet(buildKmaUrl("getUltraSrtNcst", trimmedKey, ultraDate, ultraTime, grid, 100)),
+    httpsGet(buildKmaUrl("getUltraSrtNcst", trimmedKey, ncstDate, ncstTime, grid, 100)),
     httpsGet(buildKmaUrl("getUltraSrtFcst", trimmedKey, ultraDate, ultraTime, grid, 200)),
     httpsGet(buildKmaUrl("getVilageFcst",   trimmedKey, date,      vilageTime, grid, 1000)),
     // 전날 23:00 발표 → 오늘 TMX(15:00)/TMN(06:00) 슬롯이 반드시 포함됨
@@ -334,6 +334,11 @@ function getKmaBaseDateTime() {
   // Vercel 서버는 UTC 기준 → KST(UTC+9)로 변환
   const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
 
+  // 초단기실황(UltraSrtNcst): 정시 후 ~10분이면 데이터 공개 → 10분 기준
+  const ncst = new Date(now);
+  if (ncst.getUTCMinutes() < 10) ncst.setUTCHours(ncst.getUTCHours() - 1);
+
+  // 초단기예보(UltraSrtFcst): 정시 후 ~45분이면 데이터 공개 → 45분 기준
   const ultra = new Date(now);
   if (ultra.getUTCMinutes() < 45) ultra.setUTCHours(ultra.getUTCHours() - 1);
 
@@ -353,6 +358,8 @@ function getKmaBaseDateTime() {
 
   return {
     date: formatYMD(village),
+    ncstDate: formatYMD(ncst),
+    ncstTime: `${String(ncst.getUTCHours()).padStart(2, "0")}00`,
     ultraDate: formatYMD(ultra),
     ultraTime: `${String(ultra.getUTCHours()).padStart(2, "0")}00`,
     vilageTime: String(selected).padStart(4, "0"),
