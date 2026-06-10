@@ -116,6 +116,8 @@ export function WeatherProvider({ children }) {
             temp:       f.temp,
             rainChance: f.rainChance,
             condition:  f.condition,
+            humidity:   f.humidity ?? 0,
+            wind:       f.wind     ?? 0,
           })));
         }
 

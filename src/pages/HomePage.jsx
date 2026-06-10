@@ -188,58 +188,12 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* 시간대별 예보 — 공통 24h 시간축으로 3소스 정렬 비교 */}
-        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-1" style={{ color: theme.sub }}>시간대별 예보</p>
-          <p className="text-[9px] mb-3" style={{ color: theme.sub, opacity: 0.7 }}>현재 기준 24시간 · 기관별 비교</p>
-          <div className="overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-            <div style={{ minWidth: 56 + 24 * 46 }}>
-              {/* 시간 헤더 */}
-              <div className="flex mb-2">
-                <div className="flex-shrink-0" style={{ width: 56 }} />
-                {(hourSlots || []).map((s, i) => (
-                  <div key={i} className="flex-shrink-0 text-center" style={{ width: 46 }}>
-                    <p className="text-[10px] font-semibold"
-                      style={{ color: theme.sub, opacity: s.isMidnight ? 1 : 0.7 }}>
-                      {s.label}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              {/* 각 기관 행 */}
-              {[
-                { name: "기상청",     freq: "1h", data: alignedHourly?.kma },
-                { name: "OW",         freq: "3h", data: alignedHourly?.ow },
-                { name: "Open-Meteo", freq: "1h", data: alignedHourly?.meteo },
-              ].filter(s => s.data?.some(d => d != null)).map(source => (
-                <div key={source.name} className="flex mb-2 last:mb-0 items-stretch">
-                  <div className="flex-shrink-0 flex flex-col justify-center pr-2" style={{ width: 56 }}>
-                    <p className="text-[10px] font-bold" style={{ color: theme.sub }}>{source.name}</p>
-                    <p className="text-[8px]" style={{ color: theme.sub, opacity: 0.6 }}>{source.freq}</p>
-                  </div>
-                  {source.data.map((item, i) => (
-                    <div key={i} className="flex-shrink-0 rounded-lg mx-0.5 py-1.5 text-center"
-                      style={{
-                        width: 42,
-                        background: item ? "rgba(255,254,254,0.28)" : "transparent",
-                        opacity: item?._filled ? 0.55 : 1,
-                      }}>
-                      {item ? (
-                        <>
-                          <p className="font-bold text-xs" style={{ color: theme.text }}>{Number(item.temp).toFixed(1)}°</p>
-                          <p className="text-[9px] mt-0.5" style={{ color: theme.sub }}>{item.rainChance}%</p>
-                        </>
-                      ) : (
-                        <p className="text-[10px] py-1" style={{ color: theme.sub, opacity: 0.25 }}>·</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        {/* 시간대별 예보 — 소스 탭 + 스와이프 */}
+        <HourlyForecastCard
+          hourSlots={hourSlots}
+          alignedHourly={alignedHourly}
+          theme={theme}
+        />
 
         {/* 날씨 소스 비교 — 스와이프 카드 */}
         {weatherSources.length >= 1 && (
@@ -383,6 +337,172 @@ function SwipeCompareCard({ title, sources, theme }) {
           {/* 페이지 인디케이터 (소스 2개 이상) */}
           {sources.length > 1 && (
             <div className="flex justify-center gap-1.5 mt-4">
+              {sources.map((_, i) => (
+                <motion.div
+                  key={i}
+                  animate={{ width: i === active ? 20 : 6 }}
+                  transition={{ duration: 0.25 }}
+                  className="rounded-full"
+                  style={{
+                    height: 6,
+                    background: i === active ? theme.sub : `${theme.sub}55`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// HourlyForecastCard — 탭 + 스와이프로 소스 전환, 5개 행 표시
+// ══════════════════════════════════════════════════════════════════════════
+const HOURLY_ROWS = [
+  { key: "temp",       label: "온도",     fmt: (v) => v != null ? `${Number(v).toFixed(1)}°` : "—" },
+  { key: "condition",  label: "날씨",     fmt: (v) => v || "—" },
+  { key: "rainChance", label: "강수%",    fmt: (v) => v != null ? `${v}%` : "—" },
+  { key: "humidity",   label: "습도",     fmt: (v) => v != null && v !== 0 ? `${v}%` : "—" },
+  { key: "wind",       label: "바람",     fmt: (v) => v != null && v !== 0 ? `${Number(v).toFixed(1)}` : "—" },
+];
+
+function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
+  const [active, setActive] = useState(0);
+  const [dir, setDir]       = useState(1);
+
+  const sources = [
+    { name: "기상청",     freq: "1h", data: alignedHourly?.kma },
+    { name: "OW",         freq: "3h", data: alignedHourly?.ow },
+    { name: "Open-Meteo", freq: "1h", data: alignedHourly?.meteo },
+  ].filter(s => s.data?.some(d => d != null));
+
+  const goTo = (i) => {
+    if (i === active) return;
+    setDir(i > active ? 1 : -1);
+    setActive(i);
+  };
+
+  const handleDragEnd = (_, info) => {
+    if (info.offset.x < -50 && active < sources.length - 1) goTo(active + 1);
+    else if (info.offset.x > 50 && active > 0) goTo(active - 1);
+  };
+
+  if (!sources.length) return null;
+  const src = sources[active];
+
+  return (
+    <div className="rounded-3xl overflow-hidden" style={{ background: theme.card }}>
+
+      {/* 제목 + 소스 탭 */}
+      <div className="px-4 pt-4 pb-3">
+        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 예보</p>
+        <div className="flex gap-1.5">
+          {sources.map((s, i) => (
+            <button
+              key={s.name}
+              onClick={() => goTo(i)}
+              className="flex-1 py-1.5 rounded-2xl text-xs font-bold transition-all duration-200"
+              style={{
+                background: i === active ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.07)",
+                color: i === active ? theme.text : theme.sub,
+                boxShadow: i === active ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
+              }}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 슬라이드 가능한 시간축 그리드 */}
+      <AnimatePresence mode="wait" custom={dir}>
+        <motion.div
+          key={active}
+          custom={dir}
+          variants={{
+            enter:  (d) => ({ x: d * 48, opacity: 0 }),
+            center: { x: 0, opacity: 1 },
+            exit:   (d) => ({ x: d * -48, opacity: 0 }),
+          }}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.12}
+          onDragEnd={handleDragEnd}
+          className="select-none"
+        >
+          {/* 주기 표시 */}
+          <p className="text-[9px] px-4 mb-2" style={{ color: theme.sub, opacity: 0.6 }}>
+            현재 기준 24시간 · {src.freq} 간격
+          </p>
+
+          {/* 가로 스크롤 그리드 */}
+          <div className="overflow-x-auto pb-4 px-4" style={{ scrollbarWidth: "none" }}>
+            <div style={{ minWidth: 44 + 24 * 44 }}>
+
+              {/* 행 레이블 열 + 시간 헤더 */}
+              <div className="flex mb-1">
+                {/* 빈 레이블 셀 */}
+                <div className="flex-shrink-0" style={{ width: 44 }} />
+                {(hourSlots || []).map((s, i) => (
+                  <div key={i} className="flex-shrink-0 text-center" style={{ width: 44 }}>
+                    <p className="text-[10px] font-semibold"
+                      style={{ color: theme.sub, opacity: s.isMidnight ? 1 : 0.65 }}>
+                      {s.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* 구분선 */}
+              <div className="mb-2" style={{ height: 1, background: `rgba(0,0,0,0.07)`, marginLeft: 44 }} />
+
+              {/* 데이터 행 (온도 / 날씨 / 강수% / 습도 / 바람) */}
+              {HOURLY_ROWS.map((row, rowIdx) => (
+                <div key={row.key} className="flex items-center"
+                  style={{ marginBottom: rowIdx < HOURLY_ROWS.length - 1 ? 6 : 0 }}>
+                  {/* 행 레이블 */}
+                  <div className="flex-shrink-0 flex items-center" style={{ width: 44 }}>
+                    <p className="text-[9px] font-semibold" style={{ color: theme.sub, opacity: 0.75 }}>
+                      {row.label}
+                    </p>
+                  </div>
+
+                  {/* 데이터 셀 */}
+                  {(src.data || []).map((item, colIdx) => {
+                    const val = item ? row.fmt(item[row.key]) : null;
+                    const isFilled = item?._filled;
+                    return (
+                      <div key={colIdx} className="flex-shrink-0 text-center rounded-md py-0.5"
+                        style={{
+                          width: 44,
+                          opacity: isFilled ? 0.5 : 1,
+                        }}>
+                        {val != null ? (
+                          <p className={`text-[10px] ${row.key === "temp" ? "font-bold" : "font-medium"}`}
+                            style={{ color: row.key === "temp" ? theme.text : theme.sub }}>
+                            {val}
+                          </p>
+                        ) : (
+                          <p className="text-[10px]" style={{ color: theme.sub, opacity: 0.2 }}>·</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+
+            </div>
+          </div>
+
+          {/* 페이지 인디케이터 */}
+          {sources.length > 1 && (
+            <div className="flex justify-center gap-1.5 pb-4">
               {sources.map((_, i) => (
                 <motion.div
                   key={i}

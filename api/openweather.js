@@ -110,6 +110,8 @@ function buildForecast(d) {
       tempMin: item.main?.temp_min ?? 0,
       tempMax: item.main?.temp_max ?? 0,
       rainChance: Math.round((item.pop ?? 0) * 100),
+      humidity: item.main?.humidity ?? 0,
+      wind: item.wind?.speed ?? 0,
     };
   });
 }
