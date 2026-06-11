@@ -291,12 +291,29 @@ export function WeatherProvider({ children }) {
     return out;
   };
 
-  const alignedHourly = useMemo(() => ({
-    kma:   alignForecast(todayForecasts),
-    ow:    fillGaps(alignForecast(owForecast)),
-    meteo: alignForecast(meteoForecast),
-    wapi:  alignForecast(wapiForecast),
-  }), [todayForecasts, owForecast, meteoForecast, wapiForecast, hourSlots]);
+  const alignedHourly = useMemo(() => {
+    const kmaSlots = alignForecast(todayForecasts);
+    // 슬롯 0("지금")은 예보값 대신 실측값(초단기실황)으로 덮어쓰기 — 메인 온도와 싱크
+    if (currentWeather) {
+      const base = kmaSlots[0] ?? {};
+      kmaSlots[0] = {
+        ...base,
+        temp:        currentWeather.temp,
+        humidity:    currentWeather.humidity,
+        wind:        currentWeather.wind,
+        rainChance:  currentWeather.rainChance ?? base.rainChance ?? 0,
+        condition:   currentWeather.condition  ?? base.condition,
+        timeLabel:   base.timeLabel ?? `${String(new Date().getHours()).padStart(2, "0")}:00`,
+        precipitation: base.precipitation ?? 0,
+      };
+    }
+    return {
+      kma:   kmaSlots,
+      ow:    fillGaps(alignForecast(owForecast)),
+      meteo: alignForecast(meteoForecast),
+      wapi:  alignForecast(wapiForecast),
+    };
+  }, [currentWeather, todayForecasts, owForecast, meteoForecast, wapiForecast, hourSlots]);
 
   const dailyForecasts = useMemo(() => {
     const todayLabel = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
