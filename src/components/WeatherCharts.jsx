@@ -5,7 +5,7 @@ export function ChartLegend({ sources, theme, activeSrcs, onToggle }) {
   return (
     <div style={{ display: "flex", gap: 14, marginBottom: 12, flexWrap: "wrap" }}>
       {sources.map(s => {
-        const isActive = activeSrcs.includes(s.name);
+        const isActive = !activeSrcs || activeSrcs.includes(s.name);
         return (
           <div key={s.name}
             onClick={() => onToggle?.(s.name)}
