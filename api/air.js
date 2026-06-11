@@ -21,11 +21,21 @@ export default async function handler(req, res) {
     const stationName = stationJson?.response?.body?.items?.[0]?.stationName;
     if (!stationName) throw new Error(`측정소 없음: ${stationData.slice(0, 200)}`);
 
-    // 3. 측정소 → 실시간 대기오염 정보
-    const airUrl = `https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?serviceKey=${key.trim()}&returnType=json&numOfRows=1&pageNo=1&stationName=${encodeURIComponent(stationName)}&dataTerm=DAILY&ver=1.3`;
+    // 3. 측정소 → 실시간 대기오염 정보 (오늘 24시간)
+    const airUrl = `https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?serviceKey=${key.trim()}&returnType=json&numOfRows=24&pageNo=1&stationName=${encodeURIComponent(stationName)}&dataTerm=DAILY&ver=1.3`;
     const airData = await httpsGetJson(airUrl);
-    const item = airData?.response?.body?.items?.[0];
+    const items = airData?.response?.body?.items || [];
+    const item = items[0];
     if (!item) throw new Error("대기오염 데이터 없음");
+
+    const hourly = items
+      .map(i => ({
+        time: (i.dataTime || "").slice(11, 16),
+        pm25: i.pm25Value !== "-" && i.pm25Value != null ? Number(i.pm25Value) : null,
+        pm10: i.pm10Value !== "-" && i.pm10Value != null ? Number(i.pm10Value) : null,
+      }))
+      .filter(h => h.time)
+      .reverse();
 
     return res.status(200).json({
       pm10: item.pm10Value ?? "-",
@@ -33,6 +43,7 @@ export default async function handler(req, res) {
       pm10Grade: item.pm10Grade ?? "0",
       pm25Grade: item.pm25Grade ?? "0",
       stationName,
+      hourly,
     });
   } catch (err) {
     console.error("[AIR] error:", err.message);

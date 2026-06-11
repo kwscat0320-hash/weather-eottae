@@ -141,6 +141,7 @@ export default async function handler(req, res) {
 
   // ── OpenWeather ───────────────────────────────────────────────────
   let openweather = [];
+  let owHourly = [];
   if (owRes.status === "fulfilled") {
     try {
       const list = owRes.value?.list || [];
@@ -152,6 +153,13 @@ export default async function handler(req, res) {
         if (!byDate[dateStr]) byDate[dateStr] = { pm25s: [], pm10s: [] };
         if (item.components.pm2_5 != null) byDate[dateStr].pm25s.push(item.components.pm2_5);
         if (item.components.pm10  != null) byDate[dateStr].pm10s.push(item.components.pm10);
+        if (dateStr === today) {
+          owHourly.push({
+            time: `${String(kst.getUTCHours()).padStart(2, "0")}:00`,
+            pm25: item.components.pm2_5 ?? null,
+            pm10: item.components.pm10  ?? null,
+          });
+        }
       });
       openweather = Object.entries(byDate)
         .sort(([a], [b]) => a.localeCompare(b))
@@ -207,5 +215,5 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(200).json({ airkorea, openweather, openmeteo, openmeteoHourly, region });
+  return res.status(200).json({ airkorea, openweather, openmeteo, owHourly, openmeteoHourly, region });
 }

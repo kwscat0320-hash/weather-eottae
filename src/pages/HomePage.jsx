@@ -307,7 +307,12 @@ export default function HomePage({ scrollRef }) {
         </div>
 
         {/* 오늘 시간대별 미세먼지 */}
-        <HourlyAirCard openmeteoHourly={airForecast.openmeteoHourly} theme={theme} />
+        <HourlyAirCard
+          airHourly={air?.hourly}
+          owHourly={airForecast.owHourly}
+          openmeteoHourly={airForecast.openmeteoHourly}
+          theme={theme}
+        />
 
         {/* 6일 미세먼지 예보 */}
         <DailyAirCard airForecast={airForecast} theme={theme} />

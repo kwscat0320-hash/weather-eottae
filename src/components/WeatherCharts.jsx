@@ -1302,59 +1302,126 @@ export function DailyAirCard({ airForecast, theme }) {
   );
 }
 
-// ── HourlyAirCard — 오늘 시간대별 미세먼지 (PM2.5) ────────────────────────
-export function HourlyAirCard({ openmeteoHourly, theme }) {
-  if (!openmeteoHourly || openmeteoHourly.length === 0) return null;
-
+// ── HourlyAirCard — 오늘 시간대별 미세먼지 꺾은선 (PM2.5) ───────────────
+export function HourlyAirCard({ airHourly, owHourly, openmeteoHourly, theme }) {
   const nowHour = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
-  const slots = openmeteoHourly.filter(h => {
-    const hh = parseInt(h.time.slice(0, 2), 10);
-    return hh >= nowHour;
-  }).slice(0, 24);
 
-  if (slots.length === 0) return null;
+  const filterSlots = (arr) =>
+    (arr || []).filter(h => parseInt(h.time.slice(0, 2), 10) >= nowHour);
 
-  const maxPm25 = Math.max(...slots.map(s => s.pm25 ?? 0), 75);
+  const akSlots = filterSlots(airHourly);
+  const owSlots = filterSlots(owHourly);
+  const omSlots = filterSlots(openmeteoHourly);
+
+  if (!akSlots.length && !owSlots.length && !omSlots.length) return null;
+
+  // 전체 시간 레이블 수집 (오름차순)
+  const allTimes = [...new Set([
+    ...akSlots.map(h => h.time),
+    ...owSlots.map(h => h.time),
+    ...omSlots.map(h => h.time),
+  ])].sort();
+
+  const sources = [
+    { name: "에어코리아", color: "#3B82F6", slots: akSlots },
+    { name: "오픈웨더",   color: "#F97316", slots: owSlots },
+    { name: "오픈메테오", color: "#10B981", slots: omSlots },
+  ].filter(s => s.slots.length > 0);
+
+  const W = 320, H = 120, PAD_L = 28, PAD_R = 8, PAD_T = 8, PAD_B = 24;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+
+  // 등급 경계 (PM2.5 μg/m³): 좋음≤15, 보통≤35, 나쁨≤75, 매우나쁨>75
+  const Y_MAX = 80;
+  const bands = [
+    { from: 0,  to: 15, color: "#4ade8022" },
+    { from: 15, to: 35, color: "#facc1522" },
+    { from: 35, to: 75, color: "#fb923c22" },
+    { from: 75, to: Y_MAX, color: "#f8717122" },
+  ];
+  const bandLabels = [
+    { y: 15, label: "15" },
+    { y: 35, label: "35" },
+    { y: 75, label: "75" },
+  ];
+
+  const toX = (time) => {
+    const idx = allTimes.indexOf(time);
+    return PAD_L + (idx / Math.max(allTimes.length - 1, 1)) * chartW;
+  };
+  const toY = (val) =>
+    PAD_T + chartH - (Math.min(val, Y_MAX) / Y_MAX) * chartH;
+
+  const makePath = (slots) => {
+    const pts = slots
+      .filter(s => s.pm25 != null)
+      .map(s => `${toX(s.time).toFixed(1)},${toY(s.pm25).toFixed(1)}`);
+    return pts.length > 1 ? `M ${pts.join(" L ")}` : "";
+  };
+
+  // X축 레이블: 4시간마다
+  const xLabels = allTimes.filter((_, i) => i % 4 === 0);
 
   return (
     <div style={{ background: theme.card, borderRadius: 16, padding: "18px 16px", marginBottom: 16 }}>
       <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 14 }}>🕐 오늘 시간대별 미세먼지 (PM2.5)</h3>
 
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 80, overflowX: "auto", paddingBottom: 4 }}>
-        {slots.map((s, i) => {
-          const val = Math.round(s.pm25 ?? 0);
-          const pct = Math.min(val / maxPm25, 1);
-          const gs = gradeStyle(pm25ToGradeStr(val));
-          return (
-            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 28, flex: "1 0 28px" }}>
-              <div style={{ fontSize: 9, fontWeight: 700, color: gs.color, marginBottom: 2 }}>{val}</div>
-              <div style={{
-                width: "100%", borderRadius: 4,
-                height: Math.max(pct * 52, 4),
-                background: gs.color,
-                opacity: 0.85,
-              }} />
+      <div style={{ overflowX: "auto" }}>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", minWidth: W, display: "block" }}>
+          {/* 등급 음영 */}
+          {bands.map((b, i) => {
+            const y1 = toY(b.to);
+            const y2 = toY(b.from);
+            return <rect key={i} x={PAD_L} y={y1} width={chartW} height={y2 - y1} fill={b.color} />;
+          })}
+
+          {/* 등급 경계 점선 + 레이블 */}
+          {bandLabels.map(({ y, label }) => (
+            <g key={y}>
+              <line x1={PAD_L} x2={PAD_L + chartW} y1={toY(y)} y2={toY(y)}
+                stroke="rgba(0,0,0,0.12)" strokeWidth={0.8} strokeDasharray="3 3" />
+              <text x={PAD_L - 3} y={toY(y) + 3.5} textAnchor="end"
+                fontSize={8} fill={theme.sub} opacity={0.7}>{label}</text>
+            </g>
+          ))}
+
+          {/* Y축 0 */}
+          <text x={PAD_L - 3} y={toY(0) + 3.5} textAnchor="end" fontSize={8} fill={theme.sub} opacity={0.7}>0</text>
+
+          {/* 꺾은선 */}
+          {sources.map(src => {
+            const d = makePath(src.slots);
+            return d ? (
+              <path key={src.name} d={d} fill="none"
+                stroke={src.color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            ) : null;
+          })}
+
+          {/* X축 레이블 */}
+          {xLabels.map(t => (
+            <text key={t} x={toX(t)} y={H - 6} textAnchor="middle"
+              fontSize={8} fill={theme.sub} opacity={0.8}>{t.slice(0, 2)}시</text>
+          ))}
+        </svg>
+      </div>
+
+      {/* 범례 */}
+      <div style={{ display: "flex", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
+        {sources.map(src => (
+          <div key={src.name} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ width: 16, height: 3, borderRadius: 2, background: src.color }} />
+            <span style={{ fontSize: 10, color: theme.sub, fontWeight: 600 }}>{src.name}</span>
+          </div>
+        ))}
+        <div style={{ display: "flex", gap: 8, marginLeft: "auto", alignItems: "center" }}>
+          {[["좋음","#4ade80"],["보통","#facc15"],["나쁨","#fb923c"],["매우나쁨","#f87171"]].map(([l,c]) => (
+            <div key={l} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: c, opacity: 0.7 }} />
+              <span style={{ fontSize: 9, color: theme.sub }}>{l}</span>
             </div>
-          );
-        })}
-      </div>
-
-      <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-        {slots.map((s, i) => (
-          <div key={i} style={{ textAlign: "center", minWidth: 28, flex: "1 0 28px", fontSize: 9, color: theme.sub, fontWeight: 600 }}>
-            {s.time.slice(0, 2)}시
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-        {[["좋음", "#4ade80"], ["보통", "#facc15"], ["나쁨", "#fb923c"], ["매우나쁨", "#f87171"]].map(([label, color]) => (
-          <div key={label} style={{ display: "flex", alignItems: "center", gap: 3 }}>
-            <div style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
-            <span style={{ fontSize: 10, color: theme.sub }}>{label}</span>
-          </div>
-        ))}
-        <span style={{ fontSize: 10, color: theme.sub, marginLeft: "auto" }}>Open-Meteo · ㎍/㎥</span>
+          ))}
+        </div>
       </div>
     </div>
   );
