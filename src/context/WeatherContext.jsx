@@ -34,6 +34,7 @@ export function WeatherProvider({ children }) {
   const [airOw, setAirOw] = useState(null);
   const [airMeteo, setAirMeteo] = useState(null);
   const [weatherHistory, setWeatherHistory] = useState([]);
+  const [airForecast, setAirForecast] = useState({ airkorea: [], openweather: [], openmeteo: [] });
 
   useEffect(() => { requestCurrentLocation(); }, []);
 
@@ -47,6 +48,11 @@ export function WeatherProvider({ children }) {
     fetch(`/api/air-ow?lat=${lat}&lon=${lon}`)
       .then(r => r.json())
       .then(d => { if (d && !d.error) setAirOw(d); })
+      .catch(() => {});
+    // 5일 미세먼지 예보
+    fetch(`/api/air-forecast?lat=${lat}&lon=${lon}`)
+      .then(r => r.json())
+      .then(d => { if (d && !d.error) setAirForecast(d); })
       .catch(() => {});
   };
 
@@ -382,7 +388,7 @@ export function WeatherProvider({ children }) {
       wapiWeather, wapiForecast, wapiDailyForecasts,
       hourSlots, alignedHourly,
       displayLocation, weatherSource, loading, error, air, airOw, airMeteo, airWapi, theme, speech,
-      weatherHistory, forecastHistory,
+      weatherHistory, forecastHistory, airForecast,
       requestCurrentLocation,
     }}>
       {children}

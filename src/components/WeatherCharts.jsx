@@ -1149,3 +1149,107 @@ export function DailyConditionCard({ dailyForecasts, owDailyForecasts, meteoDail
     </div>
   );
 }
+
+// ── PM2.5 등급 → 색상/라벨 ─────────────────────────────────────────────────
+function gradeStyle(grade) {
+  if (grade === "좋음")     return { bg: "#B3E5FC", color: "#0277BD", label: "좋음" };
+  if (grade === "보통")     return { bg: "#C8E6C9", color: "#2E7D32", label: "보통" };
+  if (grade === "나쁨")     return { bg: "#FFE0B2", color: "#E65100", label: "나쁨" };
+  if (grade === "매우나쁨") return { bg: "#FFCDD2", color: "#B71C1C", label: "매우나쁨" };
+  return { bg: "#EEEEEE", color: "#999", label: "—" };
+}
+
+export function DailyAirCard({ airForecast, theme }) {
+  const [activeSrcs, setActiveSrcs] = useState(["에어코리아"]);
+  const toggleSrc = name => setActiveSrcs(prev =>
+    prev.includes(name) ? (prev.length > 1 ? prev.filter(n => n !== name) : prev) : [...prev, name]
+  );
+
+  const sources = [
+    { name: "에어코리아", color: "#4A90D9", data: airForecast?.airkorea   || [] },
+    { name: "오픈웨더",   color: "#FF6B35", data: airForecast?.openweather || [] },
+    { name: "오픈메테오", color: "#4CAF50", data: airForecast?.openmeteo  || [] },
+  ];
+
+  // 모든 소스에서 dateLabel 수집 → 정렬된 고유 날짜 5개
+  const allDates = [...new Set(sources.flatMap(s => s.data.map(d => d.dateLabel)))]
+    .sort((a, b) => {
+      const nums = s => (s.match(/\d+/g) || []).map(Number);
+      const [am, ad] = nums(a); const [bm, bd] = nums(b);
+      return am !== bm ? am - bm : ad - bd;
+    })
+    .slice(0, 5);
+
+  return (
+    <div style={{ background: theme.card, borderRadius: 16, padding: "18px 16px", marginBottom: 16 }}>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 14 }}>🌫️ 5일 미세먼지 (PM2.5) 예보</h3>
+
+      {/* 날짜 헤더 */}
+      <div style={{ display: "grid", gridTemplateColumns: `72px repeat(${allDates.length}, 1fr)`, gap: 4, marginBottom: 6 }}>
+        <div />
+        {allDates.map(d => {
+          const [day, dow] = splitDateLabel(d);
+          return (
+            <div key={d} style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>{day}</div>
+              <div style={{ fontSize: 10, color: theme.sub }}>{dow}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 소스별 행 */}
+      {sources.map(src => {
+        if (!activeSrcs.includes(src.name)) return null;
+        const byDate = Object.fromEntries(src.data.map(d => [d.dateLabel, d]));
+        return (
+          <div key={src.name} style={{ display: "grid", gridTemplateColumns: `72px repeat(${allDates.length}, 1fr)`, gap: 4, marginBottom: 6, alignItems: "center" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: src.color, paddingRight: 4 }}>{src.name}</div>
+            {allDates.map(d => {
+              const item = byDate[d];
+              const gs = gradeStyle(item?.pm25Grade);
+              return (
+                <div key={d} style={{
+                  textAlign: "center", borderRadius: 6, padding: "4px 2px",
+                  background: item ? gs.bg : "transparent",
+                }}>
+                  <span style={{ fontSize: item?.pm25Grade === "매우나쁨" ? 9 : 11, fontWeight: 700, color: item ? gs.color : theme.sub }}>
+                    {item ? gs.label : "—"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+
+      {/* 미니카드 토글 */}
+      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+        {sources.map(src => {
+          const isActive = activeSrcs.includes(src.name);
+          const firstGrade = src.data[0]?.pm25Grade;
+          const gs = gradeStyle(firstGrade);
+          return (
+            <div key={src.name} onClick={() => toggleSrc(src.name)} style={{
+              flex: "1 1 0", minWidth: 60, borderRadius: 10, padding: "8px 6px",
+              border: `2px solid ${isActive ? src.color : theme.border || "#ddd"}`,
+              background: isActive ? src.color + "15" : "transparent",
+              textAlign: "center", cursor: "pointer",
+              opacity: isActive ? 1 : 0.4, transition: "opacity 0.15s",
+            }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 4 }}>{src.name}</p>
+              <div style={{
+                display: "inline-block", borderRadius: 5, padding: "2px 6px",
+                background: firstGrade ? gs.bg : "transparent",
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: firstGrade ? gs.color : theme.sub }}>
+                  {firstGrade ? gs.label : "—"}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

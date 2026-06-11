@@ -7,7 +7,7 @@ import AirDot from "../components/AirDot";
 import AirCompareCard from "../components/AirCompareCard";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
-import { HourlyCompareChart, HourlyRainChart, DailyForecastChart, DailyConditionCard } from "../components/WeatherCharts";
+import { HourlyCompareChart, HourlyRainChart, DailyForecastChart, DailyConditionCard, DailyAirCard } from "../components/WeatherCharts";
 
 export default function HomePage({ scrollRef }) {
   const {
@@ -17,7 +17,7 @@ export default function HomePage({ scrollRef }) {
     hourSlots, alignedHourly,
     displayLocation, loading, error,
     coords, requestCurrentLocation, air, airOw, airMeteo, airWapi,
-    weatherHistory, forecastHistory,
+    weatherHistory, forecastHistory, airForecast,
   } = useWeather();
 
   const dateStr = new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
@@ -276,6 +276,9 @@ export default function HomePage({ scrollRef }) {
             theme={theme}
           />
         </div>
+
+        {/* 5일 미세먼지 예보 */}
+        <DailyAirCard airForecast={airForecast} theme={theme} />
 
         {/* 최근 기상 기록 / 예보 이력 — 데이터만 유지, UI 미표시 */}
 
