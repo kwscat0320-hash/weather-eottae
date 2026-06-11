@@ -596,3 +596,256 @@ export function WeatherRadarChart({ weather, compareWeather, meteoWeather, wapiW
     </div>
   );
 }
+
+// ── 공통: 날짜 짧게 변환 ("6월 12일 (목)" → ["12일", "(목)"])
+function splitDateLabel(str) {
+  if (!str) return ["", ""];
+  const parts = str.trim().split(/\s+/);
+  const day = parts.find(p => p.includes("일")) || parts[1] || parts[0];
+  const dow = parts.find(p => p.startsWith("(")) || "";
+  return [day, dow];
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DailyTempChart — 4개 소스 5일 최고/최저 온도 라인+밴드 차트
+// ══════════════════════════════════════════════════════════════════════════
+export function DailyTempChart({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
+  const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
+  const [hoverIdx, setHoverIdx] = useState(null);
+
+  const toggleSrc = name => setActiveSrcs(prev =>
+    prev.includes(name)
+      ? prev.length > 1 ? prev.filter(n => n !== name) : prev
+      : [...prev, name]
+  );
+
+  const sourceDefs = [
+    { name: "기상청",    color: "#2563eb", days: dailyForecasts?.length    ? dailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max })) : null },
+    { name: "오픈웨더",  color: "#ea580c", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max })) : null },
+    { name: "오픈메테오",color: "#059669", days: meteoDaily?.length         ? meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, min: d.tempMin, max: d.tempMax })) : null },
+    { name: "웨더API",   color: "#7c3aed", days: wapiDailyForecasts?.length ? wapiDailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max })) : null },
+  ].filter(s => s.days?.length);
+
+  if (!sourceDefs.length) return null;
+
+  const nDays = Math.max(...sourceDefs.map(s => s.days.length));
+  const refLabels = sourceDefs[0].days.map(d => d.date);
+
+  const allTemps = sourceDefs.flatMap(s => s.days.flatMap(d => [d.min, d.max].filter(v => v != null).map(Number)));
+  if (!allTemps.length) return null;
+
+  const rawMin = Math.min(...allTemps);
+  const rawMax = Math.max(...allTemps);
+  const pad = Math.max((rawMax - rawMin) * 0.25, 2);
+  const minT = Math.floor(rawMin - pad);
+  const maxT = Math.ceil(rawMax + pad);
+
+  const W = 360, H = 190;
+  const mTop = 18, mRight = 12, mBottom = 44, mLeft = 30;
+  const cW = W - mLeft - mRight;
+  const cH = H - mTop - mBottom;
+
+  const xScale = i => mLeft + (nDays > 1 ? (i / (nDays - 1)) * cW : cW / 2);
+  const yScale = v => mTop + cH - ((v - minT) / (maxT - minT || 1)) * cH;
+
+  const yRange = maxT - minT;
+  const tickStep = yRange <= 6 ? 2 : yRange <= 12 ? 3 : yRange <= 20 ? 4 : 5;
+  const yTicks = [];
+  for (let v = Math.ceil(minT / tickStep) * tickStep; v <= maxT; v += tickStep) yTicks.push(v);
+
+  const slotW = nDays > 1 ? cW / (nDays - 1) : cW;
+
+  return (
+    <div>
+      <ChartLegend sources={sourceDefs} theme={theme} activeSrcs={activeSrcs} onToggle={toggleSrc} />
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}
+        onMouseLeave={() => setHoverIdx(null)}>
+
+        {yTicks.map(v => {
+          const y = yScale(v);
+          return (
+            <g key={v}>
+              <line x1={mLeft} y1={y} x2={W - mRight} y2={y} stroke="rgba(0,0,0,0.06)" strokeWidth={1} />
+              <text x={mLeft - 4} y={y + 3.5} textAnchor="end" fontSize={8} fill="rgba(0,0,0,0.35)">{v}°</text>
+            </g>
+          );
+        })}
+
+        <line x1={mLeft} y1={mTop + cH} x2={W - mRight} y2={mTop + cH} stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
+
+        {Array.from({ length: nDays }, (_, i) => {
+          const [day, dow] = splitDateLabel(refLabels[i]);
+          return (
+            <g key={i}>
+              <text x={xScale(i)} y={H - mBottom + 13} textAnchor="middle" fontSize={8.5} fill="rgba(0,0,0,0.5)">{day}</text>
+              <text x={xScale(i)} y={H - mBottom + 24} textAnchor="middle" fontSize={8} fill="rgba(0,0,0,0.35)">{dow}</text>
+            </g>
+          );
+        })}
+
+        {sourceDefs.map(src => {
+          const isActive = activeSrcs.includes(src.name);
+          const maxPts = src.days.map((d, i) => d.max != null ? { x: xScale(i), y: yScale(Number(d.max)), val: Number(d.max) } : null);
+          const minPts = src.days.map((d, i) => d.min != null ? { x: xScale(i), y: yScale(Number(d.min)), val: Number(d.min) } : null);
+          const validMax = maxPts.filter(Boolean);
+          const validMin = minPts.filter(Boolean);
+          const bandPts = [...validMax, ...[...validMin].reverse()].map(p => `${p.x},${p.y}`).join(" ");
+
+          return (
+            <g key={src.name} opacity={isActive ? 1 : 0.1} style={{ transition: "opacity 0.15s" }}>
+              {validMax.length > 1 && <polygon points={bandPts} fill={`${src.color}18`} />}
+              {validMax.length > 1 && (
+                <polyline points={validMax.map(p => `${p.x},${p.y}`).join(" ")}
+                  fill="none" stroke={src.color} strokeWidth={2.2} strokeLinejoin="round" strokeLinecap="round" />
+              )}
+              {validMin.length > 1 && (
+                <polyline points={validMin.map(p => `${p.x},${p.y}`).join(" ")}
+                  fill="none" stroke={src.color} strokeWidth={1.5} strokeDasharray="4,2.5"
+                  strokeLinejoin="round" strokeLinecap="round" />
+              )}
+              {hoverIdx != null && isActive && (() => {
+                const mx = maxPts[hoverIdx];
+                const mn = minPts[hoverIdx];
+                return (
+                  <g>
+                    {mx && <>
+                      <circle cx={mx.x} cy={mx.y} r={4} fill={src.color} stroke="white" strokeWidth={1.5} />
+                      <text x={mx.x} y={mx.y - 7} textAnchor="middle" fontSize={9} fill={src.color} fontWeight="700">{mx.val.toFixed(1)}°</text>
+                    </>}
+                    {mn && <>
+                      <circle cx={mn.x} cy={mn.y} r={3.5} fill={src.color} stroke="white" strokeWidth={1.5} />
+                      <text x={mn.x} y={mn.y + 15} textAnchor="middle" fontSize={9} fill={src.color} fontWeight="700">{mn.val.toFixed(1)}°</text>
+                    </>}
+                  </g>
+                );
+              })()}
+            </g>
+          );
+        })}
+
+        {hoverIdx != null && (
+          <line x1={xScale(hoverIdx)} y1={mTop} x2={xScale(hoverIdx)} y2={mTop + cH}
+            stroke="rgba(0,0,0,0.18)" strokeWidth={1} strokeDasharray="3,2" />
+        )}
+
+        {Array.from({ length: nDays }, (_, i) => (
+          <rect key={i} x={xScale(i) - slotW / 2} y={mTop} width={slotW} height={cH}
+            fill="transparent" onMouseEnter={() => setHoverIdx(i)} />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DailyRainChart — 4개 소스 5일 강수확률 막대 차트
+// ══════════════════════════════════════════════════════════════════════════
+export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
+  const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
+  const [hoverIdx, setHoverIdx] = useState(null);
+
+  const toggleSrc = name => setActiveSrcs(prev =>
+    prev.includes(name)
+      ? prev.length > 1 ? prev.filter(n => n !== name) : prev
+      : [...prev, name]
+  );
+
+  const sourceDefs = [
+    { name: "기상청",    color: "#2563eb", days: dailyForecasts?.length    ? dailyForecasts.slice(0, 5).map(d => ({ date: d.date, rainChance: d.rainChance })) : null },
+    { name: "오픈웨더",  color: "#ea580c", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, rainChance: d.rainChance })) : null },
+    { name: "오픈메테오",color: "#059669", days: meteoDaily?.length         ? meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, rainChance: d.rainChance })) : null },
+    { name: "웨더API",   color: "#7c3aed", days: wapiDailyForecasts?.length ? wapiDailyForecasts.slice(0, 5).map(d => ({ date: d.date, rainChance: d.rainChance })) : null },
+  ].filter(s => s.days?.length);
+
+  if (!sourceDefs.length) return null;
+
+  const nDays = Math.max(...sourceDefs.map(s => s.days.length));
+  const refLabels = sourceDefs[0].days.map(d => d.date);
+  const nSrc = sourceDefs.length;
+
+  const W = 360, H = 160;
+  const mTop = 14, mRight = 12, mBottom = 44, mLeft = 30;
+  const cW = W - mLeft - mRight;
+  const cH = H - mTop - mBottom;
+
+  const groupW = cW / nDays;
+  const barPad = 3;
+  const barGap = 1;
+  const barAreaW = groupW - barPad * 2;
+  const barW = Math.max((barAreaW - barGap * (nSrc - 1)) / nSrc, 2);
+
+  const yScale = v => mTop + cH - (Math.min(v, 100) / 100) * cH;
+  const yTicks = [0, 25, 50, 75, 100];
+  const groupX = i => mLeft + i * groupW;
+  const barX = (i, bi) => groupX(i) + barPad + bi * (barW + barGap);
+
+  return (
+    <div>
+      <ChartLegend sources={sourceDefs} theme={theme} activeSrcs={activeSrcs} onToggle={toggleSrc} />
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}
+        onMouseLeave={() => setHoverIdx(null)}>
+
+        {yTicks.map(v => {
+          const y = yScale(v);
+          return (
+            <g key={v}>
+              <line x1={mLeft} y1={y} x2={W - mRight} y2={y}
+                stroke={v === 0 ? "rgba(0,0,0,0.1)" : "rgba(0,0,0,0.05)"}
+                strokeWidth={1} strokeDasharray={v === 0 ? "none" : "3,3"} />
+              <text x={mLeft - 4} y={y + 3.5} textAnchor="end" fontSize={8} fill="rgba(0,0,0,0.35)">{v}%</text>
+            </g>
+          );
+        })}
+
+        <line x1={mLeft} y1={mTop + cH} x2={W - mRight} y2={mTop + cH} stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
+
+        {Array.from({ length: nDays }, (_, i) => {
+          const [day, dow] = splitDateLabel(refLabels[i]);
+          return (
+            <g key={i}>
+              <text x={groupX(i) + groupW / 2} y={H - mBottom + 13} textAnchor="middle" fontSize={8.5} fill="rgba(0,0,0,0.5)">{day}</text>
+              <text x={groupX(i) + groupW / 2} y={H - mBottom + 24} textAnchor="middle" fontSize={8} fill="rgba(0,0,0,0.35)">{dow}</text>
+            </g>
+          );
+        })}
+
+        {hoverIdx != null && (
+          <rect x={groupX(hoverIdx)} y={mTop} width={groupW} height={cH} fill="rgba(0,0,0,0.05)" rx={2} />
+        )}
+
+        {Array.from({ length: nDays }, (_, i) => (
+          <g key={i}>
+            {sourceDefs.map((src, bi) => {
+              const val = src.days[i]?.rainChance != null ? Number(src.days[i].rainChance) : 0;
+              if (val === 0) return null;
+              const x = barX(i, bi);
+              const y = yScale(val);
+              const bh = mTop + cH - y;
+              const isActive = activeSrcs.includes(src.name);
+              return (
+                <g key={src.name} opacity={isActive ? 1 : 0.1} style={{ transition: "opacity 0.15s" }}>
+                  <rect x={x} y={y} width={barW} height={Math.max(bh, 1)} fill={src.color} rx={1}
+                    opacity={hoverIdx === i ? 1 : 0.82} />
+                  {hoverIdx === i && isActive && (
+                    <text x={x + barW / 2} y={y - 3} textAnchor="middle" fontSize={7.5} fill={src.color} fontWeight="700">{val}%</text>
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        ))}
+
+        {hoverIdx != null && refLabels[hoverIdx] && (
+          <text x={groupX(hoverIdx) + groupW / 2} y={mTop - 3} textAnchor="middle" fontSize={8.5} fill="rgba(0,0,0,0.5)">
+            {splitDateLabel(refLabels[hoverIdx]).join(" ")}
+          </text>
+        )}
+
+        {Array.from({ length: nDays }, (_, i) => (
+          <rect key={i} x={groupX(i)} y={mTop} width={groupW} height={cH}
+            fill="transparent" onMouseEnter={() => setHoverIdx(i)} />
+        ))}
+      </svg>
+    </div>
+  );
+}
