@@ -7,7 +7,7 @@ import AirDot from "../components/AirDot";
 import AirCompareCard from "../components/AirCompareCard";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
-import { HourlyCompareChart } from "../components/WeatherCharts";
+import { HourlyCompareChart, HourlyRainChart } from "../components/WeatherCharts";
 
 export default function HomePage({ scrollRef }) {
   const {
@@ -243,6 +243,15 @@ export default function HomePage({ scrollRef }) {
           />
         </div>
 
+        {/* 시간대별 강수확률 — 4소스 꺾은선 차트 */}
+        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 강수확률</p>
+          <HourlyRainChart
+            alignedHourly={alignedHourly}
+            hourSlots={hourSlots}
+            theme={theme}
+          />
+        </div>
 
         {/* 5일 예보 — 멀티소스 */}
         <MultiDailyCard
