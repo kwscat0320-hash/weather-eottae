@@ -272,6 +272,8 @@ function buildForecast(vilageFcstItems, ultraFcstItems) {
       temp: Number(g.TMP ?? g.T1H ?? 0),
       tempMin: official.TMN ?? Number(g.TMP ?? g.T1H ?? 0),
       tempMax: official.TMX ?? Number(g.TMP ?? g.T1H ?? 0),
+      officialTMX: official.TMX != null ? official.TMX : null,
+      officialTMN: official.TMN != null ? official.TMN : null,
       rainChance:    Number(g.POP ?? 0),
       humidity:      Number(g.REH ?? 0),
       wind:          Number(g.WSD ?? 0),
