@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   }
 
   const grid = dfsXyConv(Number(lat), Number(lon));
-  const cacheKey = `kma:latest:v2:${grid.x}:${grid.y}`;
+  const cacheKey = `kma:latest:v3:${grid.x}:${grid.y}`;
 
   console.log(`[KMA] lat=${lat} lon=${lon} force=${force} grid=${grid.x},${grid.y}`);
 
@@ -261,6 +261,7 @@ function buildForecast(vilageFcstItems, ultraFcstItems) {
     const official = officialByDate[g.fcstDate] ?? {};
     return {
       dateLabel: date.toLocaleDateString("ko-KR", {
+        timeZone: "Asia/Seoul",
         month: "numeric",
         day: "numeric",
         weekday: "short",

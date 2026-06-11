@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     // ── 좌표 기반 조회 ───────────────────────────────────────────────
     if (lat && lon) {
       const grid = dfsXyConv(Number(lat), Number(lon));
-      const latestKey = `kma:latest:v2:${grid.x}:${grid.y}`;
+      const latestKey = `kma:latest:v3:${grid.x}:${grid.y}`;
       const latest = await kv.get(latestKey);
 
       if (!latest) {
