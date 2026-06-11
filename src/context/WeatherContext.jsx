@@ -181,19 +181,21 @@ export function WeatherProvider({ children }) {
           .catch(() => {});
 
         const shortForecast = data.forecast || [];
-        // officialTMX가 있는 날짜만 "단기예보 완전 커버" 날짜로 간주
-        // → officialTMX 없는 날짜는 중기예보 TMX/TMN을 보완으로 포함
+        // 단기예보 먼저 표시 → 로딩 종료 후 중기예보를 백그라운드로 붙임
+        setForecast(shortForecast);
+
+        // 중기예보는 비동기 백그라운드 처리 (로딩 차단 안 함)
         const shortTMXDates = new Set(
           shortForecast.filter(f => f.officialTMX != null).map(f => f.dateLabel)
         );
-        const midRes = await fetch(`/api/kma-mid?lat=${lat}&lon=${lon}`).catch(() => null);
-        if (midRes?.ok) {
-          const midData = await midRes.json();
-          const midOnly = (midData.forecast || []).filter(f => !shortTMXDates.has(f.dateLabel));
-          setForecast([...shortForecast, ...midOnly]);
-        } else {
-          setForecast(shortForecast);
-        }
+        fetch(`/api/kma-mid?lat=${lat}&lon=${lon}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(midData => {
+            if (!midData) return;
+            const midOnly = (midData.forecast || []).filter(f => !shortTMXDates.has(f.dateLabel));
+            if (midOnly.length) setForecast(prev => [...prev.filter(f => f.timeLabel !== "일간"), ...midOnly]);
+          })
+          .catch(() => {});
       } else {
         const res = await fetch(`/api/openweather?lat=${lat}&lon=${lon}`);
         if (!res.ok) {
