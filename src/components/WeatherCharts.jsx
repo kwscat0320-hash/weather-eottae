@@ -1043,3 +1043,109 @@ export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
     </div>
   );
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// DailyConditionCard — 5일 날씨 상태 비교 (소스별 이모지+텍스트)
+// ══════════════════════════════════════════════════════════════════════════
+
+function condToEmoji(cond) {
+  if (!cond) return "🌡️";
+  const c = cond.trim();
+  if (c.includes("뇌우") || c.includes("번개"))         return "⛈️";
+  if (c.includes("폭설") || c.includes("강한 눈"))       return "❄️";
+  if (c.includes("눈보라"))                              return "🌨️";
+  if (c.includes("눈") || c.includes("설"))              return "🌨️";
+  if (c.includes("진눈깨비") || c.includes("우박"))       return "🌧️";
+  if (c.includes("폭우") || c.includes("강한 비"))       return "🌧️";
+  if (c.includes("소나기"))                              return "🌦️";
+  if (c.includes("비"))                                  return "🌧️";
+  if (c.includes("이슬비"))                              return "🌦️";
+  if (c.includes("안개"))                                return "🌫️";
+  if (c.includes("흐림") || c.includes("흐린"))          return "☁️";
+  if (c.includes("구름 많음") || c.includes("구름많음")) return "🌥️";
+  if (c.includes("구름 조금") || c.includes("구름조금")) return "⛅";
+  if (c.includes("구름"))                                return "🌤️";
+  if (c.includes("맑음") || c.includes("청명"))          return "☀️";
+  return "🌡️";
+}
+
+export function DailyConditionCard({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
+  const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
+
+  const toggleSrc = name => setActiveSrcs(prev =>
+    prev.includes(name)
+      ? prev.length > 1 ? prev.filter(n => n !== name) : prev
+      : [...prev, name]
+  );
+
+  const sourceDefs = [
+    { name: "기상청",    color: "#2563eb", days: dailyForecasts?.length    ? dailyForecasts.slice(0, 5).map(d => ({ date: d.date, condition: d.condition || null })) : null },
+    { name: "오픈웨더",  color: "#ea580c", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, condition: d.condition })) : null },
+    { name: "오픈메테오",color: "#059669", days: meteoDaily?.length         ? meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, condition: d.condition })) : null },
+    { name: "웨더API",   color: "#7c3aed", days: wapiDailyForecasts?.length ? wapiDailyForecasts.slice(0, 5).map(d => ({ date: d.date, condition: d.condition })) : null },
+  ].filter(s => s.days?.some(d => d.condition));
+
+  if (!sourceDefs.length) return null;
+
+  const nDays = Math.max(...sourceDefs.map(s => s.days.length));
+  const refDates = sourceDefs[0].days.map(d => d.date);
+  const activeDefs = sourceDefs.filter(s => activeSrcs.includes(s.name));
+
+  return (
+    <div>
+      <ChartLegend sources={sourceDefs} theme={theme} activeSrcs={activeSrcs} onToggle={toggleSrc} />
+
+      {/* 날짜별 컬럼 */}
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${nDays}, 1fr)`, gap: 6 }}>
+        {Array.from({ length: nDays }, (_, i) => {
+          const [day, dow] = splitDateLabel(refDates[i]);
+          return (
+            <div key={i} style={{
+              background: "rgba(0,0,0,0.04)", borderRadius: 14,
+              padding: "10px 4px 8px",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+            }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: theme.text, lineHeight: 1.1 }}>{day}</p>
+              <p style={{ fontSize: 9, color: theme.sub, lineHeight: 1 }}>{dow}</p>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, marginTop: 2 }}>
+                {activeDefs.map(src => {
+                  const cond = src.days[i]?.condition;
+                  return (
+                    <div key={src.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                      <span style={{ fontSize: 22, lineHeight: 1 }}>{condToEmoji(cond)}</span>
+                      <span style={{ fontSize: 8.5, fontWeight: 600, color: src.color,
+                        textAlign: "center", maxWidth: 52, wordBreak: "keep-all", lineHeight: 1.2 }}>
+                        {cond || "—"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 소스별 미니 카드 버튼 */}
+      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+        {sourceDefs.map(src => {
+          const isActive = activeSrcs.includes(src.name);
+          const firstCond = src.days[0]?.condition;
+          return (
+            <div key={src.name}
+              onClick={() => toggleSrc(src.name)}
+              style={{
+                flex: "1 1 0", minWidth: 60, padding: "8px 10px", borderRadius: 14,
+                background: `${src.color}12`, borderLeft: `3px solid ${src.color}`,
+                opacity: isActive ? 1 : 0.2, transition: "opacity 0.15s", cursor: "pointer",
+              }}
+            >
+              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 3 }}>{src.name}</p>
+              <p style={{ fontSize: 20, lineHeight: 1 }}>{condToEmoji(firstCond)}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

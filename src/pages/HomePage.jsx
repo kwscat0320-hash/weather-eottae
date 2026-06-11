@@ -7,7 +7,7 @@ import AirDot from "../components/AirDot";
 import AirCompareCard from "../components/AirCompareCard";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
-import { HourlyCompareChart, HourlyRainChart, DailyForecastChart } from "../components/WeatherCharts";
+import { HourlyCompareChart, HourlyRainChart, DailyForecastChart, DailyConditionCard } from "../components/WeatherCharts";
 
 export default function HomePage({ scrollRef }) {
   const {
@@ -265,14 +265,17 @@ export default function HomePage({ scrollRef }) {
           />
         </div>
 
-        {/* 상세기상 — 멀티소스 */}
-        <DetailedWeatherCard
-          weather={weather}
-          compareWeather={compareWeather}
-          meteoWeather={meteoWeather}
-          wapiWeather={wapiWeather}
-          theme={theme}
-        />
+        {/* 5일 날씨 상태 */}
+        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 날씨</p>
+          <DailyConditionCard
+            dailyForecasts={dailyForecasts}
+            owDailyForecasts={owDailyForecasts}
+            meteoDaily={meteoWeather?.daily}
+            wapiDailyForecasts={wapiDailyForecasts}
+            theme={theme}
+          />
+        </div>
 
         {/* 최근 기상 기록 / 예보 이력 — 데이터만 유지, UI 미표시 */}
 
