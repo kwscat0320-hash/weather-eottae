@@ -106,8 +106,9 @@ export default async function handler(req, res) {
     const allHours = (data.forecast?.forecastday || []).flatMap(fd =>
       (fd.hour || []).map(h => {
         const d = new Date(h.time);
+        const utcMs = h.time_epoch * 1000;
         return {
-          isoTime:       h.time,
+          isoTime:       new Date(utcMs).toISOString(),
           dateLabel:     d.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }),
           timeLabel:     `${String(d.getHours()).padStart(2, "0")}:00`,
           temp:          h.temp_c,

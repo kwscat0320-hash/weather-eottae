@@ -311,7 +311,7 @@ export function WeatherProvider({ children }) {
       kma:   fillGaps(kmaSlots),
       ow:    fillGaps(alignForecast(owForecast)),
       meteo: alignForecast(meteoForecast),
-      wapi:  alignForecast(wapiForecast),
+      wapi:  fillGaps(alignForecast(wapiForecast)),
     };
   }, [currentWeather, todayForecasts, owForecast, meteoForecast, wapiForecast, hourSlots]);
 
