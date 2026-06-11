@@ -181,11 +181,15 @@ export function WeatherProvider({ children }) {
           .catch(() => {});
 
         const shortForecast = data.forecast || [];
-        const shortLabels = new Set(shortForecast.map(f => f.dateLabel));
+        // officialTMX가 있는 날짜만 "단기예보 완전 커버" 날짜로 간주
+        // → officialTMX 없는 날짜는 중기예보 TMX/TMN을 보완으로 포함
+        const shortTMXDates = new Set(
+          shortForecast.filter(f => f.officialTMX != null).map(f => f.dateLabel)
+        );
         const midRes = await fetch(`/api/kma-mid?lat=${lat}&lon=${lon}`).catch(() => null);
         if (midRes?.ok) {
           const midData = await midRes.json();
-          const midOnly = (midData.forecast || []).filter(f => !shortLabels.has(f.dateLabel));
+          const midOnly = (midData.forecast || []).filter(f => !shortTMXDates.has(f.dateLabel));
           setForecast([...shortForecast, ...midOnly]);
         } else {
           setForecast(shortForecast);
