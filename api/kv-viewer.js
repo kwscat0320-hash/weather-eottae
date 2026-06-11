@@ -24,36 +24,36 @@ export default async function handler(req, res) {
     // ── 좌표 기반 조회 ───────────────────────────────────────────────
     if (lat && lon) {
       const grid = dfsXyConv(Number(lat), Number(lon));
-      const idxKey = `kma:index:${grid.x}:${grid.y}`;
-      const latestKey = `kma:latest:${grid.x}:${grid.y}`;
+      const latestKey = `kma:latest:v2:${grid.x}:${grid.y}`;
+      const latest = await kv.get(latestKey);
 
-      const [buckets, latest] = await Promise.all([
-        kv.get(idxKey),
-        kv.get(latestKey),
-      ]);
+      if (!latest) {
+        return res.status(200).json({ error: "캐시 없음 — 앱을 한 번 열면 캐시가 생성됩니다.", grid });
+      }
 
-      const snapshots = buckets
-        ? await Promise.all(
-            (buckets).map(async (bucket) => {
-              const snap = await kv.get(`kma:history:${grid.x}:${grid.y}:${bucket}`);
-              if (!snap) return null;
-              return {
-                bucket,
-                savedAt: new Date(snap.savedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }),
-                temp: snap.data?.current?.temp,
-                condition: snap.data?.current?.condition,
-                humidity: snap.data?.current?.humidity,
-                wind: snap.data?.current?.wind,
-              };
-            })
-          )
-        : [];
+      // 날짜별 TMX/TMN 요약
+      const byDate = {};
+      (latest.data?.forecast || []).forEach(f => {
+        const d = f.dateLabel;
+        if (!byDate[d]) byDate[d] = { date: d, tmps: [], officialTMX: null, officialTMN: null };
+        if (f.temp != null) byDate[d].tmps.push(f.temp);
+        if (f.officialTMX != null) byDate[d].officialTMX = f.officialTMX;
+        if (f.officialTMN != null) byDate[d].officialTMN = f.officialTMN;
+      });
+
+      const dailySummary = Object.values(byDate).map(d => ({
+        date: d.date,
+        officialTMX: d.officialTMX,
+        officialTMN: d.officialTMN,
+        tmpMax: d.tmps.length ? Math.max(...d.tmps) : null,
+        tmpMin: d.tmps.length ? Math.min(...d.tmps) : null,
+        slotCount: d.tmps.length,
+      }));
 
       return res.status(200).json({
         grid,
-        latestCachedAt: latest ? new Date(latest.savedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) : null,
-        snapshotCount: snapshots.filter(Boolean).length,
-        snapshots: snapshots.filter(Boolean),
+        cachedAt: new Date(latest.savedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }),
+        dailySummary,
       });
     }
 
