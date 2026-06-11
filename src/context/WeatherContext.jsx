@@ -101,85 +101,79 @@ export function WeatherProvider({ children }) {
       const forceParam = force ? "&force=1" : "";
 
       if (korea) {
-        const [kmaRes, owRes, meteoRes, wapiRes] = await Promise.allSettled([
-          fetchWithTimeout(`/api/kma?lat=${lat}&lon=${lon}${forceParam}`),
-          fetchWithTimeout(`/api/openweather?lat=${lat}&lon=${lon}`),
-          fetchWithTimeout(`/api/openmeteo?lat=${lat}&lon=${lon}`),
-          fetchWithTimeout(`/api/weatherapi?lat=${lat}&lon=${lon}`),
-        ]);
+        // 기상청만 blocking — 나머지는 loading 종료 후 백그라운드
+        const kmaRes = await fetchWithTimeout(`/api/kma?lat=${lat}&lon=${lon}${forceParam}`, 15000)
+          .catch(e => ({ ok: false, _err: e.message }));
 
-        if (kmaRes.status !== "fulfilled" || !kmaRes.value.ok) {
-          const body = await kmaRes.value?.json().catch(() => ({}));
-          throw new Error(body?.error || "기상청 API 오류");
+        if (!kmaRes.ok) {
+          throw new Error(kmaRes._err || "기상청 API 오류");
         }
-        const data = await kmaRes.value.json();
+        const data = await kmaRes.json();
         setCurrentWeather(data.current);
         setWeatherSource("기상청");
 
-        if (meteoRes.status === "fulfilled" && meteoRes.value.ok) {
-          const meteoData = await meteoRes.value.json();
-          if (!meteoData.error) {
+        // 보조 소스 — 백그라운드 (실패해도 무시)
+        fetchWithTimeout(`/api/openmeteo?lat=${lat}&lon=${lon}`, 20000)
+          .then(r => r.ok ? r.json() : null).then(meteoData => {
+            if (!meteoData || meteoData.error) return;
             setMeteoWeather(meteoData);
             setMeteoForecast(meteoData.forecast || []);
             if (meteoData.air) setAirMeteo(meteoData.air);
-          }
-        }
+          }).catch(() => {});
 
-        if (wapiRes.status === "fulfilled" && wapiRes.value.ok) {
-          const wapiData = await wapiRes.value.json();
-          if (!wapiData.error) {
+        fetchWithTimeout(`/api/weatherapi?lat=${lat}&lon=${lon}`, 20000)
+          .then(r => r.ok ? r.json() : null).then(wapiData => {
+            if (!wapiData || wapiData.error) return;
             setWapiWeather(wapiData.current);
             setWapiForecast(wapiData.forecast || []);
             setWapiDailyForecasts(wapiData.daily || []);
             if (wapiData.air) setAirWapi(wapiData.air);
-          }
-        }
+          }).catch(() => {});
 
-        if (owRes.status === "fulfilled" && owRes.value.ok) {
-          const owData = await owRes.value.json();
-          const next24 = (owData.forecast || []).slice(0, 8);
-          const owCurrent = { ...owData.current };
-          if (next24.length) {
-            owCurrent.high = Math.max(...next24.map(f => f.tempMax ?? f.temp));
-            owCurrent.low  = Math.min(...next24.map(f => f.tempMin ?? f.temp));
-          }
-          setCompareWeather(owCurrent);
-
-          // OW 일별 집계 (전체 40개 아이템 → 날짜별 min/max/rainChance)
-          const owDailyMap = {};
-          (owData.forecast || []).forEach(f => {
-            const key = f.dateLabel;
-            if (!owDailyMap[key]) owDailyMap[key] = { tempMins: [], tempMaxs: [], rainChances: [], conditions: [] };
-            owDailyMap[key].tempMins.push(f.tempMin ?? f.temp);
-            owDailyMap[key].tempMaxs.push(f.tempMax ?? f.temp);
-            owDailyMap[key].rainChances.push(f.rainChance ?? 0);
-            owDailyMap[key].conditions.push(f.condition);
-          });
-          const todayLbl = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
-          setOwDailyForecasts(
-            Object.entries(owDailyMap)
-              .filter(([date]) => date !== todayLbl)
-              .map(([date, v]) => ({
-                date,
-                min: Math.min(...v.tempMins),
-                max: Math.max(...v.tempMaxs),
-                rainChance: Math.max(...v.rainChances),
-                condition: v.conditions[Math.floor(v.conditions.length / 2)],
-              }))
-              .slice(0, 5)
-          );
-
-          // OW 시간별 예보 저장 (다음 8슬롯)
-          setOwForecast((owData.forecast || []).slice(0, 8).map(f => ({
-            timeLabel:     f.timeLabel,
-            temp:          f.temp,
-            rainChance:    f.rainChance,
-            condition:     f.condition,
-            humidity:      f.humidity      ?? 0,
-            wind:          f.wind          ?? 0,
-            precipitation: f.precipitation ?? 0,
-          })));
-        }
+        fetchWithTimeout(`/api/openweather?lat=${lat}&lon=${lon}`, 20000)
+          .then(r => r.ok ? r.json() : null)
+          .then(owData => {
+            if (!owData) return;
+            const next24 = (owData.forecast || []).slice(0, 8);
+            const owCurrent = { ...owData.current };
+            if (next24.length) {
+              owCurrent.high = Math.max(...next24.map(f => f.tempMax ?? f.temp));
+              owCurrent.low  = Math.min(...next24.map(f => f.tempMin ?? f.temp));
+            }
+            setCompareWeather(owCurrent);
+            const owDailyMap = {};
+            (owData.forecast || []).forEach(f => {
+              const key = f.dateLabel;
+              if (!owDailyMap[key]) owDailyMap[key] = { tempMins: [], tempMaxs: [], rainChances: [], conditions: [] };
+              owDailyMap[key].tempMins.push(f.tempMin ?? f.temp);
+              owDailyMap[key].tempMaxs.push(f.tempMax ?? f.temp);
+              owDailyMap[key].rainChances.push(f.rainChance ?? 0);
+              owDailyMap[key].conditions.push(f.condition);
+            });
+            const todayLbl = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+            setOwDailyForecasts(
+              Object.entries(owDailyMap)
+                .filter(([date]) => date !== todayLbl)
+                .map(([date, v]) => ({
+                  date,
+                  min: Math.min(...v.tempMins),
+                  max: Math.max(...v.tempMaxs),
+                  rainChance: Math.max(...v.rainChances),
+                  condition: v.conditions[Math.floor(v.conditions.length / 2)],
+                }))
+                .slice(0, 5)
+            );
+            setOwForecast((owData.forecast || []).slice(0, 8).map(f => ({
+              timeLabel:     f.timeLabel,
+              temp:          f.temp,
+              rainChance:    f.rainChance,
+              condition:     f.condition,
+              humidity:      f.humidity      ?? 0,
+              wind:          f.wind          ?? 0,
+              precipitation: f.precipitation ?? 0,
+            })));
+          })
+          .catch(() => {});
 
         // 이력 조회 (비동기 — 실패해도 무시)
         fetch(`/api/kma-history?lat=${lat}&lon=${lon}`)
