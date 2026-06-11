@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   }
 
   const grid = dfsXyConv(Number(lat), Number(lon));
-  const cacheKey = `kma:latest:${grid.x}:${grid.y}`;
+  const cacheKey = `kma:latest:v2:${grid.x}:${grid.y}`;
 
   console.log(`[KMA] lat=${lat} lon=${lon} force=${force} grid=${grid.x},${grid.y}`);
 

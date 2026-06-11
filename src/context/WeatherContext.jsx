@@ -327,20 +327,33 @@ export function WeatherProvider({ children }) {
     forecast.forEach((item) => {
       const key = item.dateLabel;
       if (key === todayLabel) return;
+      // 이 항목이 일별 요약(중기예보)인지 시간별 단기예보인지 구분
+      const isDaily = item.timeLabel === "일간";
+
       if (!grouped[key]) {
         grouped[key] = { date: key, rainChance: item.rainChance ?? 0, tmps: [], conditions: [],
-          officialMax: item.officialTMX ?? null,
-          officialMin: item.officialTMN ?? null,
+          officialMax: null, officialMin: null,
         };
       } else {
         grouped[key].rainChance = Math.max(grouped[key].rainChance, item.rainChance ?? 0);
-        // officialTMX/TMN이 있으면 날짜의 어떤 슬롯에서든 바로 반영
-        if (item.officialTMX != null)
-          grouped[key].officialMax = grouped[key].officialMax == null ? item.officialTMX : Math.max(grouped[key].officialMax, item.officialTMX);
-        if (item.officialTMN != null)
-          grouped[key].officialMin = grouped[key].officialMin == null ? item.officialTMN : Math.min(grouped[key].officialMin, item.officialTMN);
       }
-      if (item.temp != null) grouped[key].tmps.push(item.temp);
+
+      if (isDaily) {
+        // 중기예보: tempMax/tempMin이 곧 공식값
+        if (item.tempMax != null)
+          grouped[key].officialMax = grouped[key].officialMax == null ? item.tempMax : Math.max(grouped[key].officialMax, item.tempMax);
+        if (item.tempMin != null)
+          grouped[key].officialMin = grouped[key].officialMin == null ? item.tempMin : Math.min(grouped[key].officialMin, item.tempMin);
+      } else {
+        // 단기예보: officialTMX 필드 우선, 없으면 tempMax(=TMX or TMP fallback) 사용
+        const mx = item.officialTMX ?? (item.tempMax !== item.temp ? item.tempMax : null);
+        const mn = item.officialTMN ?? (item.tempMin !== item.temp ? item.tempMin : null);
+        if (mx != null)
+          grouped[key].officialMax = grouped[key].officialMax == null ? mx : Math.max(grouped[key].officialMax, mx);
+        if (mn != null)
+          grouped[key].officialMin = grouped[key].officialMin == null ? mn : Math.min(grouped[key].officialMin, mn);
+        if (item.temp != null) grouped[key].tmps.push(item.temp);
+      }
       // 낮(09~18시) 중간 시간대 condition 수집 (중기예보는 isoTime 없음 → 무조건 수집)
       if (item.condition) {
         const hour = item.isoTime ? new Date(item.isoTime).getHours() : -1;
