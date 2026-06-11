@@ -21,10 +21,10 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
   const [hoverIdx, setHoverIdx] = useState(null);
 
   const sourceDefs = [
-    { name: "기상청",     color: "#2563eb", data: alignedHourly?.kma,   current: weather },
-    { name: "OW",         color: "#ea580c", data: alignedHourly?.ow,    current: compareWeather },
-    { name: "Open-Meteo", color: "#059669", data: alignedHourly?.meteo, current: meteoWeather },
-    { name: "WeatherAPI", color: "#7c3aed", data: alignedHourly?.wapi,  current: wapiWeather },
+    { name: "기상청",   color: "#2563eb", data: alignedHourly?.kma,   current: weather,       kma: true },
+    { name: "오픈웨더", color: "#ea580c", data: alignedHourly?.ow,    current: compareWeather },
+    { name: "오픈메테오",color: "#059669", data: alignedHourly?.meteo, current: meteoWeather },
+    { name: "웨더API",  color: "#7c3aed", data: alignedHourly?.wapi,  current: wapiWeather  },
   ].filter(s => s.data?.some(d => d != null));
 
   if (!sourceDefs.length || !hourSlots?.length) return null;
@@ -119,8 +119,9 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
             <g key={src.name}>
               {segments.map((s, si) => (
                 <polyline key={si} points={s.join(" ")}
-                  fill="none" stroke={src.color} strokeWidth={2}
-                  strokeLinejoin="round" strokeLinecap="round" opacity={0.88} />
+                  fill="none" stroke={src.color} strokeWidth={src.kma ? 2.5 : 1.8}
+                  strokeDasharray={src.kma ? "none" : "5,3"}
+                  strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
               ))}
               {activePt && (
                 <g>
@@ -191,28 +192,34 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
   const [hoverIdx, setHoverIdx] = useState(null);
 
   const sourceDefs = [
-    { name: "기상청",     color: "#2563eb", data: alignedHourly?.kma },
-    { name: "OW",         color: "#ea580c", data: alignedHourly?.ow },
-    { name: "Open-Meteo", color: "#059669", data: alignedHourly?.meteo },
-    { name: "WeatherAPI", color: "#7c3aed", data: alignedHourly?.wapi },
+    { name: "기상청",    color: "#2563eb", data: alignedHourly?.kma },
+    { name: "오픈웨더",  color: "#ea580c", data: alignedHourly?.ow },
+    { name: "오픈메테오",color: "#059669", data: alignedHourly?.meteo },
+    { name: "웨더API",   color: "#7c3aed", data: alignedHourly?.wapi },
   ].filter(s => s.data?.some(d => d != null && d.rainChance != null));
 
   if (!sourceDefs.length || !hourSlots?.length) return null;
 
   const slots = hourSlots.slice(0, 24);
   const nSlots = slots.length;
+  const nSrc = sourceDefs.length;
 
-  const W = 360, H = 156;
+  const W = 360, H = 160;
   const mTop = 14, mRight = 12, mBottom = 34, mLeft = 30;
   const cW = W - mLeft - mRight;
   const cH = H - mTop - mBottom;
 
-  const xScale = i => mLeft + (nSlots > 1 ? (i / (nSlots - 1)) * cW : cW / 2);
-  const yScale = v => mTop + cH - (v / 100) * cH;
+  const groupW = cW / nSlots;
+  const barPad = 1.5;
+  const barGap = 0.6;
+  const barAreaW = groupW - barPad * 2;
+  const barW = Math.max((barAreaW - barGap * (nSrc - 1)) / nSrc, 1.5);
 
+  const yScale = v => mTop + cH - (Math.min(v, 100) / 100) * cH;
   const yTicks = [0, 25, 50, 75, 100];
-  const activeIdx = hoverIdx ?? 0;
-  const slotW = nSlots > 1 ? cW / (nSlots - 1) : cW;
+
+  const groupX = i => mLeft + i * groupW;
+  const barX = (i, bi) => groupX(i) + barPad + bi * (barW + barGap);
 
   return (
     <div>
@@ -245,7 +252,7 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
         {slots.map((s, i) => {
           if (i !== 0 && i % 3 !== 0 && !s.isMidnight) return null;
           return (
-            <text key={i} x={xScale(i)} y={H - mBottom + 11}
+            <text key={i} x={groupX(i) + groupW / 2} y={H - mBottom + 11}
               textAnchor="middle" fontSize={8.5}
               fill={s.isMidnight ? "rgba(0,0,0,0.65)" : "rgba(0,0,0,0.38)"}
               fontWeight={s.isMidnight ? "700" : "400"}>
@@ -254,54 +261,43 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
           );
         })}
 
-        {/* 소스별 라인 + 활성 점/레이블 */}
-        {sourceDefs.map(src => {
-          const pts = slots.map((_, i) => {
-            const d = src.data?.[i];
-            return d?.rainChance != null ? { x: xScale(i), y: yScale(Number(d.rainChance)) } : null;
-          });
-
-          const segments = [];
-          let seg = [];
-          pts.forEach(p => {
-            if (p) { seg.push(`${p.x},${p.y}`); }
-            else if (seg.length) { segments.push(seg); seg = []; }
-          });
-          if (seg.length) segments.push(seg);
-
-          const activePt = pts[activeIdx];
-          const activeVal = src.data?.[activeIdx]?.rainChance;
-
-          return (
-            <g key={src.name}>
-              {segments.map((s, si) => (
-                <polyline key={si} points={s.join(" ")}
-                  fill="none" stroke={src.color} strokeWidth={2}
-                  strokeLinejoin="round" strokeLinecap="round" opacity={0.88} />
-              ))}
-              {activePt && activeVal != null && (
-                <g>
-                  <circle cx={activePt.x} cy={activePt.y} r={4}
-                    fill={src.color} stroke="white" strokeWidth={1.5} />
-                  <text x={activePt.x} y={activePt.y - 7} textAnchor="middle"
-                    fontSize={9} fill={src.color} fontWeight="700">
-                    {activeVal}%
-                  </text>
-                </g>
-              )}
-            </g>
-          );
-        })}
-
-        {/* hover 수직선 */}
+        {/* hover 배경 */}
         {hoverIdx != null && (
-          <line x1={xScale(hoverIdx)} y1={mTop} x2={xScale(hoverIdx)} y2={mTop + cH}
-            stroke="rgba(0,0,0,0.18)" strokeWidth={1} strokeDasharray="3,2" />
+          <rect x={groupX(hoverIdx)} y={mTop} width={groupW} height={cH}
+            fill="rgba(0,0,0,0.05)" rx={2} />
         )}
+
+        {/* 소스별 막대 */}
+        {slots.map((_, i) => (
+          <g key={i}>
+            {sourceDefs.map((src, bi) => {
+              const d = src.data?.[i];
+              const val = d?.rainChance != null ? Number(d.rainChance) : 0;
+              if (val === 0) return null;
+              const x = barX(i, bi);
+              const y = yScale(val);
+              const bh = mTop + cH - y;
+              const isHover = hoverIdx === i;
+              return (
+                <g key={src.name}>
+                  <rect x={x} y={y} width={barW} height={Math.max(bh, 1)}
+                    fill={src.color} rx={1}
+                    opacity={isHover ? 1 : 0.75} />
+                  {isHover && val > 0 && (
+                    <text x={x + barW / 2} y={y - 3} textAnchor="middle"
+                      fontSize={7.5} fill={src.color} fontWeight="700">
+                      {val}%
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        ))}
 
         {/* hover 시각 레이블 */}
         {hoverIdx != null && slots[hoverIdx] && (
-          <text x={xScale(hoverIdx)} y={mTop - 3} textAnchor="middle"
+          <text x={groupX(hoverIdx) + groupW / 2} y={mTop - 3} textAnchor="middle"
             fontSize={8.5} fill="rgba(0,0,0,0.5)">
             {slots[hoverIdx].label}
           </text>
@@ -310,8 +306,7 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
         {/* 투명 hover 존 */}
         {slots.map((_, i) => (
           <rect key={i}
-            x={xScale(i) - slotW / 2} y={mTop}
-            width={slotW} height={cH}
+            x={groupX(i)} y={mTop} width={groupW} height={cH}
             fill="transparent"
             onMouseEnter={() => setHoverIdx(i)}
           />
@@ -346,10 +341,10 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
 // ══════════════════════════════════════════════════════════════════════════
 export function TemperatureBarChart({ weather, compareWeather, meteoWeather, wapiWeather, theme }) {
   const sources = [
-    { name: "기상청",     color: "#2563eb", w: weather },
-    { name: "OW",         color: "#ea580c", w: compareWeather },
-    ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", w: meteoWeather }] : []),
-    ...(wapiWeather  ? [{ name: "WeatherAPI", color: "#7c3aed", w: wapiWeather  }] : []),
+    { name: "기상청",    color: "#2563eb", w: weather },
+    { name: "오픈웨더",  color: "#ea580c", w: compareWeather },
+    ...(meteoWeather ? [{ name: "오픈메테오", color: "#059669", w: meteoWeather }] : []),
+    ...(wapiWeather  ? [{ name: "웨더API",   color: "#7c3aed", w: wapiWeather  }] : []),
   ].filter(s => s.w);
 
   const metrics = [
@@ -440,9 +435,9 @@ export function TemperatureBarChart({ weather, compareWeather, meteoWeather, wap
 export function WeatherRadarChart({ weather, compareWeather, meteoWeather, wapiWeather, theme }) {
   const sources = [
     { name: "기상청",     color: "#2563eb", w: weather },
-    { name: "OW",         color: "#ea580c", w: compareWeather },
-    ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", w: meteoWeather }] : []),
-    ...(wapiWeather  ? [{ name: "WeatherAPI", color: "#7c3aed", w: wapiWeather  }] : []),
+    { name: "오픈웨더",  color: "#ea580c", w: compareWeather },
+    ...(meteoWeather ? [{ name: "오픈메테오", color: "#059669", w: meteoWeather }] : []),
+    ...(wapiWeather  ? [{ name: "웨더API",   color: "#7c3aed", w: wapiWeather  }] : []),
   ].filter(s => s.w);
 
   const allWind = sources.map(s => Number(s.w.wind) || 0);

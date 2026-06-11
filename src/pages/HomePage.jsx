@@ -81,7 +81,7 @@ export default function HomePage({ scrollRef }) {
       ],
     }] : []),
     ...(compareWeather ? [{
-      name: "OW",
+      name: "오픈웨더",
       obs: compareWeather.observedAt,
       rows: [
         { label: "날씨",     value: compareWeather.condition },
@@ -95,7 +95,7 @@ export default function HomePage({ scrollRef }) {
       ],
     }] : []),
     ...(meteoWeather ? [{
-      name: "Open-Meteo",
+      name: "오픈메테오",
       obs: meteoWeather.observedAt,
       rows: [
         { label: "날씨",     value: meteoWeather.condition },
@@ -121,7 +121,7 @@ export default function HomePage({ scrollRef }) {
       ],
     }] : []),
     ...(airOw ? [{
-      name: "OpenWeather",
+      name: "오픈웨더",
       obs: null,
       rows: [
         { label: "미세먼지",   value: `${airOw.pm10}㎍/㎥`, grade: airOw.pm10Grade },
@@ -129,7 +129,7 @@ export default function HomePage({ scrollRef }) {
       ],
     }] : []),
     ...(airMeteo ? [{
-      name: "Open-Meteo",
+      name: "오픈메테오",
       obs: null,
       rows: [
         { label: "미세먼지",   value: `${airMeteo.pm10}㎍/㎥`, grade: airMeteo.pm10Grade },
@@ -229,9 +229,9 @@ export default function HomePage({ scrollRef }) {
           )}
         </div>
 
-        {/* 시간대별 예보 — 4소스 비교 라인 차트 */}
+        {/* 시간대별 온도 — 4소스 비교 라인 차트 */}
         <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 예보</p>
+          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 온도</p>
           <HourlyCompareChart
             alignedHourly={alignedHourly}
             hourSlots={hourSlots}
@@ -431,10 +431,10 @@ function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
   const [dir, setDir]       = useState(1);
 
   const sources = [
-    { name: "기상청",      freq: "1h", data: alignedHourly?.kma },
-    { name: "OW",          freq: "3h", data: alignedHourly?.ow },
-    { name: "Open-Meteo",  freq: "1h", data: alignedHourly?.meteo },
-    { name: "WeatherAPI",  freq: "1h", data: alignedHourly?.wapi },
+    { name: "기상청",    freq: "1h", data: alignedHourly?.kma },
+    { name: "오픈웨더",  freq: "3h", data: alignedHourly?.ow },
+    { name: "오픈메테오",freq: "1h", data: alignedHourly?.meteo },
+    { name: "웨더API",   freq: "1h", data: alignedHourly?.wapi },
   ].filter(s => s.data?.some(d => d != null));
 
   const goTo = (i) => {
@@ -456,7 +456,7 @@ function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
 
       {/* 제목 + 소스 탭 */}
       <div className="px-4 pt-4 pb-3">
-        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 예보</p>
+        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 온도 (소스별)</p>
         <div className="flex gap-1.5">
           {sources.map((s, i) => (
             <button
@@ -897,9 +897,9 @@ function MultiDailyCard({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDail
 
   const sources = [
     dailyForecasts?.length   ? { name: "기상청",     days: dailyForecasts.map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance, fromHistory: d._fromHistory })) } : null,
-    owDailyForecasts?.length  ? { name: "OW",         days: owDailyForecasts.map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance })) } : null,
-    meteoDaily?.length        ? { name: "Open-Meteo", days: meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, min: d.tempMin, max: d.tempMax, rainChance: d.rainChance, condition: d.condition })) } : null,
-    wapiDailyForecasts?.length ? { name: "WeatherAPI", days: wapiDailyForecasts.map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance, condition: d.condition })) } : null,
+    owDailyForecasts?.length  ? { name: "오픈웨더",  days: owDailyForecasts.map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance })) } : null,
+    meteoDaily?.length        ? { name: "오픈메테오", days: meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, min: d.tempMin, max: d.tempMax, rainChance: d.rainChance, condition: d.condition })) } : null,
+    wapiDailyForecasts?.length ? { name: "웨더API",   days: wapiDailyForecasts.map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance, condition: d.condition })) } : null,
   ].filter(Boolean);
 
   const goTo = (i) => { if (i === active) return; setDir(i > active ? 1 : -1); setActive(i); };
@@ -1024,9 +1024,9 @@ function DetailedWeatherCard({ weather, compareWeather, meteoWeather, wapiWeathe
 
   const sources = [
     weather        ? { name: "기상청",     rows: commonRows(weather) }       : null,
-    compareWeather ? { name: "OW",         rows: commonRows(compareWeather) } : null,
-    meteoRows      ? { name: "Open-Meteo", rows: meteoRows }                 : null,
-    wapiRows       ? { name: "WeatherAPI", rows: wapiRows }                  : null,
+    compareWeather ? { name: "오픈웨더",  rows: commonRows(compareWeather) } : null,
+    meteoRows      ? { name: "오픈메테오", rows: meteoRows }                 : null,
+    wapiRows       ? { name: "웨더API",   rows: wapiRows }                  : null,
   ].filter(Boolean);
 
   const goTo = (i) => { if (i === active) return; setDir(i > active ? 1 : -1); setActive(i); };

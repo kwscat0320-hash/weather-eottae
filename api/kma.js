@@ -48,7 +48,7 @@ export default async function handler(req, res) {
   const [ncstRes, ultraFcstRes, vilageFcstRes, tmxFcstRes] = await Promise.allSettled([
     httpsGet(buildKmaUrl("getUltraSrtNcst", trimmedKey, ncstDate, ncstTime, grid, 100)),
     httpsGet(buildKmaUrl("getUltraSrtFcst", trimmedKey, ultraDate, ultraTime, grid, 200)),
-    httpsGet(buildKmaUrl("getVilageFcst",   trimmedKey, date,      vilageTime, grid, 1000)),
+    httpsGet(buildKmaUrl("getVilageFcst",   trimmedKey, date,      vilageTime, grid, 2000)),
     // 전날 23:00 발표 → 오늘 TMX(15:00)/TMN(06:00) 슬롯이 반드시 포함됨
     httpsGet(buildKmaUrl("getVilageFcst",   trimmedKey, tmxDate,   tmxTime,    grid, 300)),
   ]);
@@ -256,7 +256,7 @@ function buildForecast(vilageFcstItems, ultraFcstItems) {
     }
   });
 
-  return groups.slice(0, 60).map((g) => {
+  return groups.slice(0, 72).map((g) => {
     const date = parseKmaDate(g.fcstDate, g.fcstTime);
     const official = officialByDate[g.fcstDate] ?? {};
     return {

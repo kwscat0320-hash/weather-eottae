@@ -43,9 +43,9 @@ export default function DetailPage({ scrollRef }) {
               {(() => {
                 const src = [
                   { name: "기상청",     color: "#2563eb", cond: weather.condition },
-                  { name: "OW",         color: "#ea580c", cond: compareWeather.condition },
-                  ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", cond: meteoWeather.condition }] : []),
-                  ...(wapiWeather  ? [{ name: "WeatherAPI", color: "#7c3aed", cond: wapiWeather.condition }] : []),
+                  { name: "오픈웨더",         color: "#ea580c", cond: compareWeather.condition },
+                  ...(meteoWeather ? [{ name: "오픈메테오", color: "#059669", cond: meteoWeather.condition }] : []),
+                  ...(wapiWeather  ? [{ name: "웨더API", color: "#7c3aed", cond: wapiWeather.condition }] : []),
                 ];
                 return (
                   <div className="flex gap-2 flex-wrap">
@@ -69,9 +69,9 @@ export default function DetailPage({ scrollRef }) {
               <ChartLegend
                 sources={[
                   { name: "기상청", color: "#2563eb" },
-                  { name: "OW",     color: "#ea580c" },
-                  ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669" }] : []),
-                  ...(wapiWeather  ? [{ name: "WeatherAPI", color: "#7c3aed" }] : []),
+                  { name: "오픈웨더",     color: "#ea580c" },
+                  ...(meteoWeather ? [{ name: "오픈메테오", color: "#059669" }] : []),
+                  ...(wapiWeather  ? [{ name: "웨더API", color: "#7c3aed" }] : []),
                 ]}
                 theme={theme}
               />
@@ -90,9 +90,9 @@ export default function DetailPage({ scrollRef }) {
               <ChartLegend
                 sources={[
                   { name: "기상청", color: "#2563eb" },
-                  { name: "OW",     color: "#ea580c" },
-                  ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669" }] : []),
-                  ...(wapiWeather  ? [{ name: "WeatherAPI", color: "#7c3aed" }] : []),
+                  { name: "오픈웨더",     color: "#ea580c" },
+                  ...(meteoWeather ? [{ name: "오픈메테오", color: "#059669" }] : []),
+                  ...(wapiWeather  ? [{ name: "웨더API", color: "#7c3aed" }] : []),
                 ]}
                 theme={theme}
               />
@@ -265,8 +265,8 @@ const METRICS = [
 function WeatherSourcesChart({ weather, compareWeather, meteoWeather, theme }) {
   const sources = [
     { name: "기상청",     color: "#2563eb", w: weather },
-    { name: "OW",         color: "#ea580c", w: compareWeather },
-    ...(meteoWeather ? [{ name: "Open-Meteo", color: "#059669", w: meteoWeather }] : []),
+    { name: "오픈웨더",         color: "#ea580c", w: compareWeather },
+    ...(meteoWeather ? [{ name: "오픈메테오", color: "#059669", w: meteoWeather }] : []),
   ].filter(s => s.w);
 
   return (
