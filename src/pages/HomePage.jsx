@@ -108,6 +108,20 @@ export default function HomePage({ scrollRef }) {
         { label: "강수확률", value: `${meteoWeather.rainChance}%` },
       ],
     }] : []),
+    ...(wapiWeather ? [{
+      name: "웨더API",
+      obs: wapiWeather.observedAt,
+      rows: [
+        { label: "날씨",     value: wapiWeather.condition },
+        { label: "기온",     value: `${Number(wapiWeather.temp).toFixed(1)}°` },
+        { label: "체감",     value: `${Number(wapiWeather.feelsLike).toFixed(1)}°` },
+        { label: "최고",     value: `${Number(wapiWeather.high).toFixed(1)}°` },
+        { label: "최저",     value: `${Number(wapiWeather.low).toFixed(1)}°` },
+        { label: "습도",     value: `${wapiWeather.humidity}%` },
+        { label: "바람",     value: `${Number(wapiWeather.wind).toFixed(1)}m/s` },
+        { label: "강수확률", value: `${wapiWeather.rainChance ?? 0}%` },
+      ],
+    }] : []),
   ];
 
   // ── 공기질 소스 비교 데이터 ────────────────────────────────────────────
