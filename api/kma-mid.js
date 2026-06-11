@@ -9,8 +9,7 @@ export default async function handler(req, res) {
   if (!key) return res.status(500).json({ error: "KMA_KEY 없음" });
 
   const { landRegId, taRegId } = getRegionIds(Number(lat), Number(lon));
-  // 2일전, 1일전, 오늘 (우선순위 낮→높, 나중에 덮어씀)
-  const issuances = [getTmFc(2), getTmFc(1), getTmFc(0)];
+  const issuances = getIssuances();
 
   try {
     const results = await Promise.all(
@@ -49,9 +48,11 @@ export default async function handler(req, res) {
 }
 
 function makeEntry(label, ta, land, n) {
-  const taMin = ta[`taMin${n}`] ?? null;
-  const taMax = ta[`taMax${n}`] ?? null;
-  if (taMin === null || taMax === null) return null;
+  const minVal = parseFloat(ta[`taMin${n}`]);
+  const maxVal = parseFloat(ta[`taMax${n}`]);
+  if (isNaN(minVal) || isNaN(maxVal)) return null;
+  const taMin = minVal;
+  const taMax = maxVal;
   const rnSt  = land[`rnSt${n}Am`] ?? land[`rnSt${n}`] ?? 0;
   const wf    = land[`wf${n}Am`]   ?? land[`wf${n}`]   ?? "";
   const parts = label.match(/(\d+)\.\s*(\d+)/);
@@ -86,41 +87,44 @@ function getRegionIds(lat, lon) {
   return { landRegId: "11B10101", taRegId: "11B10101" };
 }
 
-// KMA 중기예보 발표: 06:00 KST, 18:00 KST 하루 두 번
-// daysAgo=0 이면 현재 KST 시각 기준 최신 발표 사용 (18:00 이후면 1800, 그 전이면 0600)
-// daysAgo>0 이면 과거 날짜 → 항상 1800 사용 (이미 발표 완료)
-function getTmFc(daysAgo = 0) {
-  const now = new Date(Date.now() + 9 * 60 * 60 * 1000); // fake-KST (UTC+9)
-  const h = now.getUTCHours(); // KST 시간
+// 쿼리할 중기예보 발표 목록 반환
+// - 18:00 이후: 06:00(n=3,4 포함) + 18:00(n=5~10 최신값) 둘 다
+// - 06:00~18:00: 오늘 06:00만
+// - 자정~06:00: 어제 18:00만
+function getIssuances() {
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000); // fake-KST
+  const h = now.getUTCHours();
 
-  const base = new Date(now);
-  let issuanceHour;
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
+  const todayStr = `${y}${m}${d}`;
 
-  if (h < 6) {
-    // KST 자정~06시: 어제 18:00 발표
-    base.setUTCDate(base.getUTCDate() - 1);
-    issuanceHour = 18;
-  } else if (h < 18) {
-    // KST 06~18시: 오늘 06:00 발표 (18:00 미발표)
-    issuanceHour = 6;
-  } else {
-    // KST 18시 이후: 오늘 18:00 발표 (최신)
-    issuanceHour = 18;
+  function makeTmFcDate(dateStr) {
+    return new Date(`${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}T06:00:00Z`);
   }
 
-  base.setUTCDate(base.getUTCDate() - daysAgo);
-
-  const y = base.getUTCFullYear();
-  const m = String(base.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(base.getUTCDate()).padStart(2, "0");
-  const hh = String(issuanceHour).padStart(2, "0");
-
-  // tmFcDate는 날짜 덧셈에만 사용 — 06:00 UTC로 고정해 setDate 오류 방지
-  base.setUTCHours(6, 0, 0, 0);
-  return { tmFc: `${y}${m}${d}${hh}00`, tmFcDate: base };
+  if (h >= 18) {
+    // 06:00 먼저(n=4 세팅) → 18:00가 n=5~10 덮어씀, n=4는 null이라 덮어쓰지 않음
+    return [
+      { tmFc: `${todayStr}0600`, tmFcDate: makeTmFcDate(todayStr) },
+      { tmFc: `${todayStr}1800`, tmFcDate: makeTmFcDate(todayStr) },
+    ];
+  } else if (h >= 6) {
+    return [{ tmFc: `${todayStr}0600`, tmFcDate: makeTmFcDate(todayStr) }];
+  } else {
+    const yesterday = new Date(now);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const yy = yesterday.getUTCFullYear();
+    const ym = String(yesterday.getUTCMonth() + 1).padStart(2, "0");
+    const yd = String(yesterday.getUTCDate()).padStart(2, "0");
+    const yStr = `${yy}${ym}${yd}`;
+    return [{ tmFc: `${yStr}1800`, tmFcDate: makeTmFcDate(yStr) }];
+  }
 }
 
 function wfToCondition(wf = "") {
+  if (!wf) return null;
   if (wf.includes("비/눈") || wf.includes("눈/비")) return "비/눈";
   if (wf.includes("눈")) return "눈";
   if (wf.includes("비") || wf.includes("소나기")) return "비";

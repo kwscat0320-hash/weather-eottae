@@ -365,13 +365,19 @@ export function WeatherProvider({ children }) {
     // ── 중기예보 — 단기가 이미 커버하는 날짜 제외 ───────────────────────────
     const midDays = midForecast
       .filter(f => f.dateLabel !== todayLabel && !shortDates.has(f.dateLabel))
-      .map(f => ({
-        date:       f.dateLabel,
-        max:        f.tempMax  ?? null,
-        min:        f.tempMin  ?? null,
-        rainChance: f.rainChance ?? 0,
-        condition:  f.condition  ?? null,
-      }));
+      .map(f => {
+        // wf 필드가 빈 문자열일 때 condition=null → Open-Meteo daily로 fallback
+        const condition = f.condition
+          ?? meteoWeather?.daily?.find(d => d.dateLabel === f.dateLabel)?.condition
+          ?? null;
+        return {
+          date:       f.dateLabel,
+          max:        f.tempMax  ?? null,
+          min:        f.tempMin  ?? null,
+          rainChance: f.rainChance ?? 0,
+          condition,
+        };
+      });
 
     // ── 합산 (단기 → 중기 순서) ──────────────────────────────────────────
     let result = [...shortDays, ...midDays].slice(0, 5);
@@ -393,7 +399,7 @@ export function WeatherProvider({ children }) {
     }
 
     return result;
-  }, [forecast, midForecast, weatherHistory]);
+  }, [forecast, midForecast, weatherHistory, meteoWeather]);
 
   // ── 날짜별 최신 예보 스냅샷 (예보 이력 카드용) ───────────────────────────
   const forecastHistory = useMemo(() => {
