@@ -78,7 +78,7 @@ export default async function handler(req, res) {
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
       // ── 현재 날씨 (15개 변수) ─────────────────────────────────────────────
       `&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,` +
-      `precipitation,precipitation_probability,weather_code,cloud_cover,` +
+      `precipitation,weather_code,cloud_cover,` +
       `wind_speed_10m,wind_direction_10m,wind_gusts_10m,` +
       `pressure_msl,surface_pressure,visibility,uv_index,is_day` +
       // ── 시간별 예보 (21개 변수) ──────────────────────────────────────────
@@ -200,7 +200,7 @@ export default async function handler(req, res) {
       low:         d.temperature_2m_min?.[0] ?? c.temperature_2m,
       humidity:    c.relative_humidity_2m,
       wind:        c.wind_speed_10m,
-      rainChance:  c.precipitation_probability ?? 0,
+      rainChance:  h.precipitation_probability?.[startIdx] ?? 0,
       observedAt:  `${mHH}:${mMM} (Open-Meteo 모델)`,
       // 신규 현재 날씨 필드
       dewPoint:       c.dew_point_2m,
