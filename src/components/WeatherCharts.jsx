@@ -799,9 +799,9 @@ export function DailyForecastChart({ dailyForecasts, owDailyForecasts, meteoDail
 export function DailyTempChart(props) { return <DailyForecastChart {...props} />; }
 
 // ══════════════════════════════════════════════════════════════════════════
-// DailyRainChart — (deprecated, kept for compat)
+// DailyRainChart — (deprecated stub, replaced by DailyForecastChart)
 // ══════════════════════════════════════════════════════════════════════════
-export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
+export function _DailyRainChart_unused({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
   const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
   const [hoverIdx, setHoverIdx] = useState(null);
 
@@ -930,7 +930,7 @@ export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// DailyRainChart — 4개 소스 5일 강수확률 막대 차트
+// DailyRainChart — alias for DailyForecastChart
 // ══════════════════════════════════════════════════════════════════════════
 export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
   const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
