@@ -1,5 +1,6 @@
 ﻿import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { DEFAULT_LOCATION, getTheme, getSpeech, isKorea } from "../utils/weather";
+import { fetchOpenMeteo } from "../utils/openmeteo-client";
 
 async function reverseGeocode(lat, lon) {
   try {
@@ -113,9 +114,8 @@ export function WeatherProvider({ children }) {
         setWeatherSource("기상청");
 
         // 보조 소스 — 백그라운드 (실패해도 무시)
-        fetchWithTimeout(`/api/openmeteo?lat=${lat}&lon=${lon}`, 20000)
-          .then(r => r.ok ? r.json() : null).then(meteoData => {
-            if (!meteoData || meteoData.error) return;
+        fetchOpenMeteo(lat, lon)
+          .then(meteoData => {
             setMeteoWeather(meteoData);
             setMeteoForecast(meteoData.forecast || []);
             if (meteoData.air) setAirMeteo(meteoData.air);
