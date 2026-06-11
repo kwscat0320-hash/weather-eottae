@@ -1,24 +1,10 @@
 // GET /api/openmeteo?lat=37.5&lon=126.9
 // Open-Meteo API — 무료, 키 불필요
 
-import { request } from "https";
-
-function httpsGetJson(urlStr) {
-  return new Promise((resolve, reject) => {
-    const parsed = new URL(urlStr);
-    const req = request({
-      hostname: parsed.hostname,
-      path: parsed.pathname + parsed.search,
-      method: "GET",
-      headers: { "Accept": "application/json" },
-    }, (r) => {
-      let body = "";
-      r.on("data", (c) => (body += c));
-      r.on("end", () => { try { resolve(JSON.parse(body)); } catch { reject(new Error("JSON 파싱 실패")); } });
-    });
-    req.on("error", reject);
-    req.end();
-  });
+async function httpsGetJson(urlStr) {
+  const res = await fetch(urlStr, { headers: { "Accept": "application/json" } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 // PM10 수치 → 한국 등급
