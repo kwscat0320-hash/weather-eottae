@@ -85,21 +85,18 @@ export default async function handler(req, res) {
   if (!lat || !lon) return res.status(400).json({ error: "lat, lon 필요" });
 
   const kmaKey = process.env.KMA_KEY;
-  const owKey  = process.env.OW_KEY;
   const today     = todayKST();
   const yesterday = yesterdayKST();
   const region = getAirRegion(Number(lat), Number(lon));
 
-  const [airkoreaYestRes, airkoreaTodayRes, owRes, meteoRes] = await Promise.allSettled([
+  const [airkoreaYestRes, airkoreaTodayRes, ecmwfRes, meteoRes] = await Promise.allSettled([
     kmaKey
       ? httpsGetJson(`https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMinuDustFrcstDspth?serviceKey=${kmaKey.trim()}&returnType=json&numOfRows=50&pageNo=1&searchDate=${yesterday}&ver=1.1`)
       : Promise.reject("no KMA_KEY"),
     kmaKey
       ? httpsGetJson(`https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMinuDustFrcstDspth?serviceKey=${kmaKey.trim()}&returnType=json&numOfRows=50&pageNo=1&searchDate=${today}&ver=1.1`)
       : Promise.reject("no KMA_KEY"),
-    owKey
-      ? httpsGetJson(`https://api.openweathermap.org/data/2.5/air_pollution/forecast?lat=${lat}&lon=${lon}&appid=${owKey}`)
-      : Promise.reject("no OW_KEY"),
+    httpsGetJson(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10&timezone=Asia%2FSeoul&forecast_days=5&domains=cams_global`),
     httpsGetJson(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10&timezone=Asia%2FSeoul&forecast_days=5`),
   ]);
 
@@ -139,39 +136,39 @@ export default async function handler(req, res) {
       }));
   }
 
-  // ── OpenWeather ───────────────────────────────────────────────────
-  let openweather = [];
-  let owHourly = [];
-  if (owRes.status === "fulfilled") {
+  // ── ECMWF (Open-Meteo cams_global) ───────────────────────────────
+  let ecmwf = [];
+  let ecmwfHourly = [];
+  if (ecmwfRes.status === "fulfilled") {
     try {
-      const list = owRes.value?.list || [];
-      const byDate = {};
-      list.forEach(item => {
-        const kstMs = item.dt * 1000 + 9 * 3600 * 1000;
-        const kst = new Date(kstMs);
-        const dateStr = `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, "0")}-${String(kst.getUTCDate()).padStart(2, "0")}`;
-        if (!byDate[dateStr]) byDate[dateStr] = { pm25s: [], pm10s: [] };
-        if (item.components.pm2_5 != null) byDate[dateStr].pm25s.push(item.components.pm2_5);
-        if (item.components.pm10  != null) byDate[dateStr].pm10s.push(item.components.pm10);
-        if (dateStr === today) {
-          owHourly.push({
-            time: `${String(kst.getUTCHours()).padStart(2, "0")}:00`,
-            pm25: item.components.pm2_5 ?? null,
-            pm10: item.components.pm10  ?? null,
-          });
-        }
-      });
-      openweather = Object.entries(byDate)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .filter(([date]) => date > today)
-        .slice(0, 3)
-        .map(([date, { pm25s, pm10s }]) => {
-          const pm25 = pm25s.reduce((a, b) => a + b, 0) / pm25s.length;
-          const pm10 = pm10s.reduce((a, b) => a + b, 0) / pm10s.length;
-          return { dateLabel: toLabel(date), pm25Grade: pm25ToGrade(pm25), pm10Grade: pm10ToGrade(pm10), pm25: Math.round(pm25), pm10: Math.round(pm10) };
+      const hourly = ecmwfRes.value?.hourly;
+      if (hourly?.time) {
+        const byDate = {};
+        hourly.time.forEach((t, i) => {
+          const dateStr = t.slice(0, 10);
+          if (!byDate[dateStr]) byDate[dateStr] = { pm25s: [], pm10s: [] };
+          if (hourly.pm2_5?.[i] != null) byDate[dateStr].pm25s.push(hourly.pm2_5[i]);
+          if (hourly.pm10?.[i]  != null) byDate[dateStr].pm10s.push(hourly.pm10[i]);
+          if (dateStr === today) {
+            ecmwfHourly.push({
+              time: t.slice(11, 16),
+              pm25: hourly.pm2_5?.[i] ?? null,
+              pm10: hourly.pm10?.[i]  ?? null,
+            });
+          }
         });
+        ecmwf = Object.entries(byDate)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .filter(([date]) => date > today)
+          .slice(0, 3)
+          .map(([date, { pm25s, pm10s }]) => {
+            const pm25 = pm25s.length ? pm25s.reduce((a, b) => a + b, 0) / pm25s.length : 0;
+            const pm10 = pm10s.length ? pm10s.reduce((a, b) => a + b, 0) / pm10s.length : 0;
+            return { dateLabel: toLabel(date), pm25Grade: pm25ToGrade(pm25), pm10Grade: pm10ToGrade(pm10), pm25: Math.round(pm25), pm10: Math.round(pm10) };
+          });
+      }
     } catch (e) {
-      console.error("[air-forecast] openweather parse error:", e.message);
+      console.error("[air-forecast] ecmwf parse error:", e.message);
     }
   }
 
@@ -215,5 +212,5 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(200).json({ airkorea, openweather, openmeteo, owHourly, openmeteoHourly, region });
+  return res.status(200).json({ airkorea, ecmwf, openmeteo, ecmwfHourly, openmeteoHourly, region });
 }

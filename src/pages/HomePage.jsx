@@ -309,7 +309,7 @@ export default function HomePage({ scrollRef }) {
         {/* 오늘 시간대별 미세먼지 */}
         <HourlyAirCard
           airHourly={air?.hourly}
-          owHourly={airForecast.owHourly}
+          ecmwfHourly={airForecast.ecmwfHourly}
           openmeteoHourly={airForecast.openmeteoHourly}
           theme={theme}
         />

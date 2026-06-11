@@ -1214,9 +1214,9 @@ export function DailyAirCard({ airForecast, theme }) {
   );
 
   const sources = [
-    { name: "에어코리아", color: "#4A90D9", data: airForecast?.airkorea   || [] },
-    { name: "오픈웨더",   color: "#FF6B35", data: airForecast?.openweather || [] },
-    { name: "오픈메테오", color: "#4CAF50", data: airForecast?.openmeteo  || [] },
+    { name: "에어코리아", color: "#4A90D9", data: airForecast?.airkorea  || [] },
+    { name: "ECMWF",     color: "#8B5CF6", data: airForecast?.ecmwf     || [] },
+    { name: "오픈메테오", color: "#4CAF50", data: airForecast?.openmeteo || [] },
   ];
 
   // 모든 소스에서 dateLabel 수집 → 정렬된 고유 날짜 3개
@@ -1303,7 +1303,7 @@ export function DailyAirCard({ airForecast, theme }) {
 }
 
 // ── HourlyAirCard — 오늘 시간대별 미세먼지 꺾은선 (PM2.5) ───────────────
-export function HourlyAirCard({ airHourly, owHourly, openmeteoHourly, theme }) {
+export function HourlyAirCard({ airHourly, ecmwfHourly, openmeteoHourly, theme }) {
   const [activeSrcs, setActiveSrcs] = useState(["에어코리아"]);
   const toggleSrc = name => setActiveSrcs(prev =>
     prev.includes(name) ? (prev.length > 1 ? prev.filter(n => n !== name) : prev) : [...prev, name]
@@ -1315,7 +1315,7 @@ export function HourlyAirCard({ airHourly, owHourly, openmeteoHourly, theme }) {
     (arr || []).filter(h => parseInt(h.time.slice(0, 2), 10) >= nowHour);
 
   const akSlots = filterSlots(airHourly);
-  const owSlots = filterSlots(owHourly);
+  const owSlots = filterSlots(ecmwfHourly);
   const omSlots = filterSlots(openmeteoHourly);
 
   if (!akSlots.length && !owSlots.length && !omSlots.length) return null;
@@ -1329,7 +1329,7 @@ export function HourlyAirCard({ airHourly, owHourly, openmeteoHourly, theme }) {
 
   const allSources = [
     { name: "에어코리아", color: "#3B82F6", slots: akSlots },
-    { name: "오픈웨더",   color: "#F97316", slots: owSlots },
+    { name: "ECMWF",     color: "#8B5CF6", slots: owSlots },
     { name: "오픈메테오", color: "#10B981", slots: omSlots },
   ].filter(s => s.slots.length > 0);
 
