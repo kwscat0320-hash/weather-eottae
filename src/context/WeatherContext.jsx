@@ -308,7 +308,7 @@ export function WeatherProvider({ children }) {
       };
     }
     return {
-      kma:   kmaSlots,
+      kma:   fillGaps(kmaSlots),
       ow:    fillGaps(alignForecast(owForecast)),
       meteo: alignForecast(meteoForecast),
       wapi:  alignForecast(wapiForecast),
