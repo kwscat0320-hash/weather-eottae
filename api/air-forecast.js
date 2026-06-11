@@ -100,7 +100,7 @@ export default async function handler(req, res) {
     owKey
       ? httpsGetJson(`https://api.openweathermap.org/data/2.5/air_pollution/forecast?lat=${lat}&lon=${lon}&appid=${owKey}`)
       : Promise.reject("no OW_KEY"),
-    httpsGetJson(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10&timezone=Asia%2FSeoul&forecast_days=8`),
+    httpsGetJson(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10&timezone=Asia%2FSeoul&forecast_days=5`),
   ]);
 
   // ── 에어코리아 (어제+오늘 발표 병합) ──────────────────────────────
