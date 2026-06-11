@@ -7,6 +7,7 @@ import AirDot from "../components/AirDot";
 import AirCompareCard from "../components/AirCompareCard";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
+import { HourlyCompareChart } from "../components/WeatherCharts";
 
 export default function HomePage({ scrollRef }) {
   const {
@@ -228,12 +229,19 @@ export default function HomePage({ scrollRef }) {
           )}
         </div>
 
-        {/* 시간대별 예보 — 소스 탭 + 스와이프 */}
-        <HourlyForecastCard
-          hourSlots={hourSlots}
-          alignedHourly={alignedHourly}
-          theme={theme}
-        />
+        {/* 시간대별 예보 — 4소스 비교 라인 차트 */}
+        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 예보</p>
+          <HourlyCompareChart
+            alignedHourly={alignedHourly}
+            hourSlots={hourSlots}
+            weather={weather}
+            compareWeather={compareWeather}
+            meteoWeather={meteoWeather}
+            wapiWeather={wapiWeather}
+            theme={theme}
+          />
+        </div>
 
 
         {/* 5일 예보 — 멀티소스 */}

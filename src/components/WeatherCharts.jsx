@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 // ── 공통: 범례 ─────────────────────────────────────────────────────────────
 export function ChartLegend({ sources, theme }) {
@@ -10,6 +10,179 @@ export function ChartLegend({ sources, theme }) {
           <span className="text-xs font-semibold" style={{ color: theme.sub }}>{s.name}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// HourlyCompareChart — 4개 소스 시간별 온도 라인 차트
+// ══════════════════════════════════════════════════════════════════════════
+export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareWeather, meteoWeather, wapiWeather, theme }) {
+  const [hoverIdx, setHoverIdx] = useState(null);
+
+  const sourceDefs = [
+    { name: "기상청",     color: "#2563eb", data: alignedHourly?.kma,   current: weather },
+    { name: "OW",         color: "#ea580c", data: alignedHourly?.ow,    current: compareWeather },
+    { name: "Open-Meteo", color: "#059669", data: alignedHourly?.meteo, current: meteoWeather },
+    { name: "WeatherAPI", color: "#7c3aed", data: alignedHourly?.wapi,  current: wapiWeather },
+  ].filter(s => s.data?.some(d => d != null));
+
+  if (!sourceDefs.length || !hourSlots?.length) return null;
+
+  const slots = hourSlots.slice(0, 24);
+  const nSlots = slots.length;
+
+  const allTemps = sourceDefs.flatMap(s =>
+    (s.data || []).slice(0, nSlots).map(d => d?.temp != null ? Number(d.temp) : null).filter(v => v != null)
+  );
+  if (!allTemps.length) return null;
+
+  const rawMin = Math.min(...allTemps);
+  const rawMax = Math.max(...allTemps);
+  const pad = Math.max((rawMax - rawMin) * 0.25, 2);
+  const minT = Math.floor(rawMin - pad);
+  const maxT = Math.ceil(rawMax + pad);
+
+  const W = 360, H = 176;
+  const mTop = 18, mRight = 12, mBottom = 34, mLeft = 30;
+  const cW = W - mLeft - mRight;
+  const cH = H - mTop - mBottom;
+
+  const xScale = i => mLeft + (nSlots > 1 ? (i / (nSlots - 1)) * cW : cW / 2);
+  const yScale = v => mTop + cH - ((v - minT) / (maxT - minT || 1)) * cH;
+
+  const yRange = maxT - minT;
+  const tickStep = yRange <= 6 ? 2 : yRange <= 12 ? 3 : yRange <= 20 ? 4 : 5;
+  const yTicks = [];
+  for (let v = Math.ceil(minT / tickStep) * tickStep; v <= maxT; v += tickStep) yTicks.push(v);
+
+  const activeIdx = hoverIdx ?? 0;
+  const slotW = nSlots > 1 ? cW / (nSlots - 1) : cW;
+
+  return (
+    <div>
+      <ChartLegend sources={sourceDefs} theme={theme} />
+
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ width: "100%", height: "auto", display: "block" }}
+        onMouseLeave={() => setHoverIdx(null)}
+      >
+        {/* Y 그리드 */}
+        {yTicks.map(v => {
+          const y = yScale(v);
+          return (
+            <g key={v}>
+              <line x1={mLeft} y1={y} x2={W - mRight} y2={y}
+                stroke="rgba(0,0,0,0.06)" strokeWidth={1} />
+              <text x={mLeft - 4} y={y + 3.5} textAnchor="end"
+                fontSize={8} fill="rgba(0,0,0,0.35)">{v}°</text>
+            </g>
+          );
+        })}
+
+        {/* X축 */}
+        <line x1={mLeft} y1={mTop + cH} x2={W - mRight} y2={mTop + cH}
+          stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
+
+        {/* X 레이블 */}
+        {slots.map((s, i) => {
+          if (i !== 0 && i % 3 !== 0 && !s.isMidnight) return null;
+          return (
+            <text key={i} x={xScale(i)} y={H - mBottom + 11}
+              textAnchor="middle" fontSize={8.5}
+              fill={s.isMidnight ? "rgba(0,0,0,0.65)" : "rgba(0,0,0,0.38)"}
+              fontWeight={s.isMidnight ? "700" : "400"}>
+              {s.label}
+            </text>
+          );
+        })}
+
+        {/* 소스별 라인 + 활성 점/레이블 */}
+        {sourceDefs.map(src => {
+          const pts = slots.map((_, i) => {
+            const d = src.data?.[i];
+            return d?.temp != null ? { x: xScale(i), y: yScale(Number(d.temp)), i } : null;
+          });
+
+          const segments = [];
+          let seg = [];
+          pts.forEach(p => {
+            if (p) { seg.push(`${p.x},${p.y}`); }
+            else if (seg.length) { segments.push(seg); seg = []; }
+          });
+          if (seg.length) segments.push(seg);
+
+          const activePt = pts[activeIdx];
+
+          return (
+            <g key={src.name}>
+              {segments.map((s, si) => (
+                <polyline key={si} points={s.join(" ")}
+                  fill="none" stroke={src.color} strokeWidth={2}
+                  strokeLinejoin="round" strokeLinecap="round" opacity={0.88} />
+              ))}
+              {activePt && (
+                <g>
+                  <circle cx={activePt.x} cy={activePt.y} r={4}
+                    fill={src.color} stroke="white" strokeWidth={1.5} />
+                  <text x={activePt.x} y={activePt.y - 7} textAnchor="middle"
+                    fontSize={9} fill={src.color} fontWeight="700">
+                    {Number(src.data?.[activeIdx]?.temp).toFixed(1)}°
+                  </text>
+                </g>
+              )}
+            </g>
+          );
+        })}
+
+        {/* hover 수직선 */}
+        {hoverIdx != null && (
+          <line x1={xScale(hoverIdx)} y1={mTop} x2={xScale(hoverIdx)} y2={mTop + cH}
+            stroke="rgba(0,0,0,0.18)" strokeWidth={1} strokeDasharray="3,2" />
+        )}
+
+        {/* hover 시각 레이블 */}
+        {hoverIdx != null && slots[hoverIdx] && (
+          <text x={xScale(hoverIdx)} y={mTop - 5} textAnchor="middle"
+            fontSize={8.5} fill="rgba(0,0,0,0.5)">
+            {slots[hoverIdx].label}
+          </text>
+        )}
+
+        {/* 투명 hover 존 */}
+        {slots.map((_, i) => (
+          <rect key={i}
+            x={xScale(i) - slotW / 2} y={mTop}
+            width={slotW} height={cH}
+            fill="transparent"
+            onMouseEnter={() => setHoverIdx(i)}
+          />
+        ))}
+      </svg>
+
+      {/* 현재 시각 기준 소스별 미니 카드 */}
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        {sourceDefs.map(src => {
+          const d = src.data?.[0];
+          return (
+            <div key={src.name} style={{
+              flex: "1 1 0", minWidth: 60,
+              padding: "8px 10px", borderRadius: 14,
+              background: `${src.color}12`,
+              borderLeft: `3px solid ${src.color}`,
+            }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
+              <p style={{ fontSize: 16, fontWeight: 800, color: theme.text, lineHeight: 1.2 }}>
+                {d?.temp != null ? `${Number(d.temp).toFixed(1)}°` : "—"}
+              </p>
+              <p style={{ fontSize: 10, color: theme.sub, marginTop: 2 }}>
+                비 {d?.rainChance != null ? `${d.rainChance}%` : "—"}
+              </p>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
