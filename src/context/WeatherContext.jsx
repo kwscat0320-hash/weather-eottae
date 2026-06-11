@@ -323,51 +323,48 @@ export function WeatherProvider({ children }) {
 
   const dailyForecasts = useMemo(() => {
     const todayLabel = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+
+    // ── 1단계: 날짜별 공식 TMX/TMN을 먼저 수집 ─────────────────────────────
+    // 단기예보 항목에 officialTMX 필드가 있으면 그것을 사용
+    // 중기예보 항목(timeLabel === "일간")은 tempMax/tempMin 자체가 공식값
+    const officialByDate = {};
+    forecast.forEach((item) => {
+      const key = item.dateLabel;
+      if (key === todayLabel) return;
+      if (!officialByDate[key]) officialByDate[key] = { max: null, min: null };
+      const isDaily = item.timeLabel === "일간";
+      const mx = isDaily ? item.tempMax : (item.officialTMX ?? null);
+      const mn = isDaily ? item.tempMin : (item.officialTMN ?? null);
+      if (mx != null) officialByDate[key].max = officialByDate[key].max == null ? mx : Math.max(officialByDate[key].max, mx);
+      if (mn != null) officialByDate[key].min = officialByDate[key].min == null ? mn : Math.min(officialByDate[key].min, mn);
+    });
+
+    // ── 2단계: 나머지 필드(강수확률, condition, hourly tmps) 집계 ────────────
     const grouped = {};
     forecast.forEach((item) => {
       const key = item.dateLabel;
       if (key === todayLabel) return;
-      // 이 항목이 일별 요약(중기예보)인지 시간별 단기예보인지 구분
-      const isDaily = item.timeLabel === "일간";
-
       if (!grouped[key]) {
-        grouped[key] = { date: key, rainChance: item.rainChance ?? 0, tmps: [], conditions: [],
-          officialMax: null, officialMin: null,
-        };
+        grouped[key] = { date: key, rainChance: item.rainChance ?? 0, tmps: [], conditions: [] };
       } else {
         grouped[key].rainChance = Math.max(grouped[key].rainChance, item.rainChance ?? 0);
       }
-
-      if (isDaily) {
-        // 중기예보: tempMax/tempMin이 곧 공식값
-        if (item.tempMax != null)
-          grouped[key].officialMax = grouped[key].officialMax == null ? item.tempMax : Math.max(grouped[key].officialMax, item.tempMax);
-        if (item.tempMin != null)
-          grouped[key].officialMin = grouped[key].officialMin == null ? item.tempMin : Math.min(grouped[key].officialMin, item.tempMin);
-      } else {
-        // 단기예보: officialTMX 필드 우선, 없으면 tempMax(=TMX or TMP fallback) 사용
-        const mx = item.officialTMX ?? (item.tempMax !== item.temp ? item.tempMax : null);
-        const mn = item.officialTMN ?? (item.tempMin !== item.temp ? item.tempMin : null);
-        if (mx != null)
-          grouped[key].officialMax = grouped[key].officialMax == null ? mx : Math.max(grouped[key].officialMax, mx);
-        if (mn != null)
-          grouped[key].officialMin = grouped[key].officialMin == null ? mn : Math.min(grouped[key].officialMin, mn);
-        if (item.temp != null) grouped[key].tmps.push(item.temp);
-      }
-      // 낮(09~18시) 중간 시간대 condition 수집 (중기예보는 isoTime 없음 → 무조건 수집)
+      if (item.temp != null && item.timeLabel !== "일간") grouped[key].tmps.push(item.temp);
       if (item.condition) {
         const hour = item.isoTime ? new Date(item.isoTime).getHours() : -1;
         if (hour === -1 || (hour >= 9 && hour <= 18)) grouped[key].conditions.push(item.condition);
       }
     });
-    const base = Object.values(grouped).slice(0, 5).map(({ tmps, conditions, officialMax, officialMin, ...rest }) => ({
-      ...rest,
-      // officialTMX/TMN 우선, 없으면 hourly TMP의 max/min fallback
-      max: officialMax ?? (tmps.length ? Math.max(...tmps) : null),
-      min: officialMin ?? (tmps.length ? Math.min(...tmps) : null),
-      // 낮 시간대 중간값 condition (없으면 첫 번째)
-      condition: conditions.length ? conditions[Math.floor(conditions.length / 2)] : null,
-    }));
+
+    const base = Object.values(grouped).slice(0, 5).map(({ tmps, conditions, ...rest }) => {
+      const official = officialByDate[rest.date] ?? {};
+      return {
+        ...rest,
+        max: official.max ?? (tmps.length ? Math.max(...tmps) : null),
+        min: official.min ?? (tmps.length ? Math.min(...tmps) : null),
+        condition: conditions.length ? conditions[Math.floor(conditions.length / 2)] : null,
+      };
+    });
 
     // ── 오전 빈칸 보완: 5일치가 부족하면 최근 이력 예보에서 gap-fill ──────────
     if (base.length < 5 && weatherHistory.length > 0) {
