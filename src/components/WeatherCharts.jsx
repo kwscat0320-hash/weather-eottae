@@ -1,25 +1,25 @@
 import React, { useState } from "react";
 
 // ── 공통: 범례 ─────────────────────────────────────────────────────────────
-export function ChartLegend({ sources, theme, selectedSrc, onSelect }) {
+export function ChartLegend({ sources, theme, activeSrcs, onToggle }) {
   return (
     <div className="flex gap-4 mb-4 flex-wrap">
       {sources.map(s => {
-        const isActive = !selectedSrc || selectedSrc === s.name;
+        const isActive = activeSrcs.includes(s.name);
         return (
           <div
             key={s.name}
             className="flex items-center gap-1.5"
             style={{ cursor: "pointer", opacity: isActive ? 1 : 0.35, transition: "opacity 0.15s" }}
-            onClick={() => onSelect?.(selectedSrc === s.name ? null : s.name)}
+            onClick={() => onToggle?.(s.name)}
           >
             <div className="w-2.5 h-2.5 rounded-full" style={{
               background: s.color,
-              boxShadow: selectedSrc === s.name ? `0 0 0 2px ${s.color}55` : "none",
+              boxShadow: isActive ? `0 0 0 2px ${s.color}55` : "none",
             }} />
             <span className="text-xs font-semibold" style={{
               color: isActive ? s.color : theme.sub,
-              fontWeight: selectedSrc === s.name ? 800 : 600,
+              fontWeight: isActive ? 800 : 600,
             }}>{s.name}</span>
           </div>
         );
@@ -33,7 +33,13 @@ export function ChartLegend({ sources, theme, selectedSrc, onSelect }) {
 // ══════════════════════════════════════════════════════════════════════════
 export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareWeather, meteoWeather, wapiWeather, theme }) {
   const [hoverIdx, setHoverIdx] = useState(null);
-  const [selectedSrc, setSelectedSrc] = useState("기상청");
+  const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
+
+  const toggleSrc = name => setActiveSrcs(prev =>
+    prev.includes(name)
+      ? prev.length > 1 ? prev.filter(n => n !== name) : prev
+      : [...prev, name]
+  );
 
   const sourceDefs = [
     { name: "기상청",   color: "#2563eb", data: alignedHourly?.kma,   current: weather,       kma: true },
@@ -74,12 +80,10 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
   const activeIdx = hoverIdx ?? 0;
   const slotW = nSlots > 1 ? cW / (nSlots - 1) : cW;
 
-  const srcOpacity = src =>
-    !selectedSrc || selectedSrc === src.name ? 1 : 0.1;
 
   return (
     <div>
-      <ChartLegend sources={sourceDefs} theme={theme} selectedSrc={selectedSrc} onSelect={setSelectedSrc} />
+      <ChartLegend sources={sourceDefs} theme={theme} activeSrcs={activeSrcs} onToggle={toggleSrc} />
 
       <svg
         viewBox={`0 0 ${W} ${H}`}
@@ -118,7 +122,8 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
 
         {/* 소스별 라인 + 활성 점/레이블 */}
         {sourceDefs.map(src => {
-          const opacity = srcOpacity(src);
+          const isActive = activeSrcs.includes(src.name);
+          const opacity = isActive ? 1 : 0.1;
           const pts = slots.map((_, i) => {
             const d = src.data?.[i];
             return d?.temp != null ? { x: xScale(i), y: yScale(Number(d.temp)), i } : null;
@@ -133,18 +138,17 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
           if (seg.length) segments.push(seg);
 
           const activePt = pts[activeIdx];
-          const isSelected = !selectedSrc || selectedSrc === src.name;
 
           return (
             <g key={src.name} style={{ transition: "opacity 0.15s" }} opacity={opacity}>
               {segments.map((s, si) => (
                 <polyline key={si} points={s.join(" ")}
                   fill="none" stroke={src.color}
-                  strokeWidth={isSelected && selectedSrc ? (src.kma ? 3 : 2.2) : (src.kma ? 2.5 : 1.8)}
+                  strokeWidth={src.kma ? 2.5 : 1.8}
                   strokeDasharray={src.kma ? "none" : "5,3"}
                   strokeLinejoin="round" strokeLinecap="round" />
               ))}
-              {activePt && isSelected && (
+              {activePt && isActive && (
                 <g>
                   <circle cx={activePt.x} cy={activePt.y} r={4}
                     fill={src.color} stroke="white" strokeWidth={1.5} />
@@ -187,7 +191,7 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
         {sourceDefs.map(src => {
           const d = src.data?.[0];
-          const opacity = srcOpacity(src);
+          const isActive = activeSrcs.includes(src.name);
           return (
             <div key={src.name}
               style={{
@@ -195,11 +199,11 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
                 padding: "8px 10px", borderRadius: 14,
                 background: `${src.color}12`,
                 borderLeft: `3px solid ${src.color}`,
-                opacity,
+                opacity: isActive ? 1 : 0.1,
                 transition: "opacity 0.15s",
                 cursor: "pointer",
               }}
-              onClick={() => setSelectedSrc(selectedSrc === src.name ? null : src.name)}
+              onClick={() => toggleSrc(src.name)}
             >
               <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
               <p style={{ fontSize: 16, fontWeight: 800, color: theme.text, lineHeight: 1.2 }}>
@@ -218,7 +222,13 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
 // ══════════════════════════════════════════════════════════════════════════
 export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
   const [hoverIdx, setHoverIdx] = useState(null);
-  const [selectedSrc, setSelectedSrc] = useState("기상청");
+  const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
+
+  const toggleSrc = name => setActiveSrcs(prev =>
+    prev.includes(name)
+      ? prev.length > 1 ? prev.filter(n => n !== name) : prev
+      : [...prev, name]
+  );
 
   const sourceDefs = [
     { name: "기상청",    color: "#2563eb", data: alignedHourly?.kma },
@@ -250,12 +260,10 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
   const groupX = i => mLeft + i * groupW;
   const barX = (i, bi) => groupX(i) + barPad + bi * (barW + barGap);
 
-  const srcOpacity = src =>
-    !selectedSrc || selectedSrc === src.name ? 1 : 0.1;
 
   return (
     <div>
-      <ChartLegend sources={sourceDefs} theme={theme} selectedSrc={selectedSrc} onSelect={setSelectedSrc} />
+      <ChartLegend sources={sourceDefs} theme={theme} activeSrcs={activeSrcs} onToggle={toggleSrc} />
 
       <svg
         viewBox={`0 0 ${W} ${H}`}
@@ -310,13 +318,13 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
               const y = yScale(val);
               const bh = mTop + cH - y;
               const isHover = hoverIdx === i;
-              const opacity = srcOpacity(src);
+              const isActive = activeSrcs.includes(src.name);
               return (
-                <g key={src.name} style={{ transition: "opacity 0.15s" }} opacity={opacity}>
+                <g key={src.name} style={{ transition: "opacity 0.15s" }} opacity={isActive ? 1 : 0.1}>
                   <rect x={x} y={y} width={barW} height={Math.max(bh, 1)}
                     fill={src.color} rx={1}
                     opacity={isHover ? 1 : 0.82} />
-                  {isHover && val > 0 && (!selectedSrc || selectedSrc === src.name) && (
+                  {isHover && isActive && val > 0 && (
                     <text x={x + barW / 2} y={y - 3} textAnchor="middle"
                       fontSize={7.5} fill={src.color} fontWeight="700">
                       {val}%
@@ -350,7 +358,7 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
         {sourceDefs.map(src => {
           const d = src.data?.[0];
-          const opacity = srcOpacity(src);
+          const isActive = activeSrcs.includes(src.name);
           return (
             <div key={src.name}
               style={{
@@ -358,11 +366,11 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
                 padding: "8px 10px", borderRadius: 14,
                 background: `${src.color}12`,
                 borderLeft: `3px solid ${src.color}`,
-                opacity,
+                opacity: isActive ? 1 : 0.1,
                 transition: "opacity 0.15s",
                 cursor: "pointer",
               }}
-              onClick={() => setSelectedSrc(selectedSrc === src.name ? null : src.name)}
+              onClick={() => toggleSrc(src.name)}
             >
               <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
               <p style={{ fontSize: 16, fontWeight: 800, color: theme.text, lineHeight: 1.2 }}>
