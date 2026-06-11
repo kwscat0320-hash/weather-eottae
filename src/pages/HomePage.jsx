@@ -173,7 +173,10 @@ export default function HomePage({ scrollRef }) {
               {weather?.temp.toFixed(1)}°
             </div>
             <p className="text-sm mt-2" style={{ color: theme.sub }}>
-              최고 {weather?.high.toFixed(1)}° / 최저 {weather?.low.toFixed(1)}° · 체감 {weather?.feelsLike.toFixed(1)}°
+              최고 {weather?.high.toFixed(1)}° / 최저 {weather?.low.toFixed(1)}°
+            </p>
+            <p className="text-sm" style={{ color: theme.sub }}>
+              체감 {weather?.feelsLike.toFixed(1)}°
             </p>
           </div>
           <div className="relative flex flex-col items-end">
