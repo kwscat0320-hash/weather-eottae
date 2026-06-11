@@ -322,18 +322,23 @@ export function WeatherProvider({ children }) {
       const key = item.dateLabel;
       if (key === todayLabel) return;
       if (!grouped[key]) {
-        grouped[key] = { date: key, min: item.tempMin, max: item.tempMax, rainChance: item.rainChance ?? 0, tmps: [item.temp] };
+        grouped[key] = { date: key, min: item.tempMin, max: item.tempMax, rainChance: item.rainChance ?? 0, tmps: [item.temp], conditions: [] };
       } else {
         if (item.tempMin != null) grouped[key].min = grouped[key].min == null ? item.tempMin : Math.min(grouped[key].min, item.tempMin);
         if (item.tempMax != null) grouped[key].max = grouped[key].max == null ? item.tempMax : Math.max(grouped[key].max, item.tempMax);
         grouped[key].rainChance = Math.max(grouped[key].rainChance, item.rainChance ?? 0);
         grouped[key].tmps.push(item.temp);
       }
+      // 낮(09~18시) 중간 시간대 condition 수집
+      const hour = item.isoTime ? new Date(item.isoTime).getHours() : -1;
+      if (item.condition && hour >= 9 && hour <= 18) grouped[key].conditions.push(item.condition);
     });
-    const base = Object.values(grouped).slice(0, 5).map(({ tmps, min, max, ...rest }) => ({
+    const base = Object.values(grouped).slice(0, 5).map(({ tmps, conditions, min, max, ...rest }) => ({
       ...rest,
       min: min ?? Math.min(...tmps),
       max: max ?? Math.max(...tmps),
+      // 낮 시간대 중간값 condition (없으면 첫 번째)
+      condition: conditions.length ? conditions[Math.floor(conditions.length / 2)] : null,
     }));
 
     // ── 오전 빈칸 보완: 5일치가 부족하면 최근 이력 예보에서 gap-fill ──────────
