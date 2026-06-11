@@ -1219,18 +1219,18 @@ export function DailyAirCard({ airForecast, theme }) {
     { name: "오픈메테오", color: "#4CAF50", data: airForecast?.openmeteo  || [] },
   ];
 
-  // 모든 소스에서 dateLabel 수집 → 정렬된 고유 날짜 5개
+  // 모든 소스에서 dateLabel 수집 → 정렬된 고유 날짜 6개
   const allDates = [...new Set(sources.flatMap(s => s.data.map(d => d.dateLabel)))]
     .sort((a, b) => {
       const nums = s => (s.match(/\d+/g) || []).map(Number);
       const [am, ad] = nums(a); const [bm, bd] = nums(b);
       return am !== bm ? am - bm : ad - bd;
     })
-    .slice(0, 5);
+    .slice(0, 6);
 
   return (
     <div style={{ background: theme.card, borderRadius: 16, padding: "18px 16px", marginBottom: 16 }}>
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 14 }}>🌫️ 5일 미세먼지 (PM2.5) 예보</h3>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 14 }}>🌫️ 6일 미세먼지 (PM2.5) 예보</h3>
 
       {/* 날짜 헤더 */}
       <div style={{ display: "grid", gridTemplateColumns: `72px repeat(${allDates.length}, 1fr)`, gap: 4, marginBottom: 6 }}>
@@ -1300,4 +1300,69 @@ export function DailyAirCard({ airForecast, theme }) {
       </div>
     </div>
   );
+}
+
+// ── HourlyAirCard — 오늘 시간대별 미세먼지 (PM2.5) ────────────────────────
+export function HourlyAirCard({ openmeteoHourly, theme }) {
+  if (!openmeteoHourly || openmeteoHourly.length === 0) return null;
+
+  const nowHour = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
+  const slots = openmeteoHourly.filter(h => {
+    const hh = parseInt(h.time.slice(0, 2), 10);
+    return hh >= nowHour;
+  }).slice(0, 24);
+
+  if (slots.length === 0) return null;
+
+  const maxPm25 = Math.max(...slots.map(s => s.pm25 ?? 0), 75);
+
+  return (
+    <div style={{ background: theme.card, borderRadius: 16, padding: "18px 16px", marginBottom: 16 }}>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 14 }}>🕐 오늘 시간대별 미세먼지 (PM2.5)</h3>
+
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 80, overflowX: "auto", paddingBottom: 4 }}>
+        {slots.map((s, i) => {
+          const val = Math.round(s.pm25 ?? 0);
+          const pct = Math.min(val / maxPm25, 1);
+          const gs = gradeStyle(pm25ToGradeStr(val));
+          return (
+            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 28, flex: "1 0 28px" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: gs.color, marginBottom: 2 }}>{val}</div>
+              <div style={{
+                width: "100%", borderRadius: 4,
+                height: Math.max(pct * 52, 4),
+                background: gs.color,
+                opacity: 0.85,
+              }} />
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+        {slots.map((s, i) => (
+          <div key={i} style={{ textAlign: "center", minWidth: 28, flex: "1 0 28px", fontSize: 9, color: theme.sub, fontWeight: 600 }}>
+            {s.time.slice(0, 2)}시
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+        {[["좋음", "#4ade80"], ["보통", "#facc15"], ["나쁨", "#fb923c"], ["매우나쁨", "#f87171"]].map(([label, color]) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: 3 }}>
+            <div style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
+            <span style={{ fontSize: 10, color: theme.sub }}>{label}</span>
+          </div>
+        ))}
+        <span style={{ fontSize: 10, color: theme.sub, marginLeft: "auto" }}>Open-Meteo · ㎍/㎥</span>
+      </div>
+    </div>
+  );
+}
+
+function pm25ToGradeStr(val) {
+  if (val <= 15) return "좋음";
+  if (val <= 35) return "보통";
+  if (val <= 75) return "나쁨";
+  return "매우나쁨";
 }

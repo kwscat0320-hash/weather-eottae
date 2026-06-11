@@ -56,6 +56,12 @@ function todayKST() {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
 }
 
+function yesterdayKST() {
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  now.setUTCDate(now.getUTCDate() - 1);
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+}
+
 function toLabel(dateStr) {
   const d = new Date(dateStr + "T00:00:00+09:00");
   return d.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
@@ -80,45 +86,57 @@ export default async function handler(req, res) {
 
   const kmaKey = process.env.KMA_KEY;
   const owKey  = process.env.OW_KEY;
-  const today  = todayKST();
+  const today     = todayKST();
+  const yesterday = yesterdayKST();
   const region = getAirRegion(Number(lat), Number(lon));
 
-  const [airkoreaRes, owRes, meteoRes] = await Promise.allSettled([
+  const [airkoreaYestRes, airkoreaTodayRes, owRes, meteoRes] = await Promise.allSettled([
+    kmaKey
+      ? httpsGetJson(`https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMinuDustFrcstDspth?serviceKey=${kmaKey.trim()}&returnType=json&numOfRows=50&pageNo=1&searchDate=${yesterday}&ver=1.1`)
+      : Promise.reject("no KMA_KEY"),
     kmaKey
       ? httpsGetJson(`https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMinuDustFrcstDspth?serviceKey=${kmaKey.trim()}&returnType=json&numOfRows=50&pageNo=1&searchDate=${today}&ver=1.1`)
       : Promise.reject("no KMA_KEY"),
     owKey
       ? httpsGetJson(`https://api.openweathermap.org/data/2.5/air_pollution/forecast?lat=${lat}&lon=${lon}&appid=${owKey}`)
       : Promise.reject("no OW_KEY"),
-    httpsGetJson(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10&timezone=Asia%2FSeoul&forecast_days=5`),
+    httpsGetJson(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10&timezone=Asia%2FSeoul&forecast_days=8`),
   ]);
 
-  // ── 에어코리아 ─────────────────────────────────────────────────────
+  // ── 에어코리아 (어제+오늘 발표 병합) ──────────────────────────────
   let airkorea = [];
-  if (airkoreaRes.status === "fulfilled") {
-    try {
-      const items = airkoreaRes.value?.response?.body?.items || [];
-      const byDate = {};
-      items.forEach(item => {
-        const date = item.informData;
-        if (!date) return;
-        if (!byDate[date]) byDate[date] = {};
-        const grade = parseInformGrade(item.informGrade, region);
-        if (!grade) return;
-        if (item.informCode === "PM25") byDate[date].pm25Grade = grade;
-        if (item.informCode === "PM10") byDate[date].pm10Grade = grade;
-      });
-      airkorea = Object.entries(byDate)
-        .filter(([, v]) => v.pm25Grade || v.pm10Grade)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([date, grades]) => ({
-          dateLabel: toLabel(date),
-          pm25Grade: grades.pm25Grade || "보통",
-          pm10Grade: grades.pm10Grade || "보통",
-        }));
-    } catch (e) {
-      console.error("[air-forecast] airkorea parse error:", e.message);
+  {
+    const byDate = {};
+    const todayStr = today;
+    for (const result of [airkoreaYestRes, airkoreaTodayRes]) {
+      if (result.status !== "fulfilled") continue;
+      try {
+        const items = result.value?.response?.body?.items || [];
+        items.forEach(item => {
+          const date = item.informData;
+          if (!date) return;
+          // D(오늘) 이후만 포함
+          if (date <= todayStr) return;
+          if (!byDate[date]) byDate[date] = {};
+          const grade = parseInformGrade(item.informGrade, region);
+          if (!grade) return;
+          // 나중에 조회한 데이터(오늘 발표)가 더 최신 → 덮어쓰기 허용
+          if (item.informCode === "PM25") byDate[date].pm25Grade = grade;
+          if (item.informCode === "PM10") byDate[date].pm10Grade = grade;
+        });
+      } catch (e) {
+        console.error("[air-forecast] airkorea parse error:", e.message);
+      }
     }
+    airkorea = Object.entries(byDate)
+      .filter(([, v]) => v.pm25Grade || v.pm10Grade)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(0, 6)
+      .map(([date, grades]) => ({
+        dateLabel: toLabel(date),
+        pm25Grade: grades.pm25Grade || "보통",
+        pm10Grade: grades.pm10Grade || "보통",
+      }));
   }
 
   // ── OpenWeather ───────────────────────────────────────────────────
@@ -137,7 +155,8 @@ export default async function handler(req, res) {
       });
       openweather = Object.entries(byDate)
         .sort(([a], [b]) => a.localeCompare(b))
-        .slice(0, 5)
+        .filter(([date]) => date > today)
+        .slice(0, 6)
         .map(([date, { pm25s, pm10s }]) => {
           const pm25 = pm25s.reduce((a, b) => a + b, 0) / pm25s.length;
           const pm10 = pm10s.reduce((a, b) => a + b, 0) / pm10s.length;
@@ -150,6 +169,7 @@ export default async function handler(req, res) {
 
   // ── OpenMeteo ─────────────────────────────────────────────────────
   let openmeteo = [];
+  let openmeteoHourly = [];
   if (meteoRes.status === "fulfilled") {
     try {
       const hourly = meteoRes.value?.hourly;
@@ -157,13 +177,25 @@ export default async function handler(req, res) {
         const byDate = {};
         hourly.time.forEach((t, i) => {
           const dateStr = t.slice(0, 10);
-          if (!byDate[dateStr]) byDate[dateStr] = { pm25s: [], pm10s: [] };
+          if (!byDate[dateStr]) byDate[dateStr] = { pm25s: [], pm10s: [], hours: [] };
           if (hourly.pm2_5?.[i] != null) byDate[dateStr].pm25s.push(hourly.pm2_5[i]);
           if (hourly.pm10?.[i]  != null) byDate[dateStr].pm10s.push(hourly.pm10[i]);
+          byDate[dateStr].hours.push({
+            time: t.slice(11, 16),
+            pm25: hourly.pm2_5?.[i] ?? null,
+            pm10: hourly.pm10?.[i]  ?? null,
+          });
         });
+
+        // 오늘 시간대별
+        if (byDate[today]) {
+          openmeteoHourly = byDate[today].hours;
+        }
+
         openmeteo = Object.entries(byDate)
           .sort(([a], [b]) => a.localeCompare(b))
-          .slice(0, 5)
+          .filter(([date]) => date > today)
+          .slice(0, 6)
           .map(([date, { pm25s, pm10s }]) => {
             const pm25 = pm25s.length ? pm25s.reduce((a, b) => a + b, 0) / pm25s.length : 0;
             const pm10 = pm10s.length ? pm10s.reduce((a, b) => a + b, 0) / pm10s.length : 0;
@@ -175,5 +207,5 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(200).json({ airkorea, openweather, openmeteo, region });
+  return res.status(200).json({ airkorea, openweather, openmeteo, openmeteoHourly, region });
 }

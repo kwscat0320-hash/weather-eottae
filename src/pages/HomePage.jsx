@@ -7,7 +7,7 @@ import AirDot from "../components/AirDot";
 import AirCompareCard from "../components/AirCompareCard";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
-import { HourlyCompareChart, HourlyRainChart, DailyTempChart, DailyRainChart, DailyConditionCard, DailyAirCard } from "../components/WeatherCharts";
+import { HourlyCompareChart, HourlyRainChart, DailyTempChart, DailyRainChart, DailyConditionCard, DailyAirCard, HourlyAirCard } from "../components/WeatherCharts";
 
 export default function HomePage({ scrollRef }) {
   const {
@@ -306,7 +306,10 @@ export default function HomePage({ scrollRef }) {
           />
         </div>
 
-        {/* 5일 미세먼지 예보 */}
+        {/* 오늘 시간대별 미세먼지 */}
+        <HourlyAirCard openmeteoHourly={airForecast.openmeteoHourly} theme={theme} />
+
+        {/* 6일 미세먼지 예보 */}
         <DailyAirCard airForecast={airForecast} theme={theme} />
 
         {/* 최근 기상 기록 / 예보 이력 — 데이터만 유지, UI 미표시 */}

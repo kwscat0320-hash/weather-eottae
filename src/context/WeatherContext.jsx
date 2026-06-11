@@ -36,7 +36,7 @@ export function WeatherProvider({ children }) {
   const [airMeteo, setAirMeteo] = useState(null);
   const [midForecast, setMidForecast] = useState([]);
   const [weatherHistory, setWeatherHistory] = useState([]);
-  const [airForecast, setAirForecast] = useState({ airkorea: [], openweather: [], openmeteo: [] });
+  const [airForecast, setAirForecast] = useState({ airkorea: [], openweather: [], openmeteo: [], openmeteoHourly: [] });
 
   useEffect(() => { requestCurrentLocation(); }, []);
 
