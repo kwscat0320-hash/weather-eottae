@@ -328,23 +328,44 @@ export function WeatherProvider({ children }) {
       const key = item.dateLabel;
       if (key === todayLabel) return;
       if (!grouped[key]) {
-        grouped[key] = { date: key, min: item.tempMin, max: item.tempMax, rainChance: item.rainChance ?? 0, tmps: [item.temp], conditions: [] };
+        grouped[key] = { date: key, min: item.tempMin, max: item.tempMax, rainChance: item.rainChance ?? 0, tmps: [], conditions: [],
+          // TMN/TMX가 명시적으로 제공됐는지 추적 (TMP 시간별 fallback과 구분)
+          hasOfficialMin: item.tempMin != null && item.tempMin !== item.temp,
+          hasOfficialMax: item.tempMax != null && item.tempMax !== item.temp,
+        };
       } else {
-        if (item.tempMin != null) grouped[key].min = grouped[key].min == null ? item.tempMin : Math.min(grouped[key].min, item.tempMin);
-        if (item.tempMax != null) grouped[key].max = grouped[key].max == null ? item.tempMax : Math.max(grouped[key].max, item.tempMax);
+        // 공식 TMN/TMX가 있으면 그것을 우선, 없으면 hourly TMP 범위 사용
+        if (item.tempMin != null) {
+          const isOfficial = item.tempMin !== item.temp;
+          if (isOfficial) {
+            grouped[key].min = grouped[key].min == null ? item.tempMin : Math.min(grouped[key].min, item.tempMin);
+            grouped[key].hasOfficialMin = true;
+          } else if (!grouped[key].hasOfficialMin) {
+            grouped[key].min = grouped[key].min == null ? item.tempMin : Math.min(grouped[key].min, item.tempMin);
+          }
+        }
+        if (item.tempMax != null) {
+          const isOfficial = item.tempMax !== item.temp;
+          if (isOfficial) {
+            grouped[key].max = grouped[key].max == null ? item.tempMax : Math.max(grouped[key].max, item.tempMax);
+            grouped[key].hasOfficialMax = true;
+          } else if (!grouped[key].hasOfficialMax) {
+            grouped[key].max = grouped[key].max == null ? item.tempMax : Math.max(grouped[key].max, item.tempMax);
+          }
+        }
         grouped[key].rainChance = Math.max(grouped[key].rainChance, item.rainChance ?? 0);
-        grouped[key].tmps.push(item.temp);
       }
+      if (item.temp != null) grouped[key].tmps.push(item.temp);
       // 낮(09~18시) 중간 시간대 condition 수집 (중기예보는 isoTime 없음 → 무조건 수집)
       if (item.condition) {
         const hour = item.isoTime ? new Date(item.isoTime).getHours() : -1;
         if (hour === -1 || (hour >= 9 && hour <= 18)) grouped[key].conditions.push(item.condition);
       }
     });
-    const base = Object.values(grouped).slice(0, 5).map(({ tmps, conditions, min, max, ...rest }) => ({
+    const base = Object.values(grouped).slice(0, 5).map(({ tmps, conditions, min, max, hasOfficialMin, hasOfficialMax, ...rest }) => ({
       ...rest,
-      min: min ?? Math.min(...tmps),
-      max: max ?? Math.max(...tmps),
+      min: min ?? (tmps.length ? Math.min(...tmps) : null),
+      max: max ?? (tmps.length ? Math.max(...tmps) : null),
       // 낮 시간대 중간값 condition (없으면 첫 번째)
       condition: conditions.length ? conditions[Math.floor(conditions.length / 2)] : null,
     }));

@@ -604,72 +604,55 @@ function splitDateLabel(str) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// DailyForecastChart — 5일 예보: 이중 Y축 (왼쪽=온도, 오른쪽=강수확률)
-// ══════════════════════════════════════════════════════════════════════════
-export function DailyForecastChart({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
-  const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
-  const [hoverIdx, setHoverIdx] = useState(null);
-
-  const toggleSrc = name => setActiveSrcs(prev =>
-    prev.includes(name)
-      ? prev.length > 1 ? prev.filter(n => n !== name) : prev
-      : [...prev, name]
-  );
-
-  const sourceDefs = [
+// ── 공통 소스 정의 헬퍼 ──────────────────────────────────────────────────
+function buildDailySources(dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts) {
+  return [
     { name: "기상청",    color: "#2563eb", days: dailyForecasts?.length    ? dailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance })) : null },
     { name: "오픈웨더",  color: "#ea580c", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance })) : null },
     { name: "오픈메테오",color: "#059669", days: meteoDaily?.length         ? meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, min: d.tempMin, max: d.tempMax, rainChance: d.rainChance })) : null },
     { name: "웨더API",   color: "#7c3aed", days: wapiDailyForecasts?.length ? wapiDailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance })) : null },
   ].filter(s => s.days?.length);
+}
 
+// DailyTempChart — 5일 최고/최저 온도 꺾은선
+// ══════════════════════════════════════════════════════════════════════════
+export function DailyTempChart({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
+  const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
+  const [hoverIdx, setHoverIdx] = useState(null);
+  const toggleSrc = name => setActiveSrcs(prev =>
+    prev.includes(name) ? (prev.length > 1 ? prev.filter(n => n !== name) : prev) : [...prev, name]
+  );
+
+  const sourceDefs = buildDailySources(dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts);
   if (!sourceDefs.length) return null;
 
   const nDays = Math.max(...sourceDefs.map(s => s.days.length));
-  const nSrc = sourceDefs.length;
   const refLabels = sourceDefs[0].days.map(d => d.date);
 
-  // ── 레이아웃: 이중 Y축 ─────────────────────────────────────────────────
-  const W = 360;
-  const mLeft = 32, mRight = 32, mTop = 18, mBottom = 40;
-  const cW = W - mLeft - mRight;
-  const cH = 150;
-  const H = mTop + cH + mBottom;  // = 208
-
+  const W = 360, mLeft = 32, mRight = 12, mTop = 18, mBottom = 40;
+  const cW = W - mLeft - mRight, cH = 130, H = mTop + cH + mBottom;
   const groupW = cW / nDays;
-  const groupCx = i => mLeft + i * groupW + groupW / 2;  // 온도선 기준점
-  const groupX  = i => mLeft + i * groupW;               // 막대 기준점
+  const groupCx = i => mLeft + i * groupW + groupW / 2;
+  const groupX  = i => mLeft + i * groupW;
 
-  // 왼쪽 Y: 온도
   const allTemps = sourceDefs.flatMap(s => s.days.flatMap(d => [d.min, d.max].filter(v => v != null).map(Number)));
   const rawMin = Math.min(...allTemps), rawMax = Math.max(...allTemps);
   const tPad = Math.max((rawMax - rawMin) * 0.2, 2);
   const minT = Math.floor(rawMin - tPad), maxT = Math.ceil(rawMax + tPad);
-  const yTemp = v => mTop + cH - ((v - minT) / (maxT - minT || 1)) * cH;
+  const yT = v => mTop + cH - ((v - minT) / (maxT - minT || 1)) * cH;
   const tRange = maxT - minT;
   const tStep = tRange <= 6 ? 2 : tRange <= 12 ? 3 : tRange <= 20 ? 4 : 5;
   const tTicks = [];
   for (let v = Math.ceil(minT / tStep) * tStep; v <= maxT; v += tStep) tTicks.push(v);
 
-  // 오른쪽 Y: 강수확률 0~100%
-  const yRain = v => mTop + cH - (Math.min(v, 100) / 100) * cH;
-  const rTicks = [0, 50, 100];
-
-  // 막대 크기
-  const barPad = 3, barGap = 1;
-  const barW = Math.max((groupW - barPad * 2 - barGap * (nSrc - 1)) / nSrc, 2);
-  const barX = (i, bi) => groupX(i) + barPad + bi * (barW + barGap);
-
   return (
     <div>
       <ChartLegend sources={sourceDefs} theme={theme} activeSrcs={activeSrcs} onToggle={toggleSrc} />
-
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}
         onMouseLeave={() => setHoverIdx(null)}>
 
-        {/* ── 온도 Y 그리드 + 왼쪽 레이블 ── */}
         {tTicks.map(v => {
-          const y = yTemp(v);
+          const y = yT(v);
           return (
             <g key={v}>
               <line x1={mLeft} y1={y} x2={W - mRight} y2={y} stroke="rgba(0,0,0,0.06)" strokeWidth={1} />
@@ -678,16 +661,8 @@ export function DailyForecastChart({ dailyForecasts, owDailyForecasts, meteoDail
           );
         })}
 
-        {/* ── 강수 오른쪽 레이블만 (그리드선은 온도와 공유) ── */}
-        {rTicks.map(v => (
-          <text key={v} x={W - mRight + 4} y={yRain(v) + 3.5} textAnchor="start"
-            fontSize={7.5} fill="rgba(0,100,200,0.45)">{v}%</text>
-        ))}
-
-        {/* ── X축 ── */}
         <line x1={mLeft} y1={mTop + cH} x2={W - mRight} y2={mTop + cH} stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
 
-        {/* ── X 레이블 ── */}
         {Array.from({ length: nDays }, (_, i) => {
           const [day, dow] = splitDateLabel(refLabels[i]);
           const cx = groupCx(i);
@@ -699,36 +674,13 @@ export function DailyForecastChart({ dailyForecasts, owDailyForecasts, meteoDail
           );
         })}
 
-        {/* ── 강수확률 막대 (뒤에 그려서 선 위에 덮이지 않게) ── */}
-        {Array.from({ length: nDays }, (_, i) => (
-          <g key={`r_${i}`}>
-            {sourceDefs.map((src, bi) => {
-              const val = src.days[i]?.rainChance != null ? Number(src.days[i].rainChance) : 0;
-              if (val === 0) return null;
-              const x = barX(i, bi), y = yRain(val), bh = mTop + cH - y;
-              const isActive = activeSrcs.includes(src.name);
-              return (
-                <g key={src.name} opacity={isActive ? 1 : 0.08} style={{ transition: "opacity 0.15s" }}>
-                  <rect x={x} y={y} width={barW} height={Math.max(bh, 1)} fill={src.color} rx={1}
-                    opacity={hoverIdx === i ? 0.7 : 0.45} />
-                  {hoverIdx === i && isActive && (
-                    <text x={x + barW / 2} y={y - 3} textAnchor="middle" fontSize={7.5} fill={src.color} fontWeight="700">{val}%</text>
-                  )}
-                </g>
-              );
-            })}
-          </g>
-        ))}
-
-        {/* ── 온도 라인 (최고=실선, 최저=점선, 음영 없음) ── */}
         {sourceDefs.map(src => {
           const isActive = activeSrcs.includes(src.name);
-          const maxPts = src.days.map((d, i) => d.max != null ? { x: groupCx(i), y: yTemp(Number(d.max)), val: Number(d.max) } : null);
-          const minPts = src.days.map((d, i) => d.min != null ? { x: groupCx(i), y: yTemp(Number(d.min)), val: Number(d.min) } : null);
+          const maxPts = src.days.map((d, i) => d.max != null ? { x: groupCx(i), y: yT(Number(d.max)), val: Number(d.max) } : null);
+          const minPts = src.days.map((d, i) => d.min != null ? { x: groupCx(i), y: yT(Number(d.min)), val: Number(d.min) } : null);
           const vMax = maxPts.filter(Boolean), vMin = minPts.filter(Boolean);
-
           return (
-            <g key={`t_${src.name}`} opacity={isActive ? 1 : 0.08} style={{ transition: "opacity 0.15s" }}>
+            <g key={src.name} opacity={isActive ? 1 : 0.08} style={{ transition: "opacity 0.15s" }}>
               {vMax.length > 1 && <polyline points={vMax.map(p => `${p.x},${p.y}`).join(" ")}
                 fill="none" stroke={src.color} strokeWidth={2.2} strokeLinejoin="round" strokeLinecap="round" />}
               {vMin.length > 1 && <polyline points={vMin.map(p => `${p.x},${p.y}`).join(" ")}
@@ -749,37 +701,26 @@ export function DailyForecastChart({ dailyForecasts, owDailyForecasts, meteoDail
           );
         })}
 
-        {/* ── hover 수직선 ── */}
         {hoverIdx != null && (
           <line x1={groupCx(hoverIdx)} y1={mTop} x2={groupCx(hoverIdx)} y2={mTop + cH}
             stroke="rgba(0,0,0,0.15)" strokeWidth={1} strokeDasharray="3,2" />
         )}
-
-        {/* ── hover 존 ── */}
         {Array.from({ length: nDays }, (_, i) => (
           <rect key={i} x={groupX(i)} y={mTop} width={groupW} height={cH}
             fill="transparent" onMouseEnter={() => setHoverIdx(i)} />
         ))}
       </svg>
 
-      {/* ── 소스별 미니 카드 (토글 버튼 역할) ── */}
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
         {sourceDefs.map(src => {
           const d = src.days[0];
           const isActive = activeSrcs.includes(src.name);
           return (
-            <div key={src.name}
-              onClick={() => toggleSrc(src.name)}
-              style={{
-                flex: "1 1 0", minWidth: 60,
-                padding: "8px 10px", borderRadius: 14,
-                background: `${src.color}12`,
-                borderLeft: `3px solid ${src.color}`,
-                opacity: isActive ? 1 : 0.2,
-                transition: "opacity 0.15s",
-                cursor: "pointer",
-              }}
-            >
+            <div key={src.name} onClick={() => toggleSrc(src.name)} style={{
+              flex: "1 1 0", minWidth: 60, padding: "8px 10px", borderRadius: 14,
+              background: `${src.color}12`, borderLeft: `3px solid ${src.color}`,
+              opacity: isActive ? 1 : 0.2, transition: "opacity 0.15s", cursor: "pointer",
+            }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
               <p style={{ fontSize: 14, fontWeight: 800, color: theme.text, lineHeight: 1.3 }}>
                 {d?.max != null ? `${Number(d.max).toFixed(0)}°` : "—"}
@@ -795,15 +736,122 @@ export function DailyForecastChart({ dailyForecasts, owDailyForecasts, meteoDail
   );
 }
 
+// DailyRainChart — 5일 강수확률 막대
 // ══════════════════════════════════════════════════════════════════════════
-// DailyTempChart — (deprecated, kept for compat)
-// ══════════════════════════════════════════════════════════════════════════
-export function DailyTempChart(props) { return <DailyForecastChart {...props} />; }
+export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
+  const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
+  const [hoverIdx, setHoverIdx] = useState(null);
+  const toggleSrc = name => setActiveSrcs(prev =>
+    prev.includes(name) ? (prev.length > 1 ? prev.filter(n => n !== name) : prev) : [...prev, name]
+  );
+
+  const sourceDefs = buildDailySources(dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts);
+  if (!sourceDefs.length) return null;
+
+  const nDays = Math.max(...sourceDefs.map(s => s.days.length));
+  const nSrc = sourceDefs.length;
+  const refLabels = sourceDefs[0].days.map(d => d.date);
+
+  const W = 360, mLeft = 28, mRight = 12, mTop = 12, mBottom = 40;
+  const cW = W - mLeft - mRight, cH = 110, H = mTop + cH + mBottom;
+  const groupW = cW / nDays;
+  const groupX  = i => mLeft + i * groupW;
+  const groupCx = i => groupX(i) + groupW / 2;
+  const yR = v => mTop + cH - (Math.min(v, 100) / 100) * cH;
+
+  const barPad = 3, barGap = 1;
+  const barW = Math.max((groupW - barPad * 2 - barGap * (nSrc - 1)) / nSrc, 2);
+  const barX = (i, bi) => groupX(i) + barPad + bi * (barW + barGap);
+
+  return (
+    <div>
+      <ChartLegend sources={sourceDefs} theme={theme} activeSrcs={activeSrcs} onToggle={toggleSrc} />
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}
+        onMouseLeave={() => setHoverIdx(null)}>
+
+        {[0, 25, 50, 75, 100].map(v => {
+          const y = yR(v);
+          return (
+            <g key={v}>
+              <line x1={mLeft} y1={y} x2={W - mRight} y2={y} stroke="rgba(0,0,0,0.06)" strokeWidth={1} />
+              <text x={mLeft - 4} y={y + 3.5} textAnchor="end" fontSize={7.5} fill="rgba(0,100,200,0.45)">{v}%</text>
+            </g>
+          );
+        })}
+
+        <line x1={mLeft} y1={mTop + cH} x2={W - mRight} y2={mTop + cH} stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
+
+        {Array.from({ length: nDays }, (_, i) => {
+          const [day, dow] = splitDateLabel(refLabels[i]);
+          const cx = groupCx(i);
+          return (
+            <g key={i}>
+              <text x={cx} y={H - mBottom + 13} textAnchor="middle" fontSize={8.5} fill="rgba(0,0,0,0.5)">{day}</text>
+              <text x={cx} y={H - mBottom + 24} textAnchor="middle" fontSize={8} fill="rgba(0,0,0,0.35)">{dow}</text>
+            </g>
+          );
+        })}
+
+        {Array.from({ length: nDays }, (_, i) => (
+          <g key={i}>
+            {sourceDefs.map((src, bi) => {
+              const val = src.days[i]?.rainChance != null ? Number(src.days[i].rainChance) : 0;
+              const x = barX(i, bi), y = yR(val), bh = mTop + cH - y;
+              const isActive = activeSrcs.includes(src.name);
+              return (
+                <g key={src.name} opacity={isActive ? 1 : 0.08} style={{ transition: "opacity 0.15s" }}>
+                  <rect x={x} y={val > 0 ? y : mTop + cH - 1} width={barW}
+                    height={val > 0 ? Math.max(bh, 2) : 1}
+                    fill={src.color} rx={1} opacity={hoverIdx === i ? 0.75 : 0.5} />
+                  {hoverIdx === i && isActive && val > 0 && (
+                    <text x={x + barW / 2} y={y - 3} textAnchor="middle" fontSize={7.5} fill={src.color} fontWeight="700">{val}%</text>
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        ))}
+
+        {hoverIdx != null && (
+          <line x1={groupCx(hoverIdx)} y1={mTop} x2={groupCx(hoverIdx)} y2={mTop + cH}
+            stroke="rgba(0,0,0,0.15)" strokeWidth={1} strokeDasharray="3,2" />
+        )}
+        {Array.from({ length: nDays }, (_, i) => (
+          <rect key={i} x={groupX(i)} y={mTop} width={groupW} height={cH}
+            fill="transparent" onMouseEnter={() => setHoverIdx(i)} />
+        ))}
+      </svg>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        {sourceDefs.map(src => {
+          const d = src.days[0];
+          const isActive = activeSrcs.includes(src.name);
+          return (
+            <div key={src.name} onClick={() => toggleSrc(src.name)} style={{
+              flex: "1 1 0", minWidth: 60, padding: "8px 10px", borderRadius: 14,
+              background: `${src.color}12`, borderLeft: `3px solid ${src.color}`,
+              opacity: isActive ? 1 : 0.2, transition: "opacity 0.15s", cursor: "pointer",
+            }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
+              <p style={{ fontSize: 14, fontWeight: 800, color: theme.text, lineHeight: 1.3 }}>
+                {d?.rainChance != null ? `${Number(d.rainChance).toFixed(0)}%` : "—"}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// DailyForecastChart — 하위 호환 alias
+export function DailyForecastChart(props) { return <DailyTempChart {...props} />; }
+
 
 // ══════════════════════════════════════════════════════════════════════════
-// DailyRainChart — (deprecated stub, replaced by DailyForecastChart)
+// _DailyRainChart_unused — deprecated
 // ══════════════════════════════════════════════════════════════════════════
-export function _DailyRainChart_unused({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
+function _DailyRainChart_unused({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
   const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
   const [hoverIdx, setHoverIdx] = useState(null);
 
@@ -932,9 +980,9 @@ export function _DailyRainChart_unused({ dailyForecasts, owDailyForecasts, meteo
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// DailyRainChart — alias for DailyForecastChart
+// _DailyRainChart_old — deprecated alias, replaced by new DailyRainChart above
 // ══════════════════════════════════════════════════════════════════════════
-export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
+function _DailyRainChart_old({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
   const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
   const [hoverIdx, setHoverIdx] = useState(null);
 
