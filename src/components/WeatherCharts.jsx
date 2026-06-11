@@ -33,7 +33,7 @@ export function ChartLegend({ sources, theme, selectedSrc, onSelect }) {
 // ══════════════════════════════════════════════════════════════════════════
 export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareWeather, meteoWeather, wapiWeather, theme }) {
   const [hoverIdx, setHoverIdx] = useState(null);
-  const [selectedSrc, setSelectedSrc] = useState(null);
+  const [selectedSrc, setSelectedSrc] = useState("기상청");
 
   const sourceDefs = [
     { name: "기상청",   color: "#2563eb", data: alignedHourly?.kma,   current: weather,       kma: true },
@@ -218,7 +218,7 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
 // ══════════════════════════════════════════════════════════════════════════
 export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
   const [hoverIdx, setHoverIdx] = useState(null);
-  const [selectedSrc, setSelectedSrc] = useState(null);
+  const [selectedSrc, setSelectedSrc] = useState("기상청");
 
   const sourceDefs = [
     { name: "기상청",    color: "#2563eb", data: alignedHourly?.kma },
