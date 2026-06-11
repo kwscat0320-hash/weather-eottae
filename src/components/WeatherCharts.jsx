@@ -1219,18 +1219,18 @@ export function DailyAirCard({ airForecast, theme }) {
     { name: "오픈메테오", color: "#4CAF50", data: airForecast?.openmeteo  || [] },
   ];
 
-  // 모든 소스에서 dateLabel 수집 → 정렬된 고유 날짜 6개
+  // 모든 소스에서 dateLabel 수집 → 정렬된 고유 날짜 3개
   const allDates = [...new Set(sources.flatMap(s => s.data.map(d => d.dateLabel)))]
     .sort((a, b) => {
       const nums = s => (s.match(/\d+/g) || []).map(Number);
       const [am, ad] = nums(a); const [bm, bd] = nums(b);
       return am !== bm ? am - bm : ad - bd;
     })
-    .slice(0, 6);
+    .slice(0, 3);
 
   return (
     <div style={{ background: theme.card, borderRadius: 16, padding: "18px 16px", marginBottom: 16 }}>
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 14 }}>🌫️ 6일 미세먼지 (PM2.5) 예보</h3>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 14 }}>🌫️ 3일 미세먼지 (PM2.5) 예보</h3>
 
       {/* 날짜 헤더 */}
       <div style={{ display: "grid", gridTemplateColumns: `72px repeat(${allDates.length}, 1fr)`, gap: 4, marginBottom: 6 }}>

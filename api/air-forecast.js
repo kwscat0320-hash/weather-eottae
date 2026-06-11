@@ -131,7 +131,7 @@ export default async function handler(req, res) {
     airkorea = Object.entries(byDate)
       .filter(([, v]) => v.pm25Grade || v.pm10Grade)
       .sort(([a], [b]) => a.localeCompare(b))
-      .slice(0, 6)
+      .slice(0, 3)
       .map(([date, grades]) => ({
         dateLabel: toLabel(date),
         pm25Grade: grades.pm25Grade || "보통",
@@ -156,7 +156,7 @@ export default async function handler(req, res) {
       openweather = Object.entries(byDate)
         .sort(([a], [b]) => a.localeCompare(b))
         .filter(([date]) => date > today)
-        .slice(0, 6)
+        .slice(0, 3)
         .map(([date, { pm25s, pm10s }]) => {
           const pm25 = pm25s.reduce((a, b) => a + b, 0) / pm25s.length;
           const pm10 = pm10s.reduce((a, b) => a + b, 0) / pm10s.length;
@@ -195,7 +195,7 @@ export default async function handler(req, res) {
         openmeteo = Object.entries(byDate)
           .sort(([a], [b]) => a.localeCompare(b))
           .filter(([date]) => date > today)
-          .slice(0, 6)
+          .slice(0, 3)
           .map(([date, { pm25s, pm10s }]) => {
             const pm25 = pm25s.length ? pm25s.reduce((a, b) => a + b, 0) / pm25s.length : 0;
             const pm10 = pm10s.length ? pm10s.reduce((a, b) => a + b, 0) / pm10s.length : 0;
