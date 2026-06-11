@@ -329,9 +329,11 @@ export function WeatherProvider({ children }) {
         grouped[key].rainChance = Math.max(grouped[key].rainChance, item.rainChance ?? 0);
         grouped[key].tmps.push(item.temp);
       }
-      // 낮(09~18시) 중간 시간대 condition 수집
-      const hour = item.isoTime ? new Date(item.isoTime).getHours() : -1;
-      if (item.condition && hour >= 9 && hour <= 18) grouped[key].conditions.push(item.condition);
+      // 낮(09~18시) 중간 시간대 condition 수집 (중기예보는 isoTime 없음 → 무조건 수집)
+      if (item.condition) {
+        const hour = item.isoTime ? new Date(item.isoTime).getHours() : -1;
+        if (hour === -1 || (hour >= 9 && hour <= 18)) grouped[key].conditions.push(item.condition);
+      }
     });
     const base = Object.values(grouped).slice(0, 5).map(({ tmps, conditions, min, max, ...rest }) => ({
       ...rest,
