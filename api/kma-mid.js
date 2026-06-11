@@ -1,5 +1,4 @@
-﻿import { request } from "https";
-
+﻿
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
@@ -135,16 +134,8 @@ function buildUrl(endpoint, key, params) {
   return `https://apis.data.go.kr/1360000/MidFcstInfoService/${endpoint}?serviceKey=${key}&${p}`;
 }
 
-function httpsGetJson(urlStr) {
-  return new Promise((resolve, reject) => {
-    const parsed = new URL(urlStr);
-    const req = request({ hostname: parsed.hostname, path: parsed.pathname + parsed.search, method: "GET",
-      headers: { "User-Agent": "WeatherApp/1.0", "Accept": "application/json" } }, (r) => {
-      let body = "";
-      r.on("data", (c) => (body += c));
-      r.on("end", () => { try { resolve(JSON.parse(body)); } catch { reject(new Error("JSON 파싱 실패")); } });
-    });
-    req.on("error", reject);
-    req.end();
-  });
+async function httpsGetJson(urlStr) {
+  const res = await fetch(urlStr, { headers: { "User-Agent": "WeatherApp/1.0", "Accept": "application/json" } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
