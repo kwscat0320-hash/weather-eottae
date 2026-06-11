@@ -1304,7 +1304,7 @@ export function DailyAirCard({ airForecast, theme }) {
 
 // ── HourlyAirCard — 오늘 시간대별 미세먼지 꺾은선 (PM2.5) ───────────────
 export function HourlyAirCard({ airHourly, owHourly, openmeteoHourly, theme }) {
-  const [activeSrcs, setActiveSrcs] = useState(["에어코리아", "오픈웨더", "오픈메테오"]);
+  const [activeSrcs, setActiveSrcs] = useState(["에어코리아"]);
   const toggleSrc = name => setActiveSrcs(prev =>
     prev.includes(name) ? (prev.length > 1 ? prev.filter(n => n !== name) : prev) : [...prev, name]
   );
