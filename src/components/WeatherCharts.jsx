@@ -1049,7 +1049,7 @@ export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
 // ══════════════════════════════════════════════════════════════════════════
 
 function condToEmoji(cond) {
-  if (!cond) return "🌡️";
+  if (!cond) return "—";
   const c = cond.trim();
   if (c.includes("뇌우") || c.includes("번개"))         return "⛈️";
   if (c.includes("폭설") || c.includes("강한 눈"))       return "❄️";
@@ -1066,7 +1066,7 @@ function condToEmoji(cond) {
   if (c.includes("구름 조금") || c.includes("구름조금")) return "⛅";
   if (c.includes("구름"))                                return "🌤️";
   if (c.includes("맑음") || c.includes("청명"))          return "☀️";
-  return "🌡️";
+  return "—";
 }
 
 export function DailyConditionCard({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {

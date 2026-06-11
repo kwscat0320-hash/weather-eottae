@@ -311,7 +311,7 @@ function getCondition(sky, pty) {
   if (s === "1") return "맑음";
   if (s === "3") return "구름많음";
   if (s === "4") return "흐림";
-  return "날씨 정보";
+  return null;
 }
 
 function getIcon(sky, pty) {
