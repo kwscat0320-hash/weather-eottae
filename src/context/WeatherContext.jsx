@@ -34,6 +34,7 @@ export function WeatherProvider({ children }) {
   const [air, setAir] = useState(null);
   const [airOw, setAirOw] = useState(null);
   const [airMeteo, setAirMeteo] = useState(null);
+  const [midForecast, setMidForecast] = useState([]);
   const [weatherHistory, setWeatherHistory] = useState([]);
   const [airForecast, setAirForecast] = useState({ airkorea: [], openweather: [], openmeteo: [] });
 
@@ -185,20 +186,14 @@ export function WeatherProvider({ children }) {
           })
           .catch(() => {});
 
-        const shortForecast = data.forecast || [];
-        // 단기예보 먼저 표시 → 로딩 종료 후 중기예보를 백그라운드로 붙임
-        setForecast(shortForecast);
+        setForecast(data.forecast || []);
+        setMidForecast([]); // 초기화
 
-        // 중기예보는 비동기 백그라운드 처리 (로딩 차단 안 함)
-        const shortTMXDates = new Set(
-          shortForecast.filter(f => f.officialTMX != null).map(f => f.dateLabel)
-        );
+        // 중기예보는 별도 state로 보관 — dailyForecasts useMemo에서 합산
         fetch(`/api/kma-mid?lat=${lat}&lon=${lon}`)
           .then(r => r.ok ? r.json() : null)
           .then(midData => {
-            if (!midData) return;
-            const midOnly = (midData.forecast || []).filter(f => !shortTMXDates.has(f.dateLabel));
-            if (midOnly.length) setForecast(prev => [...prev.filter(f => f.timeLabel !== "일간"), ...midOnly]);
+            if (midData?.forecast?.length) setMidForecast(midData.forecast);
           })
           .catch(() => {});
       } else {
@@ -333,64 +328,72 @@ export function WeatherProvider({ children }) {
   }, [currentWeather, todayForecasts, owForecast, meteoForecast, wapiForecast, hourSlots]);
 
   const dailyForecasts = useMemo(() => {
-    const todayLabel = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
-
-    // ── 1단계: 날짜별 공식 TMX/TMN을 먼저 수집 ─────────────────────────────
-    // 단기예보 항목에 officialTMX 필드가 있으면 그것을 사용
-    // 중기예보 항목(timeLabel === "일간")은 tempMax/tempMin 자체가 공식값
-    const officialByDate = {};
-    forecast.forEach((item) => {
-      const key = item.dateLabel;
-      if (key === todayLabel) return;
-      if (!officialByDate[key]) officialByDate[key] = { max: null, min: null };
-      const isDaily = item.timeLabel === "일간";
-      const mx = isDaily ? item.tempMax : (item.officialTMX ?? null);
-      const mn = isDaily ? item.tempMin : (item.officialTMN ?? null);
-      if (mx != null) officialByDate[key].max = officialByDate[key].max == null ? mx : Math.max(officialByDate[key].max, mx);
-      if (mn != null) officialByDate[key].min = officialByDate[key].min == null ? mn : Math.min(officialByDate[key].min, mn);
+    const todayLabel = new Date().toLocaleDateString("ko-KR", {
+      month: "numeric", day: "numeric", weekday: "short",
     });
 
-    // ── 2단계: 나머지 필드(강수확률, condition, hourly tmps) 집계 ────────────
-    const grouped = {};
+    // ── 단기예보에서 날짜별 일별 요약 추출 ──────────────────────────────────
+    // officialTMX/TMN은 fcstDate별로 동일한 값이 모든 시간 슬롯에 있음
+    const shortByDate = {};
     forecast.forEach((item) => {
       const key = item.dateLabel;
       if (key === todayLabel) return;
-      if (!grouped[key]) {
-        grouped[key] = { date: key, rainChance: item.rainChance ?? 0, tmps: [], conditions: [] };
-      } else {
-        grouped[key].rainChance = Math.max(grouped[key].rainChance, item.rainChance ?? 0);
+      if (!shortByDate[key]) {
+        shortByDate[key] = { date: key, max: null, min: null, rainChance: 0, tmps: [], conditions: [] };
       }
-      if (item.temp != null && item.timeLabel !== "일간") grouped[key].tmps.push(item.temp);
+      const d = shortByDate[key];
+      // officialTMX/TMN — 이미 per-date로 정확하므로 한 번만 세팅하면 됨
+      if (item.officialTMX != null && d.max == null) d.max = item.officialTMX;
+      if (item.officialTMN != null && d.min == null) d.min = item.officialTMN;
+      d.rainChance = Math.max(d.rainChance, item.rainChance ?? 0);
+      if (item.temp != null) d.tmps.push(item.temp);
       if (item.condition) {
         const hour = item.isoTime ? new Date(item.isoTime).getHours() : -1;
-        if (hour === -1 || (hour >= 9 && hour <= 18)) grouped[key].conditions.push(item.condition);
+        if (hour === -1 || (hour >= 9 && hour <= 18)) d.conditions.push(item.condition);
       }
     });
 
-    const base = Object.values(grouped).slice(0, 5).map(({ tmps, conditions, ...rest }) => {
-      const official = officialByDate[rest.date] ?? {};
-      return {
-        ...rest,
-        max: official.max ?? (tmps.length ? Math.max(...tmps) : null),
-        min: official.min ?? (tmps.length ? Math.min(...tmps) : null),
-        condition: conditions.length ? conditions[Math.floor(conditions.length / 2)] : null,
-      };
-    });
+    // 단기예보 날짜 목록 (오늘 제외, 삽입 순서 = 시간 순)
+    const shortDays = Object.values(shortByDate).map(({ tmps, conditions, ...d }) => ({
+      ...d,
+      max: d.max ?? (tmps.length ? Math.max(...tmps) : null),
+      min: d.min ?? (tmps.length ? Math.min(...tmps) : null),
+      condition: conditions.length ? conditions[Math.floor(conditions.length / 2)] : null,
+    }));
+    const shortDates = new Set(shortDays.map(d => d.date));
 
-    // ── 오전 빈칸 보완: 5일치가 부족하면 최근 이력 예보에서 gap-fill ──────────
-    if (base.length < 5 && weatherHistory.length > 0) {
-      const existingDates = new Set(base.map(d => d.date));
-      // 예보 포함 이력 중 가장 최신 스냅샷
-      const latestWithFcst = weatherHistory.find(h => h.dailySummary?.length >= 2);
-      if (latestWithFcst) {
-        const fillers = latestWithFcst.dailySummary
-          .filter(d => !existingDates.has(d.dateLabel) && d.dateLabel !== todayLabel)
-          .map(d => ({ date: d.dateLabel, min: d.min, max: d.max, rainChance: d.rainChance, _fromHistory: true }));
-        return [...base, ...fillers].slice(0, 5);
+    // ── 중기예보 — 단기가 이미 커버하는 날짜 제외 ───────────────────────────
+    const midDays = midForecast
+      .filter(f => f.dateLabel !== todayLabel && !shortDates.has(f.dateLabel))
+      .map(f => ({
+        date:       f.dateLabel,
+        max:        f.tempMax  ?? null,
+        min:        f.tempMin  ?? null,
+        rainChance: f.rainChance ?? 0,
+        condition:  f.condition  ?? null,
+      }));
+
+    // ── 합산 (단기 → 중기 순서) ──────────────────────────────────────────
+    let result = [...shortDays, ...midDays].slice(0, 5);
+
+    // ── 5일 미달이면 KV 이력에서 gap-fill ───────────────────────────────
+    if (result.length < 5 && weatherHistory.length > 0) {
+      const have = new Set(result.map(d => d.date));
+      const latestSnap = weatherHistory.find(h => h.dailySummary?.length >= 2);
+      if (latestSnap) {
+        const fillers = latestSnap.dailySummary
+          .filter(d => !have.has(d.dateLabel) && d.dateLabel !== todayLabel)
+          .map(d => ({
+            date: d.dateLabel, max: d.max, min: d.min,
+            rainChance: d.rainChance, condition: d.condition,
+            _fromHistory: true,
+          }));
+        result = [...result, ...fillers].slice(0, 5);
       }
     }
-    return base;
-  }, [forecast, weatherHistory]);
+
+    return result;
+  }, [forecast, midForecast, weatherHistory]);
 
   // ── 날짜별 최신 예보 스냅샷 (예보 이력 카드용) ───────────────────────────
   const forecastHistory = useMemo(() => {
