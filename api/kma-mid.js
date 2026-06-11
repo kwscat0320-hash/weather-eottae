@@ -34,7 +34,8 @@ export default async function handler(req, res) {
         const date = new Date(tmFcDate);
         date.setDate(date.getDate() + n);
         const label = toLabel(date);
-        byDate[label] = makeEntry(label, ta, land, n);
+        const entry = makeEntry(label, ta, land, n);
+        if (entry) byDate[label] = entry;
       }
     }
 
@@ -49,8 +50,9 @@ export default async function handler(req, res) {
 }
 
 function makeEntry(label, ta, land, n) {
-  const taMin = ta[`taMin${n}`] ?? 0;
-  const taMax = ta[`taMax${n}`] ?? 0;
+  const taMin = ta[`taMin${n}`] ?? null;
+  const taMax = ta[`taMax${n}`] ?? null;
+  if (taMin === null || taMax === null) return null;
   const rnSt  = land[`rnSt${n}Am`] ?? land[`rnSt${n}`] ?? 0;
   const wf    = land[`wf${n}Am`]   ?? land[`wf${n}`]   ?? "";
   const parts = label.match(/(\d+)\.\s*(\d+)/);
@@ -58,6 +60,7 @@ function makeEntry(label, ta, land, n) {
   return { dateLabel: label, timeLabel: "일간", condition: wfToCondition(wf),
     temp: Math.round((taMin + taMax) / 2), tempMin: taMin, tempMax: taMax,
     rainChance: rnSt, _ts: ts };
+
 }
 
 function getItem(res) {
@@ -66,7 +69,7 @@ function getItem(res) {
 }
 
 function toLabel(date) {
-  return date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+  return date.toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", weekday: "short" });
 }
 
 function getRegionIds(lat, lon) {
@@ -84,17 +87,38 @@ function getRegionIds(lat, lon) {
   return { landRegId: "11B10101", taRegId: "11B10101" };
 }
 
+// KMA 중기예보 발표: 06:00 KST, 18:00 KST 하루 두 번
+// daysAgo=0 이면 현재 KST 시각 기준 최신 발표 사용 (18:00 이후면 1800, 그 전이면 0600)
+// daysAgo>0 이면 과거 날짜 → 항상 1800 사용 (이미 발표 완료)
 function getTmFc(daysAgo = 0) {
-  const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  const h = now.getUTCHours();
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000); // fake-KST (UTC+9)
+  const h = now.getUTCHours(); // KST 시간
+
   const base = new Date(now);
-  if (h < 6) base.setUTCDate(base.getUTCDate() - 1);
+  let issuanceHour;
+
+  if (h < 6) {
+    // KST 자정~06시: 어제 18:00 발표
+    base.setUTCDate(base.getUTCDate() - 1);
+    issuanceHour = 18;
+  } else if (h < 18) {
+    // KST 06~18시: 오늘 06:00 발표 (18:00 미발표)
+    issuanceHour = 6;
+  } else {
+    // KST 18시 이후: 오늘 18:00 발표 (최신)
+    issuanceHour = 18;
+  }
+
   base.setUTCDate(base.getUTCDate() - daysAgo);
-  base.setUTCHours(6, 0, 0, 0);
+
   const y = base.getUTCFullYear();
   const m = String(base.getUTCMonth() + 1).padStart(2, "0");
   const d = String(base.getUTCDate()).padStart(2, "0");
-  return { tmFc: `${y}${m}${d}0600`, tmFcDate: base };
+  const hh = String(issuanceHour).padStart(2, "0");
+
+  // tmFcDate는 날짜 덧셈에만 사용 — 06:00 UTC로 고정해 setDate 오류 방지
+  base.setUTCHours(6, 0, 0, 0);
+  return { tmFc: `${y}${m}${d}${hh}00`, tmFcDate: base };
 }
 
 function wfToCondition(wf = "") {
