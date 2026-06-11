@@ -1304,6 +1304,11 @@ export function DailyAirCard({ airForecast, theme }) {
 
 // ── HourlyAirCard — 오늘 시간대별 미세먼지 꺾은선 (PM2.5) ───────────────
 export function HourlyAirCard({ airHourly, owHourly, openmeteoHourly, theme }) {
+  const [activeSrcs, setActiveSrcs] = useState(["에어코리아", "오픈웨더", "오픈메테오"]);
+  const toggleSrc = name => setActiveSrcs(prev =>
+    prev.includes(name) ? (prev.length > 1 ? prev.filter(n => n !== name) : prev) : [...prev, name]
+  );
+
   const nowHour = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
 
   const filterSlots = (arr) =>
@@ -1322,11 +1327,13 @@ export function HourlyAirCard({ airHourly, owHourly, openmeteoHourly, theme }) {
     ...omSlots.map(h => h.time),
   ])].sort();
 
-  const sources = [
+  const allSources = [
     { name: "에어코리아", color: "#3B82F6", slots: akSlots },
     { name: "오픈웨더",   color: "#F97316", slots: owSlots },
     { name: "오픈메테오", color: "#10B981", slots: omSlots },
   ].filter(s => s.slots.length > 0);
+
+  const sources = allSources.filter(s => activeSrcs.includes(s.name));
 
   const W = 320, H = 120, PAD_L = 28, PAD_R = 8, PAD_T = 8, PAD_B = 24;
   const chartW = W - PAD_L - PAD_R;
@@ -1406,22 +1413,32 @@ export function HourlyAirCard({ airHourly, owHourly, openmeteoHourly, theme }) {
         </svg>
       </div>
 
-      {/* 범례 */}
-      <div style={{ display: "flex", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
-        {sources.map(src => (
-          <div key={src.name} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <div style={{ width: 16, height: 3, borderRadius: 2, background: src.color }} />
-            <span style={{ fontSize: 10, color: theme.sub, fontWeight: 600 }}>{src.name}</span>
-          </div>
-        ))}
-        <div style={{ display: "flex", gap: 8, marginLeft: "auto", alignItems: "center" }}>
-          {[["좋음","#4ade80"],["보통","#facc15"],["나쁨","#fb923c"],["매우나쁨","#f87171"]].map(([l,c]) => (
-            <div key={l} style={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <div style={{ width: 8, height: 8, borderRadius: 2, background: c, opacity: 0.7 }} />
-              <span style={{ fontSize: 9, color: theme.sub }}>{l}</span>
+      {/* 소스 토글 미니카드 */}
+      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+        {allSources.map(src => {
+          const isActive = activeSrcs.includes(src.name);
+          const latestVal = src.slots[src.slots.length - 1]?.pm25 ?? src.slots[0]?.pm25;
+          const gs = latestVal != null ? gradeStyle(pm25ToGradeStr(Math.round(latestVal))) : null;
+          return (
+            <div key={src.name} onClick={() => toggleSrc(src.name)} style={{
+              flex: "1 1 0", minWidth: 60, borderRadius: 10, padding: "8px 6px",
+              border: `2px solid ${isActive ? src.color : theme.border || "#ddd"}`,
+              background: isActive ? src.color + "15" : "transparent",
+              textAlign: "center", cursor: "pointer",
+              opacity: isActive ? 1 : 0.4, transition: "opacity 0.15s",
+            }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 4 }}>{src.name}</p>
+              <div style={{
+                display: "inline-block", borderRadius: 5, padding: "2px 6px",
+                background: gs ? gs.bg : "transparent",
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: gs ? gs.color : theme.sub }}>
+                  {gs ? gs.label : "—"}
+                </span>
+              </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
   );
