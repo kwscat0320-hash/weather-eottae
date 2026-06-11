@@ -13,9 +13,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "lat, lon 파라미터가 필요합니다." });
   }
 
-  const rawKey = process.env.KMA_KEY;
+  const rawKey = process.env.KMA_HUB_KEY;
   if (!rawKey) {
-    return res.status(500).json({ error: "KMA_KEY 환경변수가 설정되지 않았습니다." });
+    return res.status(500).json({ error: "KMA_HUB_KEY 환경변수가 설정되지 않았습니다." });
   }
 
   const grid = dfsXyConv(Number(lat), Number(lon));
@@ -102,7 +102,7 @@ function buildKmaUrl(endpoint, key, baseDate, baseTime, grid, rows) {
     nx: String(grid.x),
     ny: String(grid.y),
   });
-  return `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${endpoint}?serviceKey=${key}&${params}`;
+  return `https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/${endpoint}?authKey=${key}&${params}`;
 }
 
 // ── 응답 파싱 ─────────────────────────────────────────────────────────────────

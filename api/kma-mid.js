@@ -143,7 +143,8 @@ function getAfsParams() {
   if (h < 6) {
     const yest = new Date(now);
     yest.setUTCDate(yest.getUTCDate() - 1);
-    tmfc1 = tmfc2 = fmt10(yest, 18);
+    tmfc1 = fmt10(yest, 6);
+    tmfc2 = fmt10(yest, 18);
   } else if (h < 18) {
     tmfc1 = tmfc2 = fmt10(now, 6);
   } else {
@@ -174,17 +175,23 @@ function getIssuances() {
   }
 
   if (h >= 18) {
+    // 오늘 06:00(n=4 포함) + 오늘 18:00(n=5~10 최신값)
     return [
       { tmFc: `${todayStr}0600`, tmFcDate: mkDate(todayStr) },
       { tmFc: `${todayStr}1800`, tmFcDate: mkDate(todayStr) },
     ];
   } else if (h >= 6) {
+    // 오늘 06:00(n=4 포함)
     return [{ tmFc: `${todayStr}0600`, tmFcDate: mkDate(todayStr) }];
   } else {
+    // 자정~06시: 어제 06:00(n=4=월요일) + 어제 18:00(n=5~10)
     const yest = new Date(now);
     yest.setUTCDate(yest.getUTCDate() - 1);
     const yStr = `${yest.getUTCFullYear()}${String(yest.getUTCMonth()+1).padStart(2,"0")}${String(yest.getUTCDate()).padStart(2,"0")}`;
-    return [{ tmFc: `${yStr}1800`, tmFcDate: mkDate(yStr) }];
+    return [
+      { tmFc: `${yStr}0600`, tmFcDate: mkDate(yStr) },
+      { tmFc: `${yStr}1800`, tmFcDate: mkDate(yStr) },
+    ];
   }
 }
 
@@ -247,5 +254,5 @@ function getItem(res) {
 
 function buildMidUrl(endpoint, key, params) {
   const p = new URLSearchParams({ pageNo: "1", numOfRows: "10", dataType: "JSON", ...params });
-  return `https://apis.data.go.kr/1360000/MidFcstInfoService/${endpoint}?serviceKey=${key}&${p}`;
+  return `https://apihub.kma.go.kr/api/typ02/openApi/MidFcstInfoService/${endpoint}?authKey=${key}&${p}`;
 }
