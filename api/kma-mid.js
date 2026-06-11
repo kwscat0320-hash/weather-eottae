@@ -5,9 +5,7 @@ export default async function handler(req, res) {
   const { lat, lon } = req.query;
   if (!lat || !lon) return res.status(400).json({ error: "lat, lon 필요" });
 
-  const kmaKey = process.env.KMA_KEY;
   const hubKey = process.env.KMA_HUB_KEY;
-  if (!kmaKey) return res.status(500).json({ error: "KMA_KEY 없음" });
   if (!hubKey) return res.status(500).json({ error: "KMA_HUB_KEY 없음" });
 
   const { taRegId, fctRegId } = getRegionIds(Number(lat), Number(lon));
@@ -17,7 +15,7 @@ export default async function handler(req, res) {
     // ── 기온: getMidTa (data.go.kr, 06:00+18:00 발표) ─────────────────────
     const taResults = await Promise.all(
       issuances.map(({ tmFc }) =>
-        fetchJson(buildMidUrl("getMidTa", kmaKey, { regId: taRegId, tmFc })).catch(() => null)
+        fetchJson(buildMidUrl("getMidTa", hubKey, { regId: taRegId, tmFc })).catch(() => null)
       )
     );
 
