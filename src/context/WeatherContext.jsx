@@ -58,27 +58,38 @@ export function WeatherProvider({ children }) {
 
   // force=true 이면 KV 캐시 무시하고 기상청 직접 호출
   const requestCurrentLocation = (force = false) => {
-    if (!navigator.geolocation) {
+    const fallback = () => {
+      setCoords(DEFAULT_LOCATION);
       fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon, force);
       fetchAir(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
-      return;
-    }
+    };
+    if (!navigator.geolocation) { fallback(); return; }
+
+    // geolocation이 콜백을 아예 안 부르는 환경 대비 — 10초 후 강제 폴백
+    const geoTimer = setTimeout(fallback, 10000);
+    let settled = false;
+    const settle = (fn) => { if (settled) return; settled = true; clearTimeout(geoTimer); fn(); };
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lat, longitude: lon } = pos.coords;
-        setCoords({ lat, lon });
-        const name = await reverseGeocode(lat, lon);
-        setDisplayLocation(name);
-        fetchWeatherData(lat, lon, force);
-        fetchAir(lat, lon);
+        settle(() => {
+          setCoords({ lat, lon });
+          reverseGeocode(lat, lon).then(name => setDisplayLocation(name));
+          fetchWeatherData(lat, lon, force);
+          fetchAir(lat, lon);
+        });
       },
-      () => {
-        setCoords(DEFAULT_LOCATION);
-        fetchWeatherData(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon, force);
-        fetchAir(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
-      },
+      () => settle(fallback),
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 600000 }
     );
+  };
+
+  // fetch with 12s timeout — hanging API calls never block the UI
+  const fetchWithTimeout = (url, ms = 12000) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
   };
 
   const fetchWeatherData = async (lat, lon, force = false) => {
@@ -91,10 +102,10 @@ export function WeatherProvider({ children }) {
 
       if (korea) {
         const [kmaRes, owRes, meteoRes, wapiRes] = await Promise.allSettled([
-          fetch(`/api/kma?lat=${lat}&lon=${lon}${forceParam}`),
-          fetch(`/api/openweather?lat=${lat}&lon=${lon}`),
-          fetch(`/api/openmeteo?lat=${lat}&lon=${lon}`),
-          fetch(`/api/weatherapi?lat=${lat}&lon=${lon}`),
+          fetchWithTimeout(`/api/kma?lat=${lat}&lon=${lon}${forceParam}`),
+          fetchWithTimeout(`/api/openweather?lat=${lat}&lon=${lon}`),
+          fetchWithTimeout(`/api/openmeteo?lat=${lat}&lon=${lon}`),
+          fetchWithTimeout(`/api/weatherapi?lat=${lat}&lon=${lon}`),
         ]);
 
         if (kmaRes.status !== "fulfilled" || !kmaRes.value.ok) {
