@@ -7,7 +7,7 @@ import AirDot from "../components/AirDot";
 import AirCompareCard from "../components/AirCompareCard";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
-import { HourlyCompareChart, HourlyRainChart, DailyTempChart, DailyRainChart } from "../components/WeatherCharts";
+import { HourlyCompareChart, HourlyRainChart, DailyForecastChart } from "../components/WeatherCharts";
 
 export default function HomePage({ scrollRef }) {
   const {
@@ -253,22 +253,10 @@ export default function HomePage({ scrollRef }) {
           />
         </div>
 
-        {/* 5일 예보 — 온도 차트 */}
+        {/* 5일 예보 — 온도 + 강수확률 통합 차트 */}
         <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 온도</p>
-          <DailyTempChart
-            dailyForecasts={dailyForecasts}
-            owDailyForecasts={owDailyForecasts}
-            meteoDaily={meteoWeather?.daily}
-            wapiDailyForecasts={wapiDailyForecasts}
-            theme={theme}
-          />
-        </div>
-
-        {/* 5일 예보 — 강수확률 차트 */}
-        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 강수확률</p>
-          <DailyRainChart
+          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 예보</p>
+          <DailyForecastChart
             dailyForecasts={dailyForecasts}
             owDailyForecasts={owDailyForecasts}
             meteoDaily={meteoWeather?.daily}
