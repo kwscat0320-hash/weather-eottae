@@ -1,33 +1,22 @@
 import React, { useState } from "react";
 
-// ── 공통: 소스 토글 버튼 ──────────────────────────────────────────────────
+// ── 공통: 범례 ─────────────────────────────────────────────────────────────
 export function ChartLegend({ sources, theme, activeSrcs, onToggle }) {
   return (
-    <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: 14, marginBottom: 12, flexWrap: "wrap" }}>
       {sources.map(s => {
         const isActive = activeSrcs.includes(s.name);
         return (
-          <button
-            key={s.name}
+          <div key={s.name}
             onClick={() => onToggle?.(s.name)}
-            style={{
-              flex: "1 1 0",
-              padding: "7px 0",
-              borderRadius: 12,
-              border: "none",
-              cursor: "pointer",
-              background: isActive ? s.color : "rgba(0,0,0,0.07)",
-              color: isActive ? "#fff" : theme.sub,
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: "0.01em",
-              transition: "background 0.15s, color 0.15s, opacity 0.15s",
-              opacity: isActive ? 1 : 0.55,
-              boxShadow: isActive ? `0 2px 8px ${s.color}44` : "none",
-            }}
+            style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer",
+              opacity: isActive ? 1 : 0.35, transition: "opacity 0.15s" }}
           >
-            {s.name}
-          </button>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.color,
+              boxShadow: isActive ? `0 0 0 2px ${s.color}44` : "none" }} />
+            <span style={{ fontSize: 11, fontWeight: isActive ? 700 : 600,
+              color: isActive ? s.color : theme.sub }}>{s.name}</span>
+          </div>
         );
       })}
     </div>
@@ -613,7 +602,7 @@ function splitDateLabel(str) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// DailyForecastChart — 5일 온도(라인+밴드) + 강수확률(막대) 통합 차트
+// DailyForecastChart — 5일 예보: 이중 Y축 (왼쪽=온도, 오른쪽=강수확률)
 // ══════════════════════════════════════════════════════════════════════════
 export function DailyForecastChart({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
   const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
@@ -638,36 +627,30 @@ export function DailyForecastChart({ dailyForecasts, owDailyForecasts, meteoDail
   const nSrc = sourceDefs.length;
   const refLabels = sourceDefs[0].days.map(d => d.date);
 
-  // ── 레이아웃 ─────────────────────────────────────────────────────────────
+  // ── 레이아웃: 이중 Y축 ─────────────────────────────────────────────────
   const W = 360;
-  const mLeft = 30, mRight = 12;
+  const mLeft = 32, mRight = 32, mTop = 18, mBottom = 40;
   const cW = W - mLeft - mRight;
+  const cH = 150;
+  const H = mTop + cH + mBottom;  // = 208
 
-  const tTop = 16, tH = 110;               // 온도 영역
-  const sep = 10;                           // 구분선
-  const rTop = tTop + tH + sep, rH = 58;   // 강수 영역
-  const mBottom = 44;
-  const H = rTop + rH + mBottom;           // = 238
-
-  const xScale = i => mLeft + (nDays > 1 ? (i / (nDays - 1)) * cW : cW / 2);
   const groupW = cW / nDays;
-  const groupX = i => mLeft + i * groupW;
-  const slotW = nDays > 1 ? cW / (nDays - 1) : cW;
+  const groupCx = i => mLeft + i * groupW + groupW / 2;  // 온도선 기준점
+  const groupX  = i => mLeft + i * groupW;               // 막대 기준점
 
-  // 온도 Y
+  // 왼쪽 Y: 온도
   const allTemps = sourceDefs.flatMap(s => s.days.flatMap(d => [d.min, d.max].filter(v => v != null).map(Number)));
   const rawMin = Math.min(...allTemps), rawMax = Math.max(...allTemps);
-  const tPad = Math.max((rawMax - rawMin) * 0.25, 2);
+  const tPad = Math.max((rawMax - rawMin) * 0.2, 2);
   const minT = Math.floor(rawMin - tPad), maxT = Math.ceil(rawMax + tPad);
-  const yTemp = v => tTop + tH - ((v - minT) / (maxT - minT || 1)) * tH;
-
+  const yTemp = v => mTop + cH - ((v - minT) / (maxT - minT || 1)) * cH;
   const tRange = maxT - minT;
   const tStep = tRange <= 6 ? 2 : tRange <= 12 ? 3 : tRange <= 20 ? 4 : 5;
   const tTicks = [];
   for (let v = Math.ceil(minT / tStep) * tStep; v <= maxT; v += tStep) tTicks.push(v);
 
-  // 강수 Y
-  const yRain = v => rTop + rH - (Math.min(v, 100) / 100) * rH;
+  // 오른쪽 Y: 강수확률 0~100%
+  const yRain = v => mTop + cH - (Math.min(v, 100) / 100) * cH;
   const rTicks = [0, 50, 100];
 
   // 막대 크기
@@ -682,38 +665,30 @@ export function DailyForecastChart({ dailyForecasts, owDailyForecasts, meteoDail
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}
         onMouseLeave={() => setHoverIdx(null)}>
 
-        {/* ── 온도 Y 그리드 ── */}
+        {/* ── 온도 Y 그리드 + 왼쪽 레이블 ── */}
         {tTicks.map(v => {
           const y = yTemp(v);
           return (
             <g key={v}>
               <line x1={mLeft} y1={y} x2={W - mRight} y2={y} stroke="rgba(0,0,0,0.06)" strokeWidth={1} />
-              <text x={mLeft - 4} y={y + 3.5} textAnchor="end" fontSize={7.5} fill="rgba(0,0,0,0.35)">{v}°</text>
+              <text x={mLeft - 4} y={y + 3.5} textAnchor="end" fontSize={7.5} fill="rgba(0,0,0,0.38)">{v}°</text>
             </g>
           );
         })}
 
-        {/* ── 강수 Y 그리드 ── */}
-        {rTicks.map(v => {
-          const y = yRain(v);
-          return (
-            <g key={`r${v}`}>
-              <line x1={mLeft} y1={y} x2={W - mRight} y2={y}
-                stroke={v === 0 ? "rgba(0,0,0,0.08)" : "rgba(0,0,0,0.04)"}
-                strokeWidth={1} strokeDasharray={v === 0 ? "none" : "3,3"} />
-              <text x={mLeft - 4} y={y + 3.5} textAnchor="end" fontSize={7} fill="rgba(0,0,0,0.3)">{v}%</text>
-            </g>
-          );
-        })}
+        {/* ── 강수 오른쪽 레이블만 (그리드선은 온도와 공유) ── */}
+        {rTicks.map(v => (
+          <text key={v} x={W - mRight + 4} y={yRain(v) + 3.5} textAnchor="start"
+            fontSize={7.5} fill="rgba(0,100,200,0.45)">{v}%</text>
+        ))}
 
-        {/* ── 구분선 ── */}
-        <line x1={mLeft} y1={tTop + tH} x2={W - mRight} y2={tTop + tH} stroke="rgba(0,0,0,0.08)" strokeWidth={1} />
-        <line x1={mLeft} y1={rTop + rH} x2={W - mRight} y2={rTop + rH} stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
+        {/* ── X축 ── */}
+        <line x1={mLeft} y1={mTop + cH} x2={W - mRight} y2={mTop + cH} stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
 
         {/* ── X 레이블 ── */}
         {Array.from({ length: nDays }, (_, i) => {
           const [day, dow] = splitDateLabel(refLabels[i]);
-          const cx = groupX(i) + groupW / 2;
+          const cx = groupCx(i);
           return (
             <g key={i}>
               <text x={cx} y={H - mBottom + 13} textAnchor="middle" fontSize={8.5} fill="rgba(0,0,0,0.5)">{day}</text>
@@ -722,26 +697,36 @@ export function DailyForecastChart({ dailyForecasts, owDailyForecasts, meteoDail
           );
         })}
 
-        {/* ── hover 수직선 + 배경 ── */}
-        {hoverIdx != null && (
-          <>
-            <line x1={xScale(hoverIdx)} y1={tTop} x2={xScale(hoverIdx)} y2={rTop + rH}
-              stroke="rgba(0,0,0,0.15)" strokeWidth={1} strokeDasharray="3,2" />
-            <rect x={groupX(hoverIdx)} y={rTop} width={groupW} height={rH} fill="rgba(0,0,0,0.04)" />
-          </>
-        )}
+        {/* ── 강수확률 막대 (뒤에 그려서 선 위에 덮이지 않게) ── */}
+        {Array.from({ length: nDays }, (_, i) => (
+          <g key={`r_${i}`}>
+            {sourceDefs.map((src, bi) => {
+              const val = src.days[i]?.rainChance != null ? Number(src.days[i].rainChance) : 0;
+              if (val === 0) return null;
+              const x = barX(i, bi), y = yRain(val), bh = mTop + cH - y;
+              const isActive = activeSrcs.includes(src.name);
+              return (
+                <g key={src.name} opacity={isActive ? 1 : 0.08} style={{ transition: "opacity 0.15s" }}>
+                  <rect x={x} y={y} width={barW} height={Math.max(bh, 1)} fill={src.color} rx={1}
+                    opacity={hoverIdx === i ? 0.7 : 0.45} />
+                  {hoverIdx === i && isActive && (
+                    <text x={x + barW / 2} y={y - 3} textAnchor="middle" fontSize={7.5} fill={src.color} fontWeight="700">{val}%</text>
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        ))}
 
-        {/* ── 소스별 온도 밴드 + 라인 ── */}
+        {/* ── 온도 라인 (최고=실선, 최저=점선, 음영 없음) ── */}
         {sourceDefs.map(src => {
           const isActive = activeSrcs.includes(src.name);
-          const maxPts = src.days.map((d, i) => d.max != null ? { x: xScale(i), y: yTemp(Number(d.max)), val: Number(d.max) } : null);
-          const minPts = src.days.map((d, i) => d.min != null ? { x: xScale(i), y: yTemp(Number(d.min)), val: Number(d.min) } : null);
+          const maxPts = src.days.map((d, i) => d.max != null ? { x: groupCx(i), y: yTemp(Number(d.max)), val: Number(d.max) } : null);
+          const minPts = src.days.map((d, i) => d.min != null ? { x: groupCx(i), y: yTemp(Number(d.min)), val: Number(d.min) } : null);
           const vMax = maxPts.filter(Boolean), vMin = minPts.filter(Boolean);
-          const band = [...vMax, ...[...vMin].reverse()].map(p => `${p.x},${p.y}`).join(" ");
 
           return (
             <g key={`t_${src.name}`} opacity={isActive ? 1 : 0.08} style={{ transition: "opacity 0.15s" }}>
-              {vMax.length > 1 && <polygon points={band} fill={`${src.color}18`} />}
               {vMax.length > 1 && <polyline points={vMax.map(p => `${p.x},${p.y}`).join(" ")}
                 fill="none" stroke={src.color} strokeWidth={2.2} strokeLinejoin="round" strokeLinecap="round" />}
               {vMin.length > 1 && <polyline points={vMin.map(p => `${p.x},${p.y}`).join(" ")}
@@ -762,33 +747,48 @@ export function DailyForecastChart({ dailyForecasts, owDailyForecasts, meteoDail
           );
         })}
 
-        {/* ── 소스별 강수확률 막대 ── */}
-        {Array.from({ length: nDays }, (_, i) => (
-          <g key={`r_${i}`}>
-            {sourceDefs.map((src, bi) => {
-              const val = src.days[i]?.rainChance != null ? Number(src.days[i].rainChance) : 0;
-              if (val === 0) return null;
-              const x = barX(i, bi), y = yRain(val), bh = rTop + rH - y;
-              const isActive = activeSrcs.includes(src.name);
-              return (
-                <g key={src.name} opacity={isActive ? 1 : 0.08} style={{ transition: "opacity 0.15s" }}>
-                  <rect x={x} y={y} width={barW} height={Math.max(bh, 1)} fill={src.color} rx={1}
-                    opacity={hoverIdx === i ? 1 : 0.82} />
-                  {hoverIdx === i && isActive && (
-                    <text x={x + barW / 2} y={y - 3} textAnchor="middle" fontSize={7.5} fill={src.color} fontWeight="700">{val}%</text>
-                  )}
-                </g>
-              );
-            })}
-          </g>
-        ))}
+        {/* ── hover 수직선 ── */}
+        {hoverIdx != null && (
+          <line x1={groupCx(hoverIdx)} y1={mTop} x2={groupCx(hoverIdx)} y2={mTop + cH}
+            stroke="rgba(0,0,0,0.15)" strokeWidth={1} strokeDasharray="3,2" />
+        )}
 
         {/* ── hover 존 ── */}
         {Array.from({ length: nDays }, (_, i) => (
-          <rect key={i} x={groupX(i)} y={tTop} width={groupW} height={rTop + rH - tTop}
+          <rect key={i} x={groupX(i)} y={mTop} width={groupW} height={cH}
             fill="transparent" onMouseEnter={() => setHoverIdx(i)} />
         ))}
       </svg>
+
+      {/* ── 소스별 미니 카드 (토글 버튼 역할) ── */}
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        {sourceDefs.map(src => {
+          const d = src.days[0];
+          const isActive = activeSrcs.includes(src.name);
+          return (
+            <div key={src.name}
+              onClick={() => toggleSrc(src.name)}
+              style={{
+                flex: "1 1 0", minWidth: 60,
+                padding: "8px 10px", borderRadius: 14,
+                background: `${src.color}12`,
+                borderLeft: `3px solid ${src.color}`,
+                opacity: isActive ? 1 : 0.2,
+                transition: "opacity 0.15s",
+                cursor: "pointer",
+              }}
+            >
+              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
+              <p style={{ fontSize: 14, fontWeight: 800, color: theme.text, lineHeight: 1.3 }}>
+                {d?.max != null ? `${Number(d.max).toFixed(0)}°` : "—"}
+                <span style={{ fontSize: 10, fontWeight: 500, color: theme.sub, marginLeft: 3 }}>
+                  {d?.min != null ? `/ ${Number(d.min).toFixed(0)}°` : ""}
+                </span>
+              </p>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
