@@ -592,13 +592,15 @@ export function WeatherRadarChart({ weather, compareWeather, meteoWeather, wapiW
   );
 }
 
-// ── 공통: 날짜 짧게 변환 ("6월 12일 (목)" → ["12일", "(목)"])
+// ── 공통: 날짜 짧게 변환 → ["15일", "(일)"]
+// "일" 문자 탐색 대신 숫자로 추출 (일요일 "(일)"과 충돌 방지)
 function splitDateLabel(str) {
   if (!str) return ["", ""];
-  const parts = str.trim().split(/\s+/);
-  const day = parts.find(p => p.includes("일")) || parts[1] || parts[0];
-  const dow = parts.find(p => p.startsWith("(")) || "";
-  return [day, dow];
+  const nums = str.match(/\d+/g) || [];
+  // 마지막 숫자가 일(day) — 형식: "6월 15일 (목)" or "6. 15. (목)"
+  const dayNum = nums[nums.length - 1];
+  const dow = str.match(/\(([가-힣]+)\)/)?.[1] || "";
+  return [dayNum ? `${dayNum}일` : "", dow ? `(${dow})` : ""];
 }
 
 // ══════════════════════════════════════════════════════════════════════════
