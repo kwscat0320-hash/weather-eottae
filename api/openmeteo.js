@@ -106,9 +106,18 @@ export default async function handler(req, res) {
       httpsGetJson(airUrl).catch(() => null),
     ]);
 
+    // Open-Meteo API 오류 시 상세 메시지 반환
+    if (data.error) {
+      return res.status(502).json({ error: `Open-Meteo: ${data.reason || JSON.stringify(data)}` });
+    }
+
     const c = data.current;
     const d = data.daily;
     const h = data.hourly;
+
+    if (!c || !d || !h) {
+      return res.status(502).json({ error: "Open-Meteo 응답 구조 이상", raw: JSON.stringify(data).slice(0, 300) });
+    }
 
     const now = new Date();
     const nowHour = now.getFullYear() + "-" +
