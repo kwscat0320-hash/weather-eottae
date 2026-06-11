@@ -376,12 +376,14 @@ function formatYMD(date) {
 }
 
 function parseKmaDate(date, time) {
-  return new Date(
+  // KMA 날짜/시간은 KST(UTC+9) → Date.UTC로 먼저 만든 뒤 9시간 빼서 진짜 UTC로 변환
+  const kstMs = Date.UTC(
     Number(date.slice(0, 4)),
     Number(date.slice(4, 6)) - 1,
     Number(date.slice(6, 8)),
     Number(time.slice(0, 2)),
     Number(time.slice(2, 4))
-  );
+  ) - 9 * 3600 * 1000;
+  return new Date(kstMs);
 }
 
