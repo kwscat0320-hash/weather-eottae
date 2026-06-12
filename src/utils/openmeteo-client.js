@@ -124,10 +124,15 @@ export async function fetchOpenMeteo(lat, lon) {
     return `${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`;
   };
 
-  const daily = (d.time || []).map((dateStr, i) => ({
+  const daily = (d.time || []).map((dateStr, i) => {
+    const amIdx = (h.time || []).findIndex(t => t === `${dateStr}T09:00`);
+    const pmIdx = (h.time || []).findIndex(t => t === `${dateStr}T15:00`);
+    return ({
     dateLabel: new Date(dateStr + "T00:00:00").toLocaleDateString("ko-KR", {
       month: "numeric", day: "numeric", weekday: "short",
     }),
+    condAm: amIdx >= 0 ? wmoToCondition(h.weather_code?.[amIdx]) : null,
+    condPm: pmIdx >= 0 ? wmoToCondition(h.weather_code?.[pmIdx]) : null,
     tempMax:          d.temperature_2m_max?.[i],
     tempMin:          d.temperature_2m_min?.[i],
     feelsLikeMax:     d.apparent_temperature_max?.[i],
@@ -146,7 +151,8 @@ export async function fetchOpenMeteo(lat, lon) {
     uvMax:            d.uv_index_max?.[i],
     uvLevel:          uvLevel(d.uv_index_max?.[i]),
     solarRadiation:   d.shortwave_radiation_sum?.[i],
-  }));
+  };
+  });
 
   return {
     condition:      wmoToCondition(c.weather_code),

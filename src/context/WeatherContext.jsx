@@ -145,11 +145,14 @@ export function WeatherProvider({ children }) {
             const owDailyMap = {};
             (owData.forecast || []).forEach(f => {
               const key = f.dateLabel;
-              if (!owDailyMap[key]) owDailyMap[key] = { tempMins: [], tempMaxs: [], rainChances: [], conditions: [] };
+              if (!owDailyMap[key]) owDailyMap[key] = { tempMins: [], tempMaxs: [], rainChances: [], conditions: [], condAm: null, condPm: null };
               owDailyMap[key].tempMins.push(f.tempMin ?? f.temp);
               owDailyMap[key].tempMaxs.push(f.tempMax ?? f.temp);
               owDailyMap[key].rainChances.push(f.rainChance ?? 0);
               owDailyMap[key].conditions.push(f.condition);
+              const hour = parseInt(String(f.timeLabel).split(":")[0], 10);
+              if (hour === 9)  owDailyMap[key].condAm = f.condition;
+              if (hour === 15) owDailyMap[key].condPm = f.condition;
             });
             const todayLbl = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
             setOwDailyForecasts(
@@ -161,6 +164,8 @@ export function WeatherProvider({ children }) {
                   max: Math.max(...v.tempMaxs),
                   rainChance: Math.max(...v.rainChances),
                   condition: v.conditions[Math.floor(v.conditions.length / 2)],
+                  condAm: v.condAm,
+                  condPm: v.condPm,
                 }))
                 .slice(0, 5)
             );
@@ -339,7 +344,7 @@ export function WeatherProvider({ children }) {
       const key = item.dateLabel;
       if (key === todayLabel) return;
       if (!shortByDate[key]) {
-        shortByDate[key] = { date: key, max: null, min: null, rainChance: 0, tmps: [], conditions: [] };
+        shortByDate[key] = { date: key, max: null, min: null, rainChance: 0, tmps: [], conditions: [], conditionsAm: [], conditionsPm: [] };
       }
       const d = shortByDate[key];
       // officialTMX/TMN — 이미 per-date로 정확하므로 한 번만 세팅하면 됨
@@ -350,16 +355,20 @@ export function WeatherProvider({ children }) {
       if (item.condition) {
         const hour = item.isoTime ? new Date(item.isoTime).getHours() : -1;
         if (hour === -1 || (hour >= 9 && hour <= 18)) d.conditions.push(item.condition);
+        if (hour >= 6 && hour < 12) d.conditionsAm.push(item.condition);
+        else if (hour >= 12 && hour <= 18) d.conditionsPm.push(item.condition);
       }
     });
 
     // 단기예보 날짜 목록 (오늘 제외, 삽입 순서 = 시간 순)
     // max == min 인 날(TMX/TMN 미수록 + 슬롯 부족)은 제외 → midForecast로 gap-fill
-    const shortDays = Object.values(shortByDate).map(({ tmps, conditions, ...d }) => ({
+    const shortDays = Object.values(shortByDate).map(({ tmps, conditions, conditionsAm, conditionsPm, ...d }) => ({
       ...d,
       max: d.max ?? (tmps.length ? Math.max(...tmps) : null),
       min: d.min ?? (tmps.length ? Math.min(...tmps) : null),
       condition: conditions.length ? conditions[Math.floor(conditions.length / 2)] : null,
+      condAm: conditionsAm.length ? conditionsAm[Math.floor(conditionsAm.length / 2)] : null,
+      condPm: conditionsPm.length ? conditionsPm[Math.floor(conditionsPm.length / 2)] : null,
     })).filter(d => d.max != null && d.min != null && d.max > d.min);
     const shortDates = new Set(shortDays.map(d => d.date));
 
@@ -372,6 +381,8 @@ export function WeatherProvider({ children }) {
         min:        f.tempMin  ?? null,
         rainChance: f.rainChance ?? 0,
         condition:  f.condition  ?? null,
+        condAm:     f.condAm    ?? null,
+        condPm:     f.condPm    ?? null,
       }));
 
     // ── 합산 (단기 → 중기 순서) ──────────────────────────────────────────

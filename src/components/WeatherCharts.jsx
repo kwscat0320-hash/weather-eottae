@@ -1127,11 +1127,10 @@ export function DailyConditionCard({ dailyForecasts, owDailyForecasts, meteoDail
   );
 
   const sourceDefs = [
-    { name: "기상청",    color: "#2563eb", days: dailyForecasts?.length    ? dailyForecasts.slice(0, 5).map(d => ({ date: d.date, condition: d.condition || null })) : null },
-    { name: "ECMWF",     color: "#8B5CF6", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, condition: d.condition })) : null },
-    { name: "오픈메테오",color: "#059669", days: meteoDaily?.length         ? meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, condition: d.condition })) : null },
-    { name: "웨더API",   color: "#7c3aed", days: wapiDailyForecasts?.length ? wapiDailyForecasts.slice(0, 5).map(d => ({ date: d.date, condition: d.condition })) : null },
-  ].filter(s => s.days?.some(d => d.condition));
+    { name: "기상청",    color: "#2563eb", days: dailyForecasts?.length    ? dailyForecasts.slice(0, 5).map(d => ({ date: d.date, condAm: d.condAm, condPm: d.condPm })) : null },
+    { name: "ECMWF",     color: "#8B5CF6", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, condAm: d.condAm, condPm: d.condPm })) : null },
+    { name: "오픈메테오",color: "#059669", days: meteoDaily?.length         ? meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, condAm: d.condAm, condPm: d.condPm })) : null },
+  ].filter(s => s.days?.some(d => d.condAm || d.condPm));
 
   if (!sourceDefs.length) return null;
 
@@ -1155,16 +1154,20 @@ export function DailyConditionCard({ dailyForecasts, owDailyForecasts, meteoDail
             }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: theme.text, lineHeight: 1.1 }}>{day}</p>
               <p style={{ fontSize: 9, color: theme.sub, lineHeight: 1 }}>{dow}</p>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, marginTop: 2 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, marginTop: 2, width: "100%" }}>
                 {activeDefs.map(src => {
-                  const cond = src.days[i]?.condition;
+                  const am = src.days[i]?.condAm;
+                  const pm = src.days[i]?.condPm;
                   return (
-                    <div key={src.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                      <span style={{ fontSize: 22, lineHeight: 1 }}>{condToEmoji(cond)}</span>
-                      <span style={{ fontSize: 8.5, fontWeight: 600, color: src.color,
-                        textAlign: "center", maxWidth: 52, wordBreak: "keep-all", lineHeight: 1.2 }}>
-                        {cond || "—"}
-                      </span>
+                    <div key={src.name} style={{ display: "flex", gap: 4, justifyContent: "center", width: "100%" }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
+                        <span style={{ fontSize: 8, color: src.color, fontWeight: 700, marginBottom: 1 }}>오전</span>
+                        <span style={{ fontSize: 18, lineHeight: 1 }}>{condToEmoji(am)}</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
+                        <span style={{ fontSize: 8, color: src.color, fontWeight: 700, marginBottom: 1 }}>오후</span>
+                        <span style={{ fontSize: 18, lineHeight: 1 }}>{condToEmoji(pm)}</span>
+                      </div>
                     </div>
                   );
                 })}
@@ -1178,7 +1181,8 @@ export function DailyConditionCard({ dailyForecasts, owDailyForecasts, meteoDail
       <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
         {sourceDefs.map(src => {
           const isActive = activeSrcs.includes(src.name);
-          const firstCond = src.days[0]?.condition;
+          const am = src.days[0]?.condAm;
+          const pm = src.days[0]?.condPm;
           return (
             <div key={src.name}
               onClick={() => toggleSrc(src.name)}
@@ -1188,8 +1192,17 @@ export function DailyConditionCard({ dailyForecasts, owDailyForecasts, meteoDail
                 opacity: isActive ? 1 : 0.2, transition: "opacity 0.15s", cursor: "pointer",
               }}
             >
-              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 3 }}>{src.name}</p>
-              <p style={{ fontSize: 20, lineHeight: 1 }}>{condToEmoji(firstCond)}</p>
+              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 4 }}>{src.name}</p>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 7.5, color: src.color, opacity: 0.7 }}>오전</div>
+                  <span style={{ fontSize: 16 }}>{condToEmoji(am)}</span>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 7.5, color: src.color, opacity: 0.7 }}>오후</div>
+                  <span style={{ fontSize: 16 }}>{condToEmoji(pm)}</span>
+                </div>
+              </div>
             </div>
           );
         })}

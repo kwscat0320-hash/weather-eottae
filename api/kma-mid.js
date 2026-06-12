@@ -73,6 +73,8 @@ export default async function handler(req, res) {
         dateLabel: label,
         timeLabel: "일간",
         condition: skyToCondition(sky, pre),
+        condAm:    skyToCondition(cond?.amSky, cond?.amPre),
+        condPm:    skyToCondition(cond?.pmSky, cond?.pmPre),
         rainChance,
         tempMin: temp?.tempMin ?? null,
         tempMax: temp?.tempMax ?? null,
