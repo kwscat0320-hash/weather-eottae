@@ -2,6 +2,24 @@
 import { DEFAULT_LOCATION, getTheme, getSpeech, isKorea } from "../utils/weather";
 import { fetchOpenMeteo } from "../utils/openmeteo-client";
 
+// 날씨 상태값 우선순위 (낮을수록 심각, 1-4=비, 5-7=흐림, 8=맑음)
+const COND_PRIORITY = {
+  "뇌우": 1, "천둥번개": 1,
+  "눈소나기": 2, "소나기": 2,
+  "비": 3, "비/눈": 3, "눈/비": 3, "눈": 3,
+  "이슬비": 4,
+  "안개": 5,
+  "흐림": 6,
+  "구름많음": 7,
+  "맑음": 8,
+};
+
+function pickCondition(conditions) {
+  const valid = (conditions || []).filter(c => c != null && COND_PRIORITY[c] != null);
+  if (!valid.length) return null;
+  return valid.reduce((best, c) => COND_PRIORITY[c] < COND_PRIORITY[best] ? c : best);
+}
+
 async function reverseGeocode(lat, lon) {
   try {
     const res = await fetch(`/api/geocode?lat=${lat}&lon=${lon}&_=${Date.now()}`);
@@ -366,9 +384,9 @@ export function WeatherProvider({ children }) {
       ...d,
       max: d.max ?? (tmps.length ? Math.max(...tmps) : null),
       min: d.min ?? (tmps.length ? Math.min(...tmps) : null),
-      condition: conditions.length ? conditions[Math.floor(conditions.length / 2)] : null,
-      condAm: conditionsAm.length ? conditionsAm[Math.floor(conditionsAm.length / 2)] : null,
-      condPm: conditionsPm.length ? conditionsPm[Math.floor(conditionsPm.length / 2)] : null,
+      condition: pickCondition(conditions),
+      condAm: pickCondition(conditionsAm),
+      condPm: pickCondition(conditionsPm),
     })).filter(d => d.max != null && d.min != null && d.max > d.min);
     const shortDates = new Set(shortDays.map(d => d.date));
 
