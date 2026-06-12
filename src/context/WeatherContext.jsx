@@ -354,12 +354,13 @@ export function WeatherProvider({ children }) {
     });
 
     // 단기예보 날짜 목록 (오늘 제외, 삽입 순서 = 시간 순)
+    // max == min 인 날(TMX/TMN 미수록 + 슬롯 부족)은 제외 → midForecast로 gap-fill
     const shortDays = Object.values(shortByDate).map(({ tmps, conditions, ...d }) => ({
       ...d,
       max: d.max ?? (tmps.length ? Math.max(...tmps) : null),
       min: d.min ?? (tmps.length ? Math.min(...tmps) : null),
       condition: conditions.length ? conditions[Math.floor(conditions.length / 2)] : null,
-    }));
+    })).filter(d => d.max != null && d.min != null && d.max > d.min);
     const shortDates = new Set(shortDays.map(d => d.date));
 
     // ── 중기예보 — 단기가 이미 커버하는 날짜 제외 ───────────────────────────
