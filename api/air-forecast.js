@@ -89,7 +89,7 @@ export default async function handler(req, res) {
   const yesterday = yesterdayKST();
   const region = getAirRegion(Number(lat), Number(lon));
 
-  const [airkoreaYestRes, airkoreaTodayRes, meteoRes] = await Promise.allSettled([
+  const [airkoreaYestRes, airkoreaTodayRes, meteoRes, ecmwfRes] = await Promise.allSettled([
     kmaKey
       ? httpsGetJson(`https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMinuDustFrcstDspth?serviceKey=${kmaKey.trim()}&returnType=json&numOfRows=50&pageNo=1&searchDate=${yesterday}&ver=1.1`)
       : Promise.reject("no KMA_KEY"),
@@ -97,6 +97,7 @@ export default async function handler(req, res) {
       ? httpsGetJson(`https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMinuDustFrcstDspth?serviceKey=${kmaKey.trim()}&returnType=json&numOfRows=50&pageNo=1&searchDate=${today}&ver=1.1`)
       : Promise.reject("no KMA_KEY"),
     httpsGetJson(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10&timezone=Asia%2FSeoul&forecast_days=5`),
+    httpsGetJson(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10&timezone=Asia%2FSeoul&forecast_days=2&domains=cams_global`),
   ]);
 
   // ── 에어코리아 (어제+오늘 발표 병합) ──────────────────────────────
@@ -175,5 +176,26 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(200).json({ airkorea, openmeteo, openmeteoHourly, region });
+  // ── ECMWF CAMS hourly (오늘) ──────────────────────────────────────
+  let ecmwfHourly = [];
+  if (ecmwfRes.status === "fulfilled") {
+    try {
+      const hourly = ecmwfRes.value?.hourly;
+      if (hourly?.time) {
+        ecmwfHourly = hourly.time
+          .map((t, i) => ({
+            dateStr: t.slice(0, 10),
+            time:    t.slice(11, 16),
+            pm25: hourly.pm2_5?.[i] != null ? Math.round(hourly.pm2_5[i]) : null,
+            pm10: hourly.pm10?.[i]  != null ? Math.round(hourly.pm10[i])  : null,
+          }))
+          .filter(h => h.dateStr === today && (h.pm25 != null || h.pm10 != null))
+          .map(({ dateStr, ...rest }) => rest);
+      }
+    } catch (e) {
+      console.error("[air-forecast] ecmwf parse error:", e.message);
+    }
+  }
+
+  return res.status(200).json({ airkorea, openmeteo, openmeteoHourly, ecmwfHourly, region });
 }

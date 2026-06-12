@@ -1316,7 +1316,7 @@ export function DailyAirCard({ airForecast, theme }) {
 }
 
 // ── HourlyAirCard — 오늘 시간대별 미세먼지 꺾은선 (PM2.5) ───────────────
-export function HourlyAirCard({ airHourly, openmeteoHourly, theme }) {
+export function HourlyAirCard({ airHourly, openmeteoHourly, ecmwfHourly, theme }) {
   const [activeSrcs, setActiveSrcs] = useState(["에어코리아"]);
   const toggleSrc = name => setActiveSrcs(prev =>
     prev.includes(name) ? (prev.length > 1 ? prev.filter(n => n !== name) : prev) : [...prev, name]
@@ -1324,21 +1324,25 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, theme }) {
 
   const nowHour = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
 
-  const filterSlots = (arr) =>
+  // 에어코리아: 오늘 전체 실측값 (과거 포함, 필터 없음)
+  const akSlots = (airHourly || []).filter(h => h.time);
+  // 예보 소스: 현재 시간 이후만 표시
+  const filterForecast = (arr) =>
     (arr || []).filter(h => parseInt(h.time.slice(0, 2), 10) >= nowHour);
+  const omSlots   = filterForecast(openmeteoHourly);
+  const ecmwfSlots = filterForecast(ecmwfHourly);
 
-  const akSlots = filterSlots(airHourly);
-  const omSlots = filterSlots(openmeteoHourly);
-
-  if (!akSlots.length && !omSlots.length) return null;
+  if (!akSlots.length && !omSlots.length && !ecmwfSlots.length) return null;
 
   const allTimes = [...new Set([
     ...akSlots.map(h => h.time),
     ...omSlots.map(h => h.time),
+    ...ecmwfSlots.map(h => h.time),
   ])].sort();
 
   const allSources = [
     { name: "에어코리아", color: "#3B82F6", slots: akSlots },
+    { name: "ECMWF",     color: "#8B5CF6", slots: ecmwfSlots },
     { name: "오픈메테오", color: "#10B981", slots: omSlots },
   ].filter(s => s.slots.length > 0);
 
