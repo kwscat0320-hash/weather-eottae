@@ -38,7 +38,7 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
 
   const sourceDefs = [
     { name: "기상청",   color: "#2563eb", data: alignedHourly?.kma,   current: weather,       kma: true },
-    { name: "오픈웨더", color: "#ea580c", data: alignedHourly?.ow,    current: compareWeather },
+    { name: "ECMWF",    color: "#8B5CF6", data: alignedHourly?.ow,    current: compareWeather },
     { name: "오픈메테오",color: "#059669", data: alignedHourly?.meteo, current: meteoWeather },
     { name: "웨더API",  color: "#7c3aed", data: alignedHourly?.wapi,  current: wapiWeather  },
   ].filter(s => s.data?.some(d => d != null));
@@ -227,7 +227,7 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
 
   const sourceDefs = [
     { name: "기상청",    color: "#2563eb", data: alignedHourly?.kma },
-    { name: "오픈웨더",  color: "#ea580c", data: alignedHourly?.ow },
+    { name: "ECMWF",     color: "#8B5CF6", data: alignedHourly?.ow },
     { name: "오픈메테오",color: "#059669", data: alignedHourly?.meteo },
     { name: "웨더API",   color: "#7c3aed", data: alignedHourly?.wapi },
   ].filter(s => s.data?.some(d => d != null && d.rainChance != null));
@@ -385,7 +385,7 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
 export function TemperatureBarChart({ weather, compareWeather, meteoWeather, wapiWeather, theme }) {
   const sources = [
     { name: "기상청",    color: "#2563eb", w: weather },
-    { name: "오픈웨더",  color: "#ea580c", w: compareWeather },
+    { name: "ECMWF",     color: "#8B5CF6", w: compareWeather },
     ...(meteoWeather ? [{ name: "오픈메테오", color: "#059669", w: meteoWeather }] : []),
     ...(wapiWeather  ? [{ name: "웨더API",   color: "#7c3aed", w: wapiWeather  }] : []),
   ].filter(s => s.w);
@@ -478,7 +478,7 @@ export function TemperatureBarChart({ weather, compareWeather, meteoWeather, wap
 export function WeatherRadarChart({ weather, compareWeather, meteoWeather, wapiWeather, theme }) {
   const sources = [
     { name: "기상청",     color: "#2563eb", w: weather },
-    { name: "오픈웨더",  color: "#ea580c", w: compareWeather },
+    { name: "ECMWF",     color: "#8B5CF6", w: compareWeather },
     ...(meteoWeather ? [{ name: "오픈메테오", color: "#059669", w: meteoWeather }] : []),
     ...(wapiWeather  ? [{ name: "웨더API",   color: "#7c3aed", w: wapiWeather  }] : []),
   ].filter(s => s.w);
@@ -608,7 +608,7 @@ function splitDateLabel(str) {
 function buildDailySources(dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts) {
   return [
     { name: "기상청",    color: "#2563eb", days: dailyForecasts?.length    ? dailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance })) : null },
-    { name: "오픈웨더",  color: "#ea580c", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance })) : null },
+    { name: "ECMWF",     color: "#8B5CF6", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance })) : null },
     { name: "오픈메테오",color: "#059669", days: meteoDaily?.length         ? meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, min: d.tempMin, max: d.tempMax, rainChance: d.rainChance })) : null },
     { name: "웨더API",   color: "#7c3aed", days: wapiDailyForecasts?.length ? wapiDailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance })) : null },
   ].filter(s => s.days?.length);
@@ -863,7 +863,7 @@ function _DailyRainChart_unused({ dailyForecasts, owDailyForecasts, meteoDaily, 
 
   const sourceDefs = [
     { name: "기상청",    color: "#2563eb", days: dailyForecasts?.length    ? dailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max })) : null },
-    { name: "오픈웨더",  color: "#ea580c", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max })) : null },
+    { name: "ECMWF",     color: "#8B5CF6", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max })) : null },
     { name: "오픈메테오",color: "#059669", days: meteoDaily?.length         ? meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, min: d.tempMin, max: d.tempMax })) : null },
     { name: "웨더API",   color: "#7c3aed", days: wapiDailyForecasts?.length ? wapiDailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max })) : null },
   ].filter(s => s.days?.length);
@@ -994,7 +994,7 @@ function _DailyRainChart_old({ dailyForecasts, owDailyForecasts, meteoDaily, wap
 
   const sourceDefs = [
     { name: "기상청",    color: "#2563eb", days: dailyForecasts?.length    ? dailyForecasts.slice(0, 5).map(d => ({ date: d.date, rainChance: d.rainChance })) : null },
-    { name: "오픈웨더",  color: "#ea580c", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, rainChance: d.rainChance })) : null },
+    { name: "ECMWF",     color: "#8B5CF6", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, rainChance: d.rainChance })) : null },
     { name: "오픈메테오",color: "#059669", days: meteoDaily?.length         ? meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, rainChance: d.rainChance })) : null },
     { name: "웨더API",   color: "#7c3aed", days: wapiDailyForecasts?.length ? wapiDailyForecasts.slice(0, 5).map(d => ({ date: d.date, rainChance: d.rainChance })) : null },
   ].filter(s => s.days?.length);
@@ -1128,7 +1128,7 @@ export function DailyConditionCard({ dailyForecasts, owDailyForecasts, meteoDail
 
   const sourceDefs = [
     { name: "기상청",    color: "#2563eb", days: dailyForecasts?.length    ? dailyForecasts.slice(0, 5).map(d => ({ date: d.date, condition: d.condition || null })) : null },
-    { name: "오픈웨더",  color: "#ea580c", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, condition: d.condition })) : null },
+    { name: "ECMWF",     color: "#8B5CF6", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, condition: d.condition })) : null },
     { name: "오픈메테오",color: "#059669", days: meteoDaily?.length         ? meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, condition: d.condition })) : null },
     { name: "웨더API",   color: "#7c3aed", days: wapiDailyForecasts?.length ? wapiDailyForecasts.slice(0, 5).map(d => ({ date: d.date, condition: d.condition })) : null },
   ].filter(s => s.days?.some(d => d.condition));
@@ -1303,7 +1303,7 @@ export function DailyAirCard({ airForecast, theme }) {
 }
 
 // ── HourlyAirCard — 오늘 시간대별 미세먼지 꺾은선 (PM2.5) ───────────────
-export function HourlyAirCard({ airHourly, ecmwfHourly, openmeteoHourly, theme }) {
+export function HourlyAirCard({ airHourly, openmeteoHourly, theme }) {
   const [activeSrcs, setActiveSrcs] = useState(["에어코리아"]);
   const toggleSrc = name => setActiveSrcs(prev =>
     prev.includes(name) ? (prev.length > 1 ? prev.filter(n => n !== name) : prev) : [...prev, name]
@@ -1315,21 +1315,17 @@ export function HourlyAirCard({ airHourly, ecmwfHourly, openmeteoHourly, theme }
     (arr || []).filter(h => parseInt(h.time.slice(0, 2), 10) >= nowHour);
 
   const akSlots = filterSlots(airHourly);
-  const owSlots = filterSlots(ecmwfHourly);
   const omSlots = filterSlots(openmeteoHourly);
 
-  if (!akSlots.length && !owSlots.length && !omSlots.length) return null;
+  if (!akSlots.length && !omSlots.length) return null;
 
-  // 전체 시간 레이블 수집 (오름차순)
   const allTimes = [...new Set([
     ...akSlots.map(h => h.time),
-    ...owSlots.map(h => h.time),
     ...omSlots.map(h => h.time),
   ])].sort();
 
   const allSources = [
     { name: "에어코리아", color: "#3B82F6", slots: akSlots },
-    { name: "ECMWF",     color: "#8B5CF6", slots: owSlots },
     { name: "오픈메테오", color: "#10B981", slots: omSlots },
   ].filter(s => s.slots.length > 0);
 

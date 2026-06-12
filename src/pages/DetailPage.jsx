@@ -43,7 +43,7 @@ export default function DetailPage({ scrollRef }) {
               {(() => {
                 const src = [
                   { name: "기상청",     color: "#2563eb", cond: weather.condition },
-                  { name: "오픈웨더",         color: "#ea580c", cond: compareWeather.condition },
+                  { name: "ECMWF",            color: "#8B5CF6", cond: compareWeather.condition },
                   ...(meteoWeather ? [{ name: "오픈메테오", color: "#059669", cond: meteoWeather.condition }] : []),
                   ...(wapiWeather  ? [{ name: "웨더API", color: "#7c3aed", cond: wapiWeather.condition }] : []),
                 ];
@@ -69,7 +69,7 @@ export default function DetailPage({ scrollRef }) {
               <ChartLegend
                 sources={[
                   { name: "기상청", color: "#2563eb" },
-                  { name: "오픈웨더",     color: "#ea580c" },
+                  { name: "ECMWF",        color: "#8B5CF6" },
                   ...(meteoWeather ? [{ name: "오픈메테오", color: "#059669" }] : []),
                   ...(wapiWeather  ? [{ name: "웨더API", color: "#7c3aed" }] : []),
                 ]}
@@ -90,7 +90,7 @@ export default function DetailPage({ scrollRef }) {
               <ChartLegend
                 sources={[
                   { name: "기상청", color: "#2563eb" },
-                  { name: "오픈웨더",     color: "#ea580c" },
+                  { name: "ECMWF",        color: "#8B5CF6" },
                   ...(meteoWeather ? [{ name: "오픈메테오", color: "#059669" }] : []),
                   ...(wapiWeather  ? [{ name: "웨더API", color: "#7c3aed" }] : []),
                 ]}
@@ -265,7 +265,7 @@ const METRICS = [
 function WeatherSourcesChart({ weather, compareWeather, meteoWeather, theme }) {
   const sources = [
     { name: "기상청",     color: "#2563eb", w: weather },
-    { name: "오픈웨더",         color: "#ea580c", w: compareWeather },
+    { name: "ECMWF",            color: "#8B5CF6", w: compareWeather },
     ...(meteoWeather ? [{ name: "오픈메테오", color: "#059669", w: meteoWeather }] : []),
   ].filter(s => s.w);
 

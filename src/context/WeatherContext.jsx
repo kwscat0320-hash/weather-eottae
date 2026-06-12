@@ -36,7 +36,7 @@ export function WeatherProvider({ children }) {
   const [airMeteo, setAirMeteo] = useState(null);
   const [midForecast, setMidForecast] = useState([]);
   const [weatherHistory, setWeatherHistory] = useState([]);
-  const [airForecast, setAirForecast] = useState({ airkorea: [], ecmwf: [], openmeteo: [], ecmwfHourly: [], openmeteoHourly: [] });
+  const [airForecast, setAirForecast] = useState({ airkorea: [], openmeteo: [], openmeteoHourly: [] });
 
   useEffect(() => { requestCurrentLocation(); }, []);
 
@@ -205,7 +205,7 @@ export function WeatherProvider({ children }) {
         const data = await res.json();
         setCurrentWeather(data.current);
         setForecast(data.forecast);
-        setWeatherSource("OpenWeather");
+        setWeatherSource("ECMWF");
       }
     } catch (err) {
       setError(err.message || "알 수 없는 오류가 발생했어요.");

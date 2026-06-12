@@ -15,7 +15,7 @@ export default function AirCompareCard({ air, airOw, airMeteo, airWapi, theme })
       pm25:  { value: air.pm25,      grade: air.pm25Grade },
       extra: air.stationName ? `측정소: ${air.stationName}` : null,
     }] : []),
-    ...(airOw ? [{ name: "오픈웨더", color: "#ea580c",
+    ...(airOw ? [{ name: "ECMWF", color: "#8B5CF6",
       pm10:  { value: airOw.pm10,    grade: airOw.pm10Grade },
       pm25:  { value: airOw.pm25,    grade: airOw.pm25Grade },
       extra: airOw.no2 != null ? `NO₂: ${airOw.no2}㎍/㎥` : null,

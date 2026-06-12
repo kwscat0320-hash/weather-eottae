@@ -81,7 +81,7 @@ export default function HomePage({ scrollRef }) {
       ],
     }] : []),
     ...(compareWeather ? [{
-      name: "오픈웨더",
+      name: "ECMWF",
       obs: compareWeather.observedAt,
       rows: [
         { label: "날씨",     value: compareWeather.condition },
@@ -135,7 +135,7 @@ export default function HomePage({ scrollRef }) {
       ],
     }] : []),
     ...(airOw ? [{
-      name: "오픈웨더",
+      name: "ECMWF",
       obs: null,
       rows: [
         { label: "미세먼지",   value: `${airOw.pm10}㎍/㎥`, grade: airOw.pm10Grade },
@@ -309,7 +309,6 @@ export default function HomePage({ scrollRef }) {
         {/* 오늘 시간대별 미세먼지 */}
         <HourlyAirCard
           airHourly={air?.hourly}
-          ecmwfHourly={airForecast.ecmwfHourly}
           openmeteoHourly={airForecast.openmeteoHourly}
           theme={theme}
         />
@@ -478,7 +477,7 @@ function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
 
   const sources = [
     { name: "기상청",    freq: "1h", data: alignedHourly?.kma },
-    { name: "오픈웨더",  freq: "3h", data: alignedHourly?.ow },
+    { name: "ECMWF",  freq: "3h", data: alignedHourly?.ow },
     { name: "오픈메테오",freq: "1h", data: alignedHourly?.meteo },
     { name: "웨더API",   freq: "1h", data: alignedHourly?.wapi },
   ].filter(s => s.data?.some(d => d != null));
@@ -943,7 +942,7 @@ function MultiDailyCard({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDail
 
   const sources = [
     dailyForecasts?.length   ? { name: "기상청",     days: dailyForecasts.map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance, fromHistory: d._fromHistory })) } : null,
-    owDailyForecasts?.length  ? { name: "오픈웨더",  days: owDailyForecasts.map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance })) } : null,
+    owDailyForecasts?.length  ? { name: "ECMWF",  days: owDailyForecasts.map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance })) } : null,
     meteoDaily?.length        ? { name: "오픈메테오", days: meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, min: d.tempMin, max: d.tempMax, rainChance: d.rainChance, condition: d.condition })) } : null,
     wapiDailyForecasts?.length ? { name: "웨더API",   days: wapiDailyForecasts.map(d => ({ date: d.date, min: d.min, max: d.max, rainChance: d.rainChance, condition: d.condition })) } : null,
   ].filter(Boolean);
@@ -1070,7 +1069,7 @@ function DetailedWeatherCard({ weather, compareWeather, meteoWeather, wapiWeathe
 
   const sources = [
     weather        ? { name: "기상청",     rows: commonRows(weather) }       : null,
-    compareWeather ? { name: "오픈웨더",  rows: commonRows(compareWeather) } : null,
+    compareWeather ? { name: "ECMWF",  rows: commonRows(compareWeather) } : null,
     meteoRows      ? { name: "오픈메테오", rows: meteoRows }                 : null,
     wapiRows       ? { name: "웨더API",   rows: wapiRows }                  : null,
   ].filter(Boolean);
