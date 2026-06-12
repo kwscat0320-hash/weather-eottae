@@ -279,11 +279,12 @@ function toMap(items, keyField, valueField) {
 
 function getCondition(sky, pty) {
   const p = String(pty ?? "0");
-  const s = String(sky ?? "1");
   if (p === "1") return "비";
   if (p === "2") return "비/눈";
   if (p === "3") return "눈";
   if (p === "4") return "소나기";
+  if (sky == null) return null;
+  const s = String(sky);
   if (s === "1") return "맑음";
   if (s === "3") return "구름많음";
   if (s === "4") return "흐림";
