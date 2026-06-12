@@ -1323,13 +1323,20 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, ecmwfHourly, theme }
   );
 
   const nowHour = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
+  const nowTime = `${String(nowHour).padStart(2, "0")}:00`;
 
-  // 에어코리아: 오늘 전체 실측값 (과거 포함, 필터 없음)
-  const akSlots = (airHourly || []).filter(h => h.time);
-  // 예보 소스: 현재 시간 이후만 표시
+  // 에어코리아: 오늘 전체 실측값 — 3시간 이동평균으로 스무딩
+  const smooth = (arr) => (arr || []).filter(h => h.time && h.pm25 != null).map((h, i, a) => {
+    const win = a.slice(Math.max(0, i - 1), i + 2);
+    const avg = win.reduce((s, x) => s + x.pm25, 0) / win.length;
+    return { ...h, pm25: Math.round(avg) };
+  });
+  const akSlots = smooth(airHourly);
+
+  // 예보 소스: 현재 시간 이후만
   const filterForecast = (arr) =>
-    (arr || []).filter(h => parseInt(h.time.slice(0, 2), 10) >= nowHour);
-  const omSlots   = filterForecast(openmeteoHourly);
+    (arr || []).filter(h => h.time && parseInt(h.time.slice(0, 2), 10) >= nowHour && h.pm25 != null);
+  const omSlots    = filterForecast(openmeteoHourly);
   const ecmwfSlots = filterForecast(ecmwfHourly);
 
   if (!akSlots.length && !omSlots.length && !ecmwfSlots.length) return null;
@@ -1348,23 +1355,27 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, ecmwfHourly, theme }
 
   const sources = allSources.filter(s => activeSrcs.includes(s.name));
 
+  // 동적 Y축: 활성 소스의 실제 최대값 기준 (등급 경계 포함)
+  const activeVals = sources.flatMap(s => s.slots.map(h => h.pm25).filter(v => v != null));
+  const dataMax = activeVals.length ? Math.max(...activeVals) : 0;
+  const Y_MAX = dataMax <= 15 ? 25 : dataMax <= 35 ? 50 : dataMax <= 75 ? 90 : 110;
+
   const W = 320, H = 120, PAD_L = 28, PAD_R = 8, PAD_T = 8, PAD_B = 24;
   const chartW = W - PAD_L - PAD_R;
   const chartH = H - PAD_T - PAD_B;
 
-  // 등급 경계 (PM2.5 μg/m³): 좋음≤15, 보통≤35, 나쁨≤75, 매우나쁨>75
-  const Y_MAX = 80;
   const bands = [
     { from: 0,  to: 15, color: "#4ade8022" },
     { from: 15, to: 35, color: "#facc1522" },
     { from: 35, to: 75, color: "#fb923c22" },
     { from: 75, to: Y_MAX, color: "#f8717122" },
   ];
+  // Y_MAX 이하에 걸치는 경계선만 표시
   const bandLabels = [
     { y: 15, label: "15" },
     { y: 35, label: "35" },
     { y: 75, label: "75" },
-  ];
+  ].filter(b => b.y < Y_MAX);
 
   const toX = (time) => {
     const idx = allTimes.indexOf(time);
@@ -1380,6 +1391,9 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, ecmwfHourly, theme }
     return pts.length > 1 ? `M ${pts.join(" L ")}` : "";
   };
 
+  // 현재 시간 X 위치
+  const nowX = allTimes.includes(nowTime) ? toX(nowTime) : null;
+
   // X축 레이블: 4시간마다
   const xLabels = allTimes.filter((_, i) => i % 4 === 0);
 
@@ -1391,9 +1405,10 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, ecmwfHourly, theme }
         <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", minWidth: W, display: "block" }}>
           {/* 등급 음영 */}
           {bands.map((b, i) => {
-            const y1 = toY(b.to);
-            const y2 = toY(b.from);
-            return <rect key={i} x={PAD_L} y={y1} width={chartW} height={y2 - y1} fill={b.color} />;
+            const yTop = toY(Math.min(b.to, Y_MAX));
+            const yBot = toY(b.from);
+            if (yBot <= yTop) return null;
+            return <rect key={i} x={PAD_L} y={yTop} width={chartW} height={yBot - yTop} fill={b.color} />;
           })}
 
           {/* 등급 경계 점선 + 레이블 */}
@@ -1408,6 +1423,15 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, ecmwfHourly, theme }
 
           {/* Y축 0 */}
           <text x={PAD_L - 3} y={toY(0) + 3.5} textAnchor="end" fontSize={8} fill={theme.sub} opacity={0.7}>0</text>
+
+          {/* 현재 시간 세로선 — 좌=실측 / 우=예보 */}
+          {nowX != null && (
+            <g>
+              <line x1={nowX} x2={nowX} y1={PAD_T} y2={PAD_T + chartH}
+                stroke="rgba(0,0,0,0.25)" strokeWidth={1} strokeDasharray="3 2" />
+              <text x={nowX + 2} y={PAD_T + 8} fontSize={7} fill={theme.sub} opacity={0.7}>지금</text>
+            </g>
+          )}
 
           {/* 꺾은선 */}
           {sources.map(src => {
