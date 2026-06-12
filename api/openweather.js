@@ -10,8 +10,8 @@ export default async function handler(req, res) {
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
       `&models=ecmwf_ifs025` +
       `&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,precipitation` +
-      `&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m` +
-      `&daily=temperature_2m_max,temperature_2m_min,weather_code` +
+      `&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m` +
+      `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code` +
       `&timezone=Asia%2FSeoul&forecast_days=6`;
 
     const data = await fetch(url).then(r => r.json());
@@ -63,8 +63,9 @@ function buildForecast(data) {
   const dailyMap = {};
   (d?.time || []).forEach((date, i) => {
     dailyMap[date] = {
-      tempMax: d.temperature_2m_max?.[i] ?? null,
-      tempMin: d.temperature_2m_min?.[i] ?? null,
+      tempMax:    d.temperature_2m_max?.[i] ?? null,
+      tempMin:    d.temperature_2m_min?.[i] ?? null,
+      rainChance: d.precipitation_probability_max?.[i] ?? 0,
     };
   });
 
@@ -79,7 +80,7 @@ function buildForecast(data) {
       temp:        h.temperature_2m?.[i]         ?? 0,
       tempMin:     day.tempMin                   ?? h.temperature_2m?.[i] ?? 0,
       tempMax:     day.tempMax                   ?? h.temperature_2m?.[i] ?? 0,
-      rainChance:  0,
+      rainChance:  h.precipitation_probability?.[i] ?? 0,
       humidity:    h.relative_humidity_2m?.[i]   ?? 0,
       wind:        h.wind_speed_10m?.[i]         ?? 0,
       precipitation: h.precipitation?.[i]        ?? 0,
