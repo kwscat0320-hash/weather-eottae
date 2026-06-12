@@ -69,7 +69,7 @@ function buildForecast(data) {
     };
   });
 
-  return (h?.time || []).slice(0, 40).map((t, i) => {
+  return (h?.time || []).slice(0, 144).map((t, i) => {
     const dateStr = t.slice(0, 10);
     const day = dailyMap[dateStr] || {};
     const date = new Date(t + ":00+09:00");
