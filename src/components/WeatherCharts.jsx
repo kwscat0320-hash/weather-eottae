@@ -1323,21 +1323,13 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, ecmwfHourly, theme }
   );
 
   const nowHour = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
-  const nowTime = `${String(nowHour).padStart(2, "0")}:00`;
 
-  // 에어코리아: 오늘 전체 실측값 — 3시간 이동평균으로 스무딩
-  const smooth = (arr) => (arr || []).filter(h => h.time && h.pm25 != null).map((h, i, a) => {
-    const win = a.slice(Math.max(0, i - 1), i + 2);
-    const avg = win.reduce((s, x) => s + x.pm25, 0) / win.length;
-    return { ...h, pm25: Math.round(avg) };
-  });
-  const akSlots = smooth(airHourly);
-
-  // 예보 소스: 현재 시간 이후만
-  const filterForecast = (arr) =>
+  // 모든 소스: 현재 시간 이후만 표시 (X축을 지금부터 시작)
+  const filterFromNow = (arr) =>
     (arr || []).filter(h => h.time && parseInt(h.time.slice(0, 2), 10) >= nowHour && h.pm25 != null);
-  const omSlots    = filterForecast(openmeteoHourly);
-  const ecmwfSlots = filterForecast(ecmwfHourly);
+  const akSlots    = filterFromNow(airHourly);
+  const omSlots    = filterFromNow(openmeteoHourly);
+  const ecmwfSlots = filterFromNow(ecmwfHourly);
 
   if (!akSlots.length && !omSlots.length && !ecmwfSlots.length) return null;
 
@@ -1391,9 +1383,6 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, ecmwfHourly, theme }
     return pts.length > 1 ? `M ${pts.join(" L ")}` : "";
   };
 
-  // 현재 시간 X 위치
-  const nowX = allTimes.includes(nowTime) ? toX(nowTime) : null;
-
   // X축 레이블: 4시간마다
   const xLabels = allTimes.filter((_, i) => i % 4 === 0);
 
@@ -1423,15 +1412,6 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, ecmwfHourly, theme }
 
           {/* Y축 0 */}
           <text x={PAD_L - 3} y={toY(0) + 3.5} textAnchor="end" fontSize={8} fill={theme.sub} opacity={0.7}>0</text>
-
-          {/* 현재 시간 세로선 — 좌=실측 / 우=예보 */}
-          {nowX != null && (
-            <g>
-              <line x1={nowX} x2={nowX} y1={PAD_T} y2={PAD_T + chartH}
-                stroke="rgba(0,0,0,0.25)" strokeWidth={1} strokeDasharray="3 2" />
-              <text x={nowX + 2} y={PAD_T + 8} fontSize={7} fill={theme.sub} opacity={0.7}>지금</text>
-            </g>
-          )}
 
           {/* 꺾은선 */}
           {sources.map(src => {
