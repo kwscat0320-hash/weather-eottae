@@ -127,7 +127,7 @@ export async function fetchOpenMeteo(lat, lon) {
   const daily = (d.time || []).map((dateStr, i) => {
     const amIdx = (h.time || []).findIndex(t => t === `${dateStr}T09:00`);
     const pmIdx = (h.time || []).findIndex(t => t === `${dateStr}T15:00`);
-    return ({
+    return {
     dateLabel: new Date(dateStr + "T00:00:00").toLocaleDateString("ko-KR", {
       month: "numeric", day: "numeric", weekday: "short",
     }),
@@ -151,7 +151,7 @@ export async function fetchOpenMeteo(lat, lon) {
     uvMax:            d.uv_index_max?.[i],
     uvLevel:          uvLevel(d.uv_index_max?.[i]),
     solarRadiation:   d.shortwave_radiation_sum?.[i],
-  };
+    };
   });
 
   return {
