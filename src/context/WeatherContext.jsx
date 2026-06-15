@@ -153,12 +153,8 @@ export function WeatherProvider({ children }) {
           .then(r => r.ok ? r.json() : null)
           .then(owData => {
             if (!owData) return;
-            const next24 = (owData.forecast || []).slice(0, 8);
+            // current.high/low는 buildCurrent에서 daily 데이터 기반으로 이미 올바르게 설정됨
             const owCurrent = { ...owData.current };
-            if (next24.length) {
-              owCurrent.high = Math.max(...next24.map(f => f.tempMax ?? f.temp));
-              owCurrent.low  = Math.min(...next24.map(f => f.tempMin ?? f.temp));
-            }
             setCompareWeather(owCurrent);
             const owDailyMap = {};
             (owData.forecast || []).forEach(f => {
@@ -187,8 +183,12 @@ export function WeatherProvider({ children }) {
                 }))
                 .slice(0, 5)
             );
-            setOwForecast((owData.forecast || []).slice(0, 8).map(f => ({
+            // ECMWF 데이터는 1시간 간격으로 자정(00:00 KST)부터 시작
+            // 현재 시각부터 24시간치를 가져와야 올바른 시간대 온도가 표시됨
+            const nowHour = new Date().getHours();
+            setOwForecast((owData.forecast || []).slice(nowHour, nowHour + 24).map(f => ({
               timeLabel:     f.timeLabel,
+              isoTime:       f.isoTime,
               temp:          f.temp,
               rainChance:    f.rainChance,
               condition:     f.condition,

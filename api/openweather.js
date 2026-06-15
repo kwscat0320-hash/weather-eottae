@@ -72,10 +72,11 @@ function buildForecast(data) {
   return (h?.time || []).slice(0, 144).map((t, i) => {
     const dateStr = t.slice(0, 10);
     const day = dailyMap[dateStr] || {};
-    const date = new Date(t + ":00+09:00");
     return {
-      dateLabel:   date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }),
+      // timeZone 명시로 Vercel UTC 서버에서도 KST 날짜로 올바르게 계산
+      dateLabel:   new Date(t + ":00+09:00").toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" }),
       timeLabel:   t.slice(11, 16),
+      isoTime:     t,   // "2026-06-15T21:00" 형식 (KST)
       condition:   wmoToCondition(h.weather_code?.[i]),
       temp:        h.temperature_2m?.[i]         ?? 0,
       tempMin:     day.tempMin                   ?? h.temperature_2m?.[i] ?? 0,
