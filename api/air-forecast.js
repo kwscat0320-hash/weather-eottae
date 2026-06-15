@@ -89,7 +89,9 @@ export default async function handler(req, res) {
   const yesterday = yesterdayKST();
   const region = getAirRegion(Number(lat), Number(lon));
 
-  const [airkoreaYestRes, airkoreaTodayRes, meteoRes, ecmwfRes] = await Promise.allSettled([
+  const owKey = process.env.OW_KEY;
+
+  const [airkoreaYestRes, airkoreaTodayRes, meteoRes, owRes] = await Promise.allSettled([
     kmaKey
       ? httpsGetJson(`https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMinuDustFrcstDspth?serviceKey=${kmaKey.trim()}&returnType=json&numOfRows=50&pageNo=1&searchDate=${yesterday}&ver=1.1`)
       : Promise.reject("no KMA_KEY"),
@@ -97,7 +99,9 @@ export default async function handler(req, res) {
       ? httpsGetJson(`https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMinuDustFrcstDspth?serviceKey=${kmaKey.trim()}&returnType=json&numOfRows=50&pageNo=1&searchDate=${today}&ver=1.1`)
       : Promise.reject("no KMA_KEY"),
     httpsGetJson(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10&timezone=Asia%2FSeoul&forecast_days=5`),
-    httpsGetJson(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10&timezone=Asia%2FSeoul&forecast_days=2&domains=cams_global`),
+    owKey
+      ? httpsGetJson(`https://api.openweathermap.org/data/2.5/air_pollution/forecast?lat=${lat}&lon=${lon}&appid=${owKey.trim()}`)
+      : Promise.reject("no OW_KEY"),
   ]);
 
   // ── 에어코리아 (어제+오늘 발표 병합) ──────────────────────────────
@@ -176,26 +180,52 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── ECMWF CAMS hourly (오늘) ──────────────────────────────────────
-  let ecmwfHourly = [];
-  if (ecmwfRes.status === "fulfilled") {
+  // ── OpenWeather 대기오염 예보 (시간별 + 3일 일별) ──────────────────
+  let owHourly = [];
+  let openweather = [];
+  if (owRes.status === "fulfilled") {
     try {
-      const hourly = ecmwfRes.value?.hourly;
-      if (hourly?.time) {
-        ecmwfHourly = hourly.time
-          .map((t, i) => ({
-            dateStr: t.slice(0, 10),
-            time:    t.slice(11, 16),
-            pm25: hourly.pm2_5?.[i] != null ? Math.round(hourly.pm2_5[i]) : null,
-            pm10: hourly.pm10?.[i]  != null ? Math.round(hourly.pm10[i])  : null,
-          }))
-          .filter(h => h.dateStr === today && (h.pm25 != null || h.pm10 != null))
-          .map(({ dateStr, ...rest }) => rest);
-      }
+      const list = owRes.value?.list || [];
+      const byDate = {};
+      list.forEach(item => {
+        // dt는 UTC 유닉스 초 → KST 변환
+        const kstDate = new Date((item.dt + 9 * 3600) * 1000);
+        const dateStr = kstDate.toISOString().slice(0, 10);
+        const timeStr = kstDate.toISOString().slice(11, 16);
+        const pm25 = item.components?.pm2_5 != null ? Math.round(item.components.pm2_5) : null;
+        const pm10 = item.components?.pm10  != null ? Math.round(item.components.pm10)  : null;
+
+        // 오늘 시간별
+        if (dateStr === today && (pm25 != null || pm10 != null)) {
+          owHourly.push({ time: timeStr, pm25, pm10 });
+        }
+
+        // 일별 집계 (내일부터)
+        if (dateStr > today) {
+          if (!byDate[dateStr]) byDate[dateStr] = { pm25s: [], pm10s: [] };
+          if (pm25 != null) byDate[dateStr].pm25s.push(pm25);
+          if (pm10  != null) byDate[dateStr].pm10s.push(pm10);
+        }
+      });
+
+      openweather = Object.entries(byDate)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(0, 3)
+        .map(([date, { pm25s, pm10s }]) => {
+          const pm25 = pm25s.length ? pm25s.reduce((a, b) => a + b, 0) / pm25s.length : 0;
+          const pm10 = pm10s.length ? pm10s.reduce((a, b) => a + b, 0) / pm10s.length : 0;
+          return {
+            dateLabel: toLabel(date),
+            pm25Grade: pm25ToGrade(pm25),
+            pm10Grade: pm10ToGrade(pm10),
+            pm25: Math.round(pm25),
+            pm10: Math.round(pm10),
+          };
+        });
     } catch (e) {
-      console.error("[air-forecast] ecmwf parse error:", e.message);
+      console.error("[air-forecast] openweather parse error:", e.message);
     }
   }
 
-  return res.status(200).json({ airkorea, openmeteo, openmeteoHourly, ecmwfHourly, region });
+  return res.status(200).json({ airkorea, openmeteo, openmeteoHourly, owHourly, openweather, region });
 }

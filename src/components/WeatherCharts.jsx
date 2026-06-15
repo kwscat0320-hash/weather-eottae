@@ -1227,9 +1227,9 @@ export function DailyAirCard({ airForecast, theme }) {
   );
 
   const sources = [
-    { name: "에어코리아", color: "#4A90D9", data: airForecast?.airkorea  || [] },
-    { name: "ECMWF",     color: "#8B5CF6", data: airForecast?.ecmwf     || [] },
-    { name: "오픈메테오", color: "#4CAF50", data: airForecast?.openmeteo || [] },
+    { name: "에어코리아",  color: "#4A90D9", data: airForecast?.airkorea   || [] },
+    { name: "오픈메테오",  color: "#4CAF50", data: airForecast?.openmeteo  || [] },
+    { name: "OpenWeather", color: "#F97316", data: airForecast?.openweather || [] },
   ];
 
   // 모든 소스에서 dateLabel 수집 → 정렬된 고유 날짜 3개
@@ -1316,7 +1316,7 @@ export function DailyAirCard({ airForecast, theme }) {
 }
 
 // ── HourlyAirCard — 오늘 시간대별 미세먼지 꺾은선 (PM2.5) ───────────────
-export function HourlyAirCard({ airHourly, openmeteoHourly, ecmwfHourly, theme }) {
+export function HourlyAirCard({ airHourly, openmeteoHourly, owHourly, theme }) {
   const [activeSrcs, setActiveSrcs] = useState(["에어코리아"]);
   const toggleSrc = name => setActiveSrcs(prev =>
     prev.includes(name) ? (prev.length > 1 ? prev.filter(n => n !== name) : prev) : [...prev, name]
@@ -1327,22 +1327,22 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, ecmwfHourly, theme }
   // 모든 소스: 현재 시간 이후만 표시 (X축을 지금부터 시작)
   const filterFromNow = (arr) =>
     (arr || []).filter(h => h.time && parseInt(h.time.slice(0, 2), 10) >= nowHour && h.pm25 != null);
-  const akSlots    = filterFromNow(airHourly);
-  const omSlots    = filterFromNow(openmeteoHourly);
-  const ecmwfSlots = filterFromNow(ecmwfHourly);
+  const akSlots = filterFromNow(airHourly);
+  const omSlots = filterFromNow(openmeteoHourly);
+  const owSlots = filterFromNow(owHourly);
 
-  if (!akSlots.length && !omSlots.length && !ecmwfSlots.length) return null;
+  if (!akSlots.length && !omSlots.length && !owSlots.length) return null;
 
   const allTimes = [...new Set([
     ...akSlots.map(h => h.time),
     ...omSlots.map(h => h.time),
-    ...ecmwfSlots.map(h => h.time),
+    ...owSlots.map(h => h.time),
   ])].sort();
 
   const allSources = [
-    { name: "에어코리아", color: "#3B82F6", slots: akSlots },
-    { name: "ECMWF",     color: "#8B5CF6", slots: ecmwfSlots },
-    { name: "오픈메테오", color: "#10B981", slots: omSlots },
+    { name: "에어코리아",  color: "#3B82F6", slots: akSlots },
+    { name: "오픈메테오",  color: "#10B981", slots: omSlots },
+    { name: "OpenWeather", color: "#F97316", slots: owSlots },
   ].filter(s => s.slots.length > 0);
 
   const sources = allSources.filter(s => activeSrcs.includes(s.name));

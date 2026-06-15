@@ -310,7 +310,7 @@ export default function HomePage({ scrollRef }) {
         <HourlyAirCard
           airHourly={air?.hourly}
           openmeteoHourly={airForecast.openmeteoHourly}
-          ecmwfHourly={airForecast.ecmwfHourly}
+          owHourly={airForecast.owHourly}
           theme={theme}
         />
 
