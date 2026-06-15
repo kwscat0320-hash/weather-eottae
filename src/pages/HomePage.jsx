@@ -5,12 +5,14 @@ import { useWeather } from "../context/WeatherContext";
 import { gradeInfo } from "../utils/weather";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
+import DecisionCards from "../components/DecisionCards";
 
 export default function HomePage({ scrollRef }) {
   const {
     weather, theme, speech,
     displayLocation, loading, error,
     requestCurrentLocation, air,
+    compareWeather, meteoWeather,
   } = useWeather();
 
   const dateStr = new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
@@ -151,7 +153,14 @@ export default function HomePage({ scrollRef }) {
           )}
         </div>
 
-        {/* 상세 정보는 상세 탭에서 확인 */}
+        {/* 행동 판단 카드 */}
+        <DecisionCards
+          weather={weather}
+          air={air}
+          compareWeather={compareWeather}
+          meteoWeather={meteoWeather}
+          theme={theme}
+        />
 
         </div>{/* 카드 래퍼 끝 */}
       </div>{/* 스크롤 레이어 끝 */}
