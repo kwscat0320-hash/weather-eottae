@@ -1,23 +1,16 @@
-import React, { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useRef, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { MapPin, RefreshCw, Droplets, Wind, Umbrella } from "lucide-react";
 import { useWeather } from "../context/WeatherContext";
 import { gradeInfo } from "../utils/weather";
-import AirDot from "../components/AirDot";
-import AirCompareCard from "../components/AirCompareCard";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
-import { HourlyCompareChart, HourlyRainChart, DailyTempChart, DailyRainChart, DailyConditionCard, DailyAirCard, HourlyAirCard } from "../components/WeatherCharts";
 
 export default function HomePage({ scrollRef }) {
   const {
-    weather, theme, speech, todayForecasts, dailyForecasts,
-    compareWeather, meteoWeather, owForecast, owDailyForecasts, meteoForecast,
-    wapiWeather, wapiDailyForecasts,
-    hourSlots, alignedHourly,
+    weather, theme, speech,
     displayLocation, loading, error,
-    coords, requestCurrentLocation, air, airOw, airMeteo, airWapi,
-    weatherHistory, forecastHistory, airForecast,
+    requestCurrentLocation, air,
   } = useWeather();
 
   const dateStr = new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
@@ -63,94 +56,6 @@ export default function HomePage({ scrollRef }) {
       </div>
     );
   }
-
-  // ── 날씨 소스 비교 데이터 ──────────────────────────────────────────────
-  const weatherSources = [
-    ...(weather ? [{
-      name: "기상청",
-      obs: weather.observedAt,
-      rows: [
-        { label: "날씨",     value: weather.condition },
-        { label: "기온",     value: `${Number(weather.temp).toFixed(1)}°` },
-        { label: "체감",     value: `${Number(weather.feelsLike).toFixed(1)}°` },
-        { label: "최고",     value: `${Number(weather.high).toFixed(1)}°` },
-        { label: "최저",     value: `${Number(weather.low).toFixed(1)}°` },
-        { label: "습도",     value: `${weather.humidity}%` },
-        { label: "바람",     value: `${Number(weather.wind).toFixed(1)}m/s` },
-        { label: "강수확률", value: `${weather.rainChance}%` },
-      ],
-    }] : []),
-    ...(compareWeather ? [{
-      name: "ECMWF",
-      obs: compareWeather.observedAt,
-      rows: [
-        { label: "날씨",     value: compareWeather.condition },
-        { label: "기온",     value: `${Number(compareWeather.temp).toFixed(1)}°` },
-        { label: "체감",     value: `${Number(compareWeather.feelsLike).toFixed(1)}°` },
-        { label: "최고",     value: `${Number(compareWeather.high).toFixed(1)}°` },
-        { label: "최저",     value: `${Number(compareWeather.low).toFixed(1)}°` },
-        { label: "습도",     value: `${compareWeather.humidity}%` },
-        { label: "바람",     value: `${Number(compareWeather.wind).toFixed(1)}m/s` },
-        { label: "강수확률", value: `${compareWeather.rainChance}%` },
-      ],
-    }] : []),
-    ...(meteoWeather ? [{
-      name: "오픈메테오",
-      obs: meteoWeather.observedAt,
-      rows: [
-        { label: "날씨",     value: meteoWeather.condition },
-        { label: "기온",     value: `${Number(meteoWeather.temp).toFixed(1)}°` },
-        { label: "체감",     value: `${Number(meteoWeather.feelsLike).toFixed(1)}°` },
-        { label: "최고",     value: `${Number(meteoWeather.high).toFixed(1)}°` },
-        { label: "최저",     value: `${Number(meteoWeather.low).toFixed(1)}°` },
-        { label: "습도",     value: `${meteoWeather.humidity}%` },
-        { label: "바람",     value: `${Number(meteoWeather.wind).toFixed(1)}m/s` },
-        { label: "강수확률", value: `${meteoWeather.rainChance}%` },
-      ],
-    }] : []),
-    ...(wapiWeather ? [{
-      name: "웨더API",
-      obs: wapiWeather.observedAt,
-      rows: [
-        { label: "날씨",     value: wapiWeather.condition },
-        { label: "기온",     value: `${Number(wapiWeather.temp).toFixed(1)}°` },
-        { label: "체감",     value: `${Number(wapiWeather.feelsLike).toFixed(1)}°` },
-        { label: "최고",     value: `${Number(wapiWeather.high).toFixed(1)}°` },
-        { label: "최저",     value: `${Number(wapiWeather.low).toFixed(1)}°` },
-        { label: "습도",     value: `${wapiWeather.humidity}%` },
-        { label: "바람",     value: `${Number(wapiWeather.wind).toFixed(1)}m/s` },
-        { label: "강수확률", value: `${wapiWeather.rainChance ?? 0}%` },
-      ],
-    }] : []),
-  ];
-
-  // ── 공기질 소스 비교 데이터 ────────────────────────────────────────────
-  const airSources = [
-    ...(air ? [{
-      name: "에어코리아",
-      obs: air.stationName ? `측정소: ${air.stationName}` : null,
-      rows: [
-        { label: "미세먼지",   value: air.pm10 !== "-" ? `${air.pm10}㎍/㎥` : "-", grade: air.pm10Grade },
-        { label: "초미세먼지", value: air.pm25 !== "-" ? `${air.pm25}㎍/㎥` : "-", grade: air.pm25Grade },
-      ],
-    }] : []),
-    ...(airOw ? [{
-      name: "ECMWF",
-      obs: null,
-      rows: [
-        { label: "미세먼지",   value: `${airOw.pm10}㎍/㎥`, grade: airOw.pm10Grade },
-        { label: "초미세먼지", value: `${airOw.pm25}㎍/㎥`, grade: airOw.pm25Grade },
-      ],
-    }] : []),
-    ...(airMeteo ? [{
-      name: "오픈메테오",
-      obs: null,
-      rows: [
-        { label: "미세먼지",   value: `${airMeteo.pm10}㎍/㎥`, grade: airMeteo.pm10Grade },
-        { label: "초미세먼지", value: `${airMeteo.pm25}㎍/㎥`, grade: airMeteo.pm25Grade },
-      ],
-    }] : []),
-  ];
 
   return (
     <div className={`flex-1 bg-gradient-to-b ${theme.bg} relative overflow-hidden`}>
@@ -246,78 +151,7 @@ export default function HomePage({ scrollRef }) {
           )}
         </div>
 
-        {/* 시간대별 온도 — 4소스 비교 라인 차트 */}
-        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 온도</p>
-          <HourlyCompareChart
-            alignedHourly={alignedHourly}
-            hourSlots={hourSlots}
-            weather={weather}
-            compareWeather={compareWeather}
-            meteoWeather={meteoWeather}
-            wapiWeather={wapiWeather}
-            theme={theme}
-          />
-        </div>
-
-        {/* 시간대별 강수확률 — 4소스 꺾은선 차트 */}
-        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 강수확률</p>
-          <HourlyRainChart
-            alignedHourly={alignedHourly}
-            hourSlots={hourSlots}
-            theme={theme}
-          />
-        </div>
-
-        {/* 5일 예보 — 온도 */}
-        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 기온</p>
-          <DailyTempChart
-            dailyForecasts={dailyForecasts}
-            owDailyForecasts={owDailyForecasts}
-            meteoDaily={meteoWeather?.daily}
-            wapiDailyForecasts={wapiDailyForecasts}
-            theme={theme}
-          />
-        </div>
-
-        {/* 5일 예보 — 강수확률 */}
-        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 강수확률</p>
-          <DailyRainChart
-            dailyForecasts={dailyForecasts}
-            owDailyForecasts={owDailyForecasts}
-            meteoDaily={meteoWeather?.daily}
-            wapiDailyForecasts={wapiDailyForecasts}
-            theme={theme}
-          />
-        </div>
-
-        {/* 5일 날씨 상태 */}
-        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 날씨</p>
-          <DailyConditionCard
-            dailyForecasts={dailyForecasts}
-            owDailyForecasts={owDailyForecasts}
-            meteoDaily={meteoWeather?.daily}
-            wapiDailyForecasts={wapiDailyForecasts}
-            theme={theme}
-          />
-        </div>
-
-        {/* 오늘 시간대별 미세먼지 */}
-        <HourlyAirCard
-          airHourly={air?.hourly}
-          openmeteoHourly={airForecast.openmeteoHourly}
-          owHourly={airForecast.owHourly}
-          theme={theme}
-        />
-
-        {/* 6일 미세먼지 예보 */}
-        <DailyAirCard airForecast={airForecast} theme={theme} />
-
-        {/* 최근 기상 기록 / 예보 이력 — 데이터만 유지, UI 미표시 */}
+        {/* 상세 정보는 상세 탭에서 확인 */}
 
         </div>{/* 카드 래퍼 끝 */}
       </div>{/* 스크롤 레이어 끝 */}
