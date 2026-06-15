@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   getUmbrellaDecision,
@@ -26,35 +27,47 @@ const ICONS = {
 };
 
 // ── 상세 모달 ─────────────────────────────────────────────────────────────
+// createPortal로 body에 직접 마운트 → framer-motion transform 부모 영향 없음
 function DetailModal({ decision, onClose, theme }) {
   const st = STATUS[decision.status] || STATUS.normal;
-  return (
+
+  const content = (
     <AnimatePresence>
       <motion.div
-        key="backdrop"
+        key="modal-root"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={onClose}
         style={{
-          position: "fixed", inset: 0, zIndex: 200,
-          background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)",
-        }}
-      />
-      <motion.div
-        key="sheet"
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", damping: 30, stiffness: 320 }}
-        style={{
-          position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
-          width: "100%", maxWidth: 393, zIndex: 201,
-          background: theme.card,
-          borderRadius: "28px 28px 0 0",
-          padding: "28px 24px 48px",
+          position: "fixed", inset: 0, zIndex: 9999,
+          display: "flex", alignItems: "flex-end", justifyContent: "center",
         }}
       >
+        {/* 배경 오버레이 — 블러 없이 단순 어두운 반투명 */}
+        <div
+          onClick={onClose}
+          style={{
+            position: "absolute", inset: 0,
+            background: "rgba(0,0,0,0.5)",
+          }}
+        />
+
+        {/* 바텀 시트 */}
+        <motion.div
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", damping: 32, stiffness: 340 }}
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: "relative", zIndex: 1,
+            width: "100%", maxWidth: 393,
+            background: theme.card,
+            borderRadius: "28px 28px 0 0",
+            padding: "28px 24px 52px",
+            maxHeight: "88vh", overflowY: "auto",
+          }}
+        >
         {/* 핸들 */}
         <div style={{
           width: 36, height: 4, borderRadius: 2,
@@ -151,9 +164,12 @@ function DetailModal({ decision, onClose, theme }) {
             ))}
           </div>
         )}
+        </motion.div>
       </motion.div>
     </AnimatePresence>
   );
+
+  return createPortal(content, document.body);
 }
 
 // ── 개별 행동 카드 ────────────────────────────────────────────────────────
