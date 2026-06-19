@@ -1,6 +1,6 @@
 import React from "react";
 import { useWeather } from "../context/WeatherContext";
-import { HourlyCompareChart, HourlyRainChart, DailyTempChart, DailyRainChart, DailyConditionCard, DailyAirCard, HourlyAirCard } from "../components/WeatherCharts";
+import { HourlyCompareChart, HourlyRainChart, DailyTempChart, DailyRainChart, DailyConditionCard } from "../components/WeatherCharts";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
 
@@ -10,7 +10,6 @@ export default function DetailPage({ scrollRef }) {
     compareWeather, meteoWeather, wapiWeather,
     dailyForecasts, owDailyForecasts, wapiDailyForecasts,
     hourSlots, alignedHourly,
-    air, airForecast,
     requestCurrentLocation,
   } = useWeather();
 
@@ -100,16 +99,6 @@ export default function DetailPage({ scrollRef }) {
             />
           </div>
 
-          {/* 오늘 시간대별 미세먼지 */}
-          <HourlyAirCard
-            airHourly={air?.hourly}
-            openmeteoHourly={airForecast.openmeteoHourly}
-            owHourly={airForecast.owHourly}
-            theme={theme}
-          />
-
-          {/* 3일 미세먼지 예보 */}
-          <DailyAirCard airForecast={airForecast} theme={theme} />
 
         </div>
       </div>
