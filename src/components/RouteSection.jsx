@@ -93,8 +93,8 @@ function SearchModal({ role, theme, onSelect, onClose }) {
             width: "100%", maxWidth: 393,
             background: theme.card,
             borderRadius: "28px 28px 0 0",
-            padding: "24px 20px 52px",
-            maxHeight: "80vh", display: "flex", flexDirection: "column",
+            padding: "24px 20px 96px",
+            maxHeight: "88vh", display: "flex", flexDirection: "column",
           }}
         >
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(0,0,0,0.15)", margin: "0 auto 20px" }} />
