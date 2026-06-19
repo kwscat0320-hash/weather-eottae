@@ -169,7 +169,7 @@ function SearchModal({ role, theme, onSelect, onClose }) {
 }
 
 // ── 날씨 카드 ──────────────────────────────────────────────────────────────
-function RouteCard({ role, location, weather, loading, theme, onEdit }) {
+function RouteCard({ role, location, weather, loading, theme, onEdit, onRemove }) {
   // weather = kma current 객체 { condition, temp, feelsLike, high, low, rainChance, humidity }
   const temp      = weather?.temp;
   const feelsLike = weather?.feelsLike;
@@ -186,22 +186,38 @@ function RouteCard({ role, location, weather, loading, theme, onEdit }) {
       padding: "16px 16px 14px",
       borderLeft: `4px solid ${role.color}`,
     }}>
-      {/* 역할 + 변경 버튼 */}
+      {/* 역할 + 버튼 영역 */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 15 }}>{role.emoji}</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: role.color }}>{role.label}</span>
         </div>
-        <button
-          onClick={onEdit}
-          style={{
-            fontSize: 11, color: theme.sub,
-            background: "rgba(0,0,0,0.06)", padding: "3px 10px",
-            borderRadius: 20, border: "none", cursor: "pointer",
-          }}
-        >
-          {location ? "변경" : "설정"}
-        </button>
+        <div style={{ display: "flex", gap: 6 }}>
+          {location && (
+            <button
+              onClick={onEdit}
+              style={{
+                fontSize: 11, color: theme.sub,
+                background: "rgba(0,0,0,0.06)", padding: "3px 10px",
+                borderRadius: 20, border: "none", cursor: "pointer",
+              }}
+            >
+              변경
+            </button>
+          )}
+          {onRemove && (
+            <button
+              onClick={onRemove}
+              style={{
+                fontSize: 11, color: "#EF4444",
+                background: "#FEE2E2", padding: "3px 10px",
+                borderRadius: 20, border: "none", cursor: "pointer",
+              }}
+            >
+              삭제
+            </button>
+          )}
+        </div>
       </div>
 
       {!location ? (
@@ -264,6 +280,14 @@ export default function RouteSection({ theme }) {
     catch { return { from: null, via: null, to: null }; }
   });
 
+  // 경유지 표시 여부: 저장된 경유지가 있으면 처음부터 보임
+  const [showVia, setShowVia] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      return !!(saved?.via);
+    } catch { return false; }
+  });
+
   const [weathers, setWeathers] = useState({ from: null, via: null, to: null });
   const [loadings, setLoadings] = useState({ from: false, via: false, to: false });
   const [searching, setSearching] = useState(null);
@@ -282,7 +306,7 @@ export default function RouteSection({ theme }) {
   }, []);
 
   useEffect(() => {
-    ROLES.forEach(r => { if (route[r.key]) fetchWeather(r.key, route[r.key]); });
+    ["from", "via", "to"].forEach(key => { if (route[key]) fetchWeather(key, route[key]); });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelect = (key, location) => {
@@ -293,9 +317,28 @@ export default function RouteSection({ theme }) {
     fetchWeather(key, location);
   };
 
-  const handleRefresh = () => {
-    ROLES.forEach(r => { if (route[r.key]) fetchWeather(r.key, route[r.key]); });
+  // 경유지 삭제
+  const handleRemoveVia = () => {
+    const next = { ...route, via: null };
+    setRoute(next);
+    setWeathers(prev => ({ ...prev, via: null }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setShowVia(false);
   };
+
+  // 경유지 추가
+  const handleAddVia = () => {
+    setShowVia(true);
+    setSearching("via");
+  };
+
+  const handleRefresh = () => {
+    ["from", "via", "to"].forEach(key => { if (route[key]) fetchWeather(key, route[key]); });
+  };
+
+  const FROM_ROLE = ROLES[0]; // 출발지
+  const VIA_ROLE  = ROLES[1]; // 경유지
+  const TO_ROLE   = ROLES[2]; // 도착지
 
   return (
     <>
@@ -317,20 +360,54 @@ export default function RouteSection({ theme }) {
         </button>
       </div>
 
-      {/* 3개 카드 + 연결선 */}
-      {ROLES.map((role, idx) => (
-        <React.Fragment key={role.key}>
-          <RouteCard
-            role={role}
-            location={route[role.key]}
-            weather={weathers[role.key]}
-            loading={loadings[role.key]}
-            theme={theme}
-            onEdit={() => setSearching(role.key)}
-          />
-          {idx < ROLES.length - 1 && <Connector theme={theme} />}
-        </React.Fragment>
-      ))}
+      {/* 출발지 */}
+      <RouteCard
+        role={FROM_ROLE}
+        location={route.from}
+        weather={weathers.from}
+        loading={loadings.from}
+        theme={theme}
+        onEdit={() => setSearching("from")}
+      />
+
+      {/* 경유지 연결선 + 카드 or 추가 버튼 */}
+      <Connector theme={theme} />
+      {showVia ? (
+        <RouteCard
+          role={VIA_ROLE}
+          location={route.via}
+          weather={weathers.via}
+          loading={loadings.via}
+          theme={theme}
+          onEdit={() => setSearching("via")}
+          onRemove={handleRemoveVia}
+        />
+      ) : (
+        <button
+          onClick={handleAddVia}
+          style={{
+            width: "100%", padding: "12px 16px",
+            background: theme.card,
+            border: `1.5px dashed ${VIA_ROLE.color}50`,
+            borderRadius: 16, cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 8,
+          }}
+        >
+          <span style={{ fontSize: 14 }}>{VIA_ROLE.emoji}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: VIA_ROLE.color }}>경유지 추가하기</span>
+        </button>
+      )}
+
+      {/* 도착지 연결선 + 카드 */}
+      <Connector theme={theme} />
+      <RouteCard
+        role={TO_ROLE}
+        location={route.to}
+        weather={weathers.to}
+        loading={loadings.to}
+        theme={theme}
+        onEdit={() => setSearching("to")}
+      />
 
       {/* 검색 모달 */}
       {searching && (
@@ -338,7 +415,7 @@ export default function RouteSection({ theme }) {
           role={ROLES.find(r => r.key === searching)}
           theme={theme}
           onSelect={(loc) => handleSelect(searching, loc)}
-          onClose={() => setSearching(null)}
+          onClose={() => { setSearching(null); if (!route.via) setShowVia(false); }}
         />
       )}
     </>
