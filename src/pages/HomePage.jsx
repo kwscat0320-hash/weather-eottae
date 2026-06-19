@@ -6,6 +6,7 @@ import { gradeInfo } from "../utils/weather";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
 import DecisionCards from "../components/DecisionCards";
+import RouteSection from "../components/RouteSection";
 
 export default function HomePage({ scrollRef }) {
   const {
@@ -161,6 +162,9 @@ export default function HomePage({ scrollRef }) {
           meteoWeather={meteoWeather}
           theme={theme}
         />
+
+        {/* 경로 날씨 */}
+        <RouteSection theme={theme} />
 
         </div>{/* 카드 래퍼 끝 */}
       </div>{/* 스크롤 레이어 끝 */}
