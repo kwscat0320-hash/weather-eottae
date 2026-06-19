@@ -13,10 +13,32 @@ const ROLES = [
 
 async function searchLocations(query) {
   const res = await fetch(
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=6&language=ko&format=json`
+    `https://nominatim.openstreetmap.org/search` +
+    `?q=${encodeURIComponent(query)}` +
+    `&format=json&addressdetails=1&limit=8&accept-language=ko&countrycodes=kr`,
+    { headers: { "Accept-Language": "ko" } }
   );
   const data = await res.json();
-  return data.results || [];
+
+  // 구/시/동 단위로 표시명 정리
+  return data.map(r => {
+    const a = r.address || {};
+    // 표시할 이름: 구 > 시군구 > 읍면동 순
+    const district = a.borough || a.suburb || a.county || a.city_district || a.town || a.village || a.city || r.name;
+    const city     = a.city || a.county || a.state;
+    const name     = district !== city ? district : district;
+    return {
+      name:    name || r.display_name.split(",")[0].trim(),
+      admin1:  a.city || a.county || a.state || "",
+      country: a.country || "대한민국",
+      lat:     parseFloat(r.lat),
+      lng:     parseFloat(r.lon),
+      displayName: r.display_name,
+    };
+  }).filter((r, i, arr) =>
+    // 중복 좌표 제거 (소수점 2자리 기준)
+    arr.findIndex(x => Math.abs(x.lat - r.lat) < 0.01 && Math.abs(x.lng - r.lng) < 0.01) === i
+  );
 }
 
 async function fetchLocationWeather(lat, lng) {
@@ -132,7 +154,7 @@ function SearchModal({ role, theme, onSelect, onClose }) {
             {results.map((r, i) => (
               <button
                 key={i}
-                onClick={() => onSelect({ name: r.name, country: r.country, admin1: r.admin1, lat: r.latitude, lng: r.longitude })}
+                onClick={() => onSelect({ name: r.name, admin1: r.admin1, country: r.country, lat: r.lat, lng: r.lng })}
                 style={{
                   width: "100%", textAlign: "left",
                   padding: "12px 4px",
@@ -142,13 +164,13 @@ function SearchModal({ role, theme, onSelect, onClose }) {
                 }}
               >
                 <MapPin size={16} style={{ color: role.color, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>{r.name}</p>
-                  <p style={{ fontSize: 11, color: theme.sub, marginTop: 2 }}>
-                    {[r.admin1, r.country].filter(Boolean).join(", ")}
+                  <p style={{ fontSize: 11, color: theme.sub, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {r.displayName}
                   </p>
                 </div>
-                <ChevronRight size={14} style={{ color: theme.sub }} />
+                <ChevronRight size={14} style={{ color: theme.sub, flexShrink: 0 }} />
               </button>
             ))}
           </div>
