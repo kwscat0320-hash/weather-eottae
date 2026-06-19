@@ -44,9 +44,7 @@ async function searchLocations(query) {
 async function fetchLocationWeather(lat, lng) {
   const res = await fetch(`/api/kma?lat=${lat}&lon=${lng}`);
   if (!res.ok) throw new Error("KMA fetch failed");
-  const data = await res.json();
-  // current 필드를 그대로 반환 (condition, temp, feelsLike, high, low, rainChance, humidity)
-  return data.current ?? null;
+  return res.json(); // { current, forecast }
 }
 
 // ── 위치 검색 모달 ─────────────────────────────────────────────────────────
@@ -169,23 +167,30 @@ function SearchModal({ role, theme, onSelect, onClose }) {
 }
 
 // ── 날씨 카드 ──────────────────────────────────────────────────────────────
-function RouteCard({ role, location, weather, loading, theme, onEdit, onRemove }) {
-  // weather = kma current 객체 { condition, temp, feelsLike, high, low, rainChance, humidity }
-  const temp      = weather?.temp;
-  const feelsLike = weather?.feelsLike;
-  const high      = weather?.high;
-  const low       = weather?.low;
-  const rain      = weather?.rainChance;
-  const humidity  = weather?.humidity;
-  const condition = weather?.condition ?? "";
+function RouteCard({ role, location, weather, loading, theme, onEdit, onRemove, onDetail }) {
+  // weather = { current, forecast } (KMA 전체 응답)
+  const cur       = weather?.current;
+  const temp      = cur?.temp;
+  const feelsLike = cur?.feelsLike;
+  const high      = cur?.high;
+  const low       = cur?.low;
+  const rain      = cur?.rainChance;
+  const humidity  = cur?.humidity;
+  const condition = cur?.condition ?? "";
+
+  const clickable = !!(cur && onDetail);
 
   return (
-    <div style={{
-      background: theme.card,
-      borderRadius: 20,
-      padding: "16px 16px 14px",
-      borderLeft: `4px solid ${role.color}`,
-    }}>
+    <div
+      onClick={clickable ? onDetail : undefined}
+      style={{
+        background: theme.card,
+        borderRadius: 20,
+        padding: "16px 16px 14px",
+        borderLeft: `4px solid ${role.color}`,
+        cursor: clickable ? "pointer" : "default",
+      }}
+    >
       {/* 역할 + 버튼 영역 */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -195,7 +200,7 @@ function RouteCard({ role, location, weather, loading, theme, onEdit, onRemove }
         <div style={{ display: "flex", gap: 6 }}>
           {location && (
             <button
-              onClick={onEdit}
+              onClick={e => { e.stopPropagation(); onEdit(); }}
               style={{
                 fontSize: 11, color: theme.sub,
                 background: "rgba(0,0,0,0.06)", padding: "3px 10px",
@@ -207,7 +212,7 @@ function RouteCard({ role, location, weather, loading, theme, onEdit, onRemove }
           )}
           {onRemove && (
             <button
-              onClick={onRemove}
+              onClick={e => { e.stopPropagation(); onRemove(); }}
               style={{
                 fontSize: 11, color: "#EF4444",
                 background: "#FEE2E2", padding: "3px 10px",
@@ -264,6 +269,167 @@ function RouteCard({ role, location, weather, loading, theme, onEdit, onRemove }
   );
 }
 
+// ── 상세 날씨 모달 ────────────────────────────────────────────────────────
+function RouteDetailModal({ location, role, weather, theme, onClose }) {
+  const cur      = weather?.current;
+  const forecast = weather?.forecast ?? [];
+
+  // 오늘 날짜 기준 일별 그룹
+  const dailyMap = {};
+  forecast.forEach(f => {
+    if (!dailyMap[f.dateLabel]) dailyMap[f.dateLabel] = [];
+    dailyMap[f.dateLabel].push(f);
+  });
+  const dailyEntries = Object.entries(dailyMap).slice(0, 5);
+
+  // 시간별 (오늘 + 내일까지 24개)
+  const nowHour = new Date(Date.now() + 9 * 3600 * 1000).getUTCHours();
+  const hourlySlots = forecast
+    .filter(f => {
+      const h = parseInt(f.timeLabel?.slice(0, 2) ?? "0", 10);
+      return f === forecast[0] || true; // 앞에서부터 24개
+    })
+    .slice(0, 24);
+
+  const content = (
+    <AnimatePresence>
+      <motion.div
+        key="route-detail-root"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center",
+        }}
+      >
+        {/* 배경 */}
+        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,1)" }} />
+
+        {/* 시트 */}
+        <motion.div
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", damping: 32, stiffness: 340 }}
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: "relative", zIndex: 1,
+            width: "100%", maxWidth: 393,
+            background: theme.cardsBg ?? "#f1f5f9",
+            borderRadius: "28px 28px 0 0",
+            maxHeight: "92vh", overflowY: "auto",
+            scrollbarWidth: "none",
+          }}
+        >
+          {/* 핸들 */}
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(0,0,0,0.15)", margin: "16px auto 0" }} />
+
+          {/* 헤더 */}
+          <div style={{
+            padding: "16px 20px 20px",
+            background: theme.card,
+            borderRadius: "28px 28px 0 0",
+            marginBottom: 8,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 18 }}>{role.emoji}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: role.color }}>{role.label}</span>
+              </div>
+              <button
+                onClick={onClose}
+                style={{ background: "rgba(0,0,0,0.06)", border: "none", borderRadius: 20, padding: "4px 12px", cursor: "pointer", fontSize: 12, color: theme.sub }}
+              >
+                닫기
+              </button>
+            </div>
+
+            <p style={{ fontSize: 20, fontWeight: 800, color: theme.text }}>{location.name}</p>
+            <p style={{ fontSize: 11, color: theme.sub, marginBottom: 12 }}>
+              {[location.admin1, location.country].filter(Boolean).join(", ")}
+            </p>
+
+            {cur && (
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+                <div>
+                  <span style={{ fontSize: 52, fontWeight: 800, color: theme.text, lineHeight: 1 }}>
+                    {Number(cur.temp).toFixed(1)}°
+                  </span>
+                  <p style={{ fontSize: 14, color: theme.sub, marginTop: 4 }}>{cur.condition}</p>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>
+                    최고 {Number(cur.high).toFixed(1)}° / 최저 {Number(cur.low).toFixed(1)}°
+                  </p>
+                  <p style={{ fontSize: 12, color: theme.sub, marginTop: 4 }}>체감 {Number(cur.feelsLike).toFixed(1)}°</p>
+                  <p style={{ fontSize: 12, color: theme.sub, marginTop: 2 }}>강수 {cur.rainChance}% · 습도 {cur.humidity}%</p>
+                  <p style={{ fontSize: 12, color: theme.sub, marginTop: 2 }}>바람 {Number(cur.wind).toFixed(1)}m/s</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ padding: "0 12px 40px", display: "flex", flexDirection: "column", gap: 10 }}>
+
+            {/* 시간별 예보 */}
+            {hourlySlots.length > 0 && (
+              <div style={{ background: theme.card, borderRadius: 20, padding: "16px 16px" }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: theme.sub, marginBottom: 14 }}>시간별 예보</p>
+                <div style={{ overflowX: "auto", scrollbarWidth: "none" }}>
+                  <div style={{ display: "flex", gap: 14, minWidth: "max-content" }}>
+                    {hourlySlots.map((f, i) => (
+                      <div key={i} style={{ textAlign: "center", minWidth: 44 }}>
+                        <p style={{ fontSize: 11, color: theme.sub, marginBottom: 6 }}>{f.timeLabel}</p>
+                        <p style={{ fontSize: 11, color: theme.sub, marginBottom: 4 }}>{f.condition?.slice(0, 2)}</p>
+                        <p style={{ fontSize: 14, fontWeight: 800, color: theme.text }}>{f.temp != null ? `${Number(f.temp).toFixed(0)}°` : "—"}</p>
+                        <p style={{ fontSize: 10, color: "#3B82F6", marginTop: 4 }}>{f.rainChance}%</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 일별 예보 */}
+            {dailyEntries.length > 0 && (
+              <div style={{ background: theme.card, borderRadius: 20, padding: "16px 16px" }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: theme.sub, marginBottom: 12 }}>일별 예보</p>
+                {dailyEntries.map(([dateLabel, slots], i) => {
+                  const temps = slots.map(s => s.temp).filter(v => v != null);
+                  const maxTemp = slots[0]?.officialTMX ?? (temps.length ? Math.max(...temps) : null);
+                  const minTemp = slots[0]?.officialTMN ?? (temps.length ? Math.min(...temps) : null);
+                  const rainMax = Math.max(...slots.map(s => s.rainChance ?? 0));
+                  const cond    = slots[Math.floor(slots.length / 2)]?.condition ?? "";
+                  return (
+                    <div key={dateLabel} style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "10px 0",
+                      borderBottom: i < dailyEntries.length - 1 ? `1px solid rgba(0,0,0,0.06)` : "none",
+                    }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: theme.text, width: 100 }}>{dateLabel}</p>
+                      <p style={{ fontSize: 12, color: theme.sub, flex: 1, textAlign: "center" }}>{cond}</p>
+                      <p style={{ fontSize: 11, color: "#3B82F6", width: 36, textAlign: "right" }}>
+                        {rainMax}%
+                      </p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: theme.text, width: 80, textAlign: "right" }}>
+                        {minTemp != null ? `${Number(minTemp).toFixed(0)}°` : "—"} / {maxTemp != null ? `${Number(maxTemp).toFixed(0)}°` : "—"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+
+  return createPortal(content, document.body);
+}
+
 // ── 경로 연결선 ────────────────────────────────────────────────────────────
 function Connector({ theme }) {
   return (
@@ -291,6 +457,7 @@ export default function RouteSection({ theme }) {
   const [weathers, setWeathers] = useState({ from: null, via: null, to: null });
   const [loadings, setLoadings] = useState({ from: false, via: false, to: false });
   const [searching, setSearching] = useState(null);
+  const [detailTarget, setDetailTarget] = useState(null); // { key, role, location }
 
   const fetchWeather = useCallback(async (key, location) => {
     if (!location) return;
@@ -368,6 +535,7 @@ export default function RouteSection({ theme }) {
         loading={loadings.from}
         theme={theme}
         onEdit={() => setSearching("from")}
+        onDetail={route.from && weathers.from ? () => setDetailTarget({ key: "from", role: FROM_ROLE, location: route.from }) : undefined}
       />
 
       {/* 경유지 연결선 + 카드 or 추가 버튼 */}
@@ -381,6 +549,7 @@ export default function RouteSection({ theme }) {
           theme={theme}
           onEdit={() => setSearching("via")}
           onRemove={handleRemoveVia}
+          onDetail={route.via && weathers.via ? () => setDetailTarget({ key: "via", role: VIA_ROLE, location: route.via }) : undefined}
         />
       ) : (
         <button
@@ -407,6 +576,7 @@ export default function RouteSection({ theme }) {
         loading={loadings.to}
         theme={theme}
         onEdit={() => setSearching("to")}
+        onDetail={route.to && weathers.to ? () => setDetailTarget({ key: "to", role: TO_ROLE, location: route.to }) : undefined}
       />
 
       {/* 검색 모달 */}
@@ -416,6 +586,17 @@ export default function RouteSection({ theme }) {
           theme={theme}
           onSelect={(loc) => handleSelect(searching, loc)}
           onClose={() => { setSearching(null); if (!route.via) setShowVia(false); }}
+        />
+      )}
+
+      {/* 지역 상세 날씨 모달 */}
+      {detailTarget && (
+        <RouteDetailModal
+          location={detailTarget.location}
+          role={detailTarget.role}
+          weather={weathers[detailTarget.key]}
+          theme={theme}
+          onClose={() => setDetailTarget(null)}
         />
       )}
     </>
