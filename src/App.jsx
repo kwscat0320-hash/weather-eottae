@@ -2,14 +2,14 @@
 import { WeatherProvider } from "./context/WeatherContext";
 import BottomNav from "./components/BottomNav";
 import HomePage from "./pages/HomePage";
-import FavoritesPage from "./pages/FavoritesPage";
+import RoutePage from "./pages/RoutePage";
 import SchedulePage from "./pages/SchedulePage";
 import DetailPage from "./pages/DetailPage";
 import SettingsPage from "./pages/SettingsPage";
 
 const PAGES = {
   home: HomePage,
-  favorites: FavoritesPage,
+  route: RoutePage,
   schedule: SchedulePage,
   detail: DetailPage,
   settings: SettingsPage,

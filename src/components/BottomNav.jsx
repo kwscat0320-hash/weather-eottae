@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Home, MapPin, Calendar, BarChart2, Settings } from "lucide-react";
+import { Home, Navigation, Calendar, BarChart2, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const TABS = [
   { id: "home",      label: "홈",   Icon: Home },
   { id: "detail",    label: "상세", Icon: BarChart2 },
   { id: "schedule",  label: "일정", Icon: Calendar },
-  { id: "favorites", label: "관심", Icon: MapPin },
+  { id: "route",    label: "경로", Icon: Navigation },
   { id: "settings",  label: "설정", Icon: Settings },
 ];
 
