@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { MapPin, RefreshCw, Droplets, Wind, Umbrella } from "lucide-react";
+import { MapPin, Droplets, Wind, Umbrella } from "lucide-react";
 import { useWeather } from "../context/WeatherContext";
 import { gradeInfo } from "../utils/weather";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
@@ -79,11 +79,6 @@ export default function HomePage({ scrollRef }) {
               <span className="text-xs">{displayLocation}</span>
             </div>
           </div>
-          <button onClick={handleForceRefresh}
-            className="w-9 h-9 rounded-full flex items-center justify-center mt-1"
-            style={{ background: "rgba(255,254,254,0.3)" }}>
-            <RefreshCw size={16} style={{ color: theme.text }} />
-          </button>
         </div>
 
         {/* 날씨 정보 + 캐릭터 */}
