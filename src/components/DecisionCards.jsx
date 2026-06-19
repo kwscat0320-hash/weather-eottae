@@ -7,8 +7,18 @@ import {
   getRunningDecision,
   getOutfitDecision,
   getForecastConfidence,
-  getTodaySummary,
 } from "../utils/decisions";
+
+const GUIDE_STORAGE_KEY = "action_guide_enabled_v1";
+const ALL_KEYS = ["umbrella", "laundry", "running", "outfit", "forecast"];
+
+function loadEnabledKeys() {
+  try {
+    const raw = localStorage.getItem(GUIDE_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return ALL_KEYS;
+}
 
 // ── 상태별 스타일 ──────────────────────────────────────────────────────────
 const STATUS = {
@@ -213,51 +223,34 @@ function ActionCard({ decision, theme, onClick }) {
   );
 }
 
-// ── 오늘의 결론 배너 ──────────────────────────────────────────────────────
-function TodayConclusion({ text, theme }) {
-  return (
-    <div style={{
-      background: theme.card,
-      borderRadius: 20, padding: "16px 18px",
-      borderLeft: "4px solid #6366F1",
-    }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: "#6366F1", marginBottom: 6, opacity: 0.8 }}>
-        💬 오늘의 결론
-      </p>
-      <p style={{ fontSize: 14, fontWeight: 600, color: theme.text, lineHeight: 1.6 }}>
-        {text}
-      </p>
-    </div>
-  );
-}
-
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────
 export default function DecisionCards({ weather, air, compareWeather, meteoWeather, theme }) {
   const [openDecision, setOpenDecision] = useState(null);
 
   if (!weather) return null;
 
-  const umbrella   = getUmbrellaDecision(weather);
-  const laundry    = getLaundryDecision(weather);
-  const running    = getRunningDecision(weather, air);
-  const outfit     = getOutfitDecision(weather);
-  const confidence = getForecastConfidence(weather, compareWeather, meteoWeather);
-  const summary    = getTodaySummary(umbrella, laundry, running, outfit, confidence);
+  const enabledKeys = loadEnabledKeys();
+  if (enabledKeys.length === 0) return null;
 
-  const decisions = [umbrella, laundry, running, outfit, confidence];
+  const all = {
+    umbrella: getUmbrellaDecision(weather),
+    laundry:  getLaundryDecision(weather),
+    running:  getRunningDecision(weather, air),
+    outfit:   getOutfitDecision(weather),
+    forecast: getForecastConfidence(weather, compareWeather, meteoWeather),
+  };
+
+  const decisions = ALL_KEYS.filter(k => enabledKeys.includes(k)).map(k => all[k]);
 
   return (
     <>
-      {/* 오늘의 결론 */}
-      <TodayConclusion text={summary} theme={theme} />
-
       {/* 섹션 레이블 */}
       <p style={{ fontSize: 11, fontWeight: 700, color: theme.sub, opacity: 0.6,
         letterSpacing: "0.08em", paddingLeft: 4, paddingTop: 4 }}>
         행동 가이드
       </p>
 
-      {/* 5개 카드 */}
+      {/* 선택된 카드만 표시 */}
       {decisions.map((d) => (
         <ActionCard
           key={d.title}
