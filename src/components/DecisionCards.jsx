@@ -15,9 +15,9 @@ const ALL_KEYS = ["umbrella", "laundry", "running", "outfit", "forecast"];
 function loadEnabledKeys() {
   try {
     const raw = localStorage.getItem(GUIDE_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw !== null) return JSON.parse(raw); // 저장된 값 사용 (빈 배열 포함)
   } catch {}
-  return ALL_KEYS;
+  return null; // 한 번도 설정 안 한 상태
 }
 
 // ── 상태별 스타일 ──────────────────────────────────────────────────────────
@@ -224,13 +224,38 @@ function ActionCard({ decision, theme, onClick }) {
 }
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────
-export default function DecisionCards({ weather, air, compareWeather, meteoWeather, theme }) {
+export default function DecisionCards({ weather, air, compareWeather, meteoWeather, theme, onGoToSettings }) {
   const [openDecision, setOpenDecision] = useState(null);
 
   if (!weather) return null;
 
   const enabledKeys = loadEnabledKeys();
-  if (enabledKeys.length === 0) return null;
+
+  // 미설정 상태(null) 또는 전체 해제(빈 배열) → 안내 버튼
+  if (!enabledKeys || enabledKeys.length === 0) {
+    return (
+      <button
+        onClick={onGoToSettings}
+        style={{
+          width: "100%", textAlign: "left",
+          background: theme.card,
+          borderRadius: 20, padding: "18px 20px",
+          border: `1.5px dashed rgba(0,0,0,0.12)`,
+          cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 20 }}>🧭</span>
+          <div style={{ textAlign: "left" }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>행동가이드를 선택해주세요</p>
+            <p style={{ fontSize: 11, color: theme.sub, marginTop: 2 }}>설정에서 원하는 가이드를 골라보세요</p>
+          </div>
+        </div>
+        <span style={{ fontSize: 12, color: theme.sub, opacity: 0.6 }}>설정 →</span>
+      </button>
+    );
+  }
 
   const all = {
     umbrella: getUmbrellaDecision(weather),

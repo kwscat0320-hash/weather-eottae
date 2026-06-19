@@ -31,7 +31,7 @@ export default function App() {
         <div
           className="w-full max-w-[393px] h-screen flex flex-col overflow-hidden relative"
         >
-          <PageComponent scrollRef={scrollRef} />
+          <PageComponent scrollRef={scrollRef} onNavigate={handlePageChange} />
           <BottomNav current={currentPage} onChange={handlePageChange} scrollRef={scrollRef} />
         </div>
       </div>

@@ -8,7 +8,7 @@ import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
 import DecisionCards from "../components/DecisionCards";
 import RouteSection from "../components/RouteSection";
 
-export default function HomePage({ scrollRef }) {
+export default function HomePage({ scrollRef, onNavigate }) {
   const {
     weather, theme, speech,
     displayLocation, loading, error,
@@ -156,6 +156,7 @@ export default function HomePage({ scrollRef }) {
           compareWeather={compareWeather}
           meteoWeather={meteoWeather}
           theme={theme}
+          onGoToSettings={() => onNavigate?.("settings")}
         />
 
         {/* 경로 날씨 */}
