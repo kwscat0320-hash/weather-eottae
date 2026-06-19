@@ -53,12 +53,12 @@ function DetailModal({ decision, onClose, theme }) {
           display: "flex", alignItems: "flex-end", justifyContent: "center",
         }}
       >
-        {/* 배경 오버레이 — 블러 없이 단순 어두운 반투명 */}
+        {/* 배경 오버레이 — 투명도 없음 */}
         <div
           onClick={onClose}
           style={{
             position: "absolute", inset: 0,
-            background: "rgba(0,0,0,0.5)",
+            background: "rgba(0,0,0,1)",
           }}
         />
 
