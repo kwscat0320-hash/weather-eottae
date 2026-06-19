@@ -42,25 +42,11 @@ async function searchLocations(query) {
 }
 
 async function fetchLocationWeather(lat, lng) {
-  const res = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
-    `&current=temperature_2m,apparent_temperature,weathercode,relativehumidity_2m` +
-    `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode` +
-    `&timezone=Asia/Seoul&forecast_days=1`
-  );
-  return res.json();
-}
-
-function codeToWeather(code) {
-  if (code === 0)  return { label: "맑음",    emoji: "☀️" };
-  if (code <= 3)   return { label: "구름조금", emoji: "⛅" };
-  if (code <= 49)  return { label: "안개",    emoji: "🌫️" };
-  if (code <= 59)  return { label: "이슬비",  emoji: "🌦️" };
-  if (code <= 69)  return { label: "비",      emoji: "🌧️" };
-  if (code <= 79)  return { label: "눈",      emoji: "❄️" };
-  if (code <= 82)  return { label: "소나기",  emoji: "🌦️" };
-  if (code <= 99)  return { label: "뇌우",    emoji: "⛈️" };
-  return            { label: "흐림",    emoji: "☁️" };
+  const res = await fetch(`/api/kma?lat=${lat}&lon=${lng}`);
+  if (!res.ok) throw new Error("KMA fetch failed");
+  const data = await res.json();
+  // current 필드를 그대로 반환 (condition, temp, feelsLike, high, low, rainChance, humidity)
+  return data.current ?? null;
 }
 
 // ── 위치 검색 모달 ─────────────────────────────────────────────────────────
@@ -184,13 +170,14 @@ function SearchModal({ role, theme, onSelect, onClose }) {
 
 // ── 날씨 카드 ──────────────────────────────────────────────────────────────
 function RouteCard({ role, location, weather, loading, theme, onEdit }) {
-  const cond = weather ? codeToWeather(weather.daily.weathercode[0]) : null;
-  const temp     = weather?.current?.temperature_2m;
-  const feelsLike = weather?.current?.apparent_temperature;
-  const high     = weather?.daily?.temperature_2m_max[0];
-  const low      = weather?.daily?.temperature_2m_min[0];
-  const rain     = weather?.daily?.precipitation_probability_max[0];
-  const humidity = weather?.current?.relativehumidity_2m;
+  // weather = kma current 객체 { condition, temp, feelsLike, high, low, rainChance, humidity }
+  const temp      = weather?.temp;
+  const feelsLike = weather?.feelsLike;
+  const high      = weather?.high;
+  const low       = weather?.low;
+  const rain      = weather?.rainChance;
+  const humidity  = weather?.humidity;
+  const condition = weather?.condition ?? "";
 
   return (
     <div style={{
@@ -241,18 +228,17 @@ function RouteCard({ role, location, weather, loading, theme, onEdit }) {
             <p style={{ fontSize: 10, color: theme.sub, marginBottom: 6 }}>
               {[location.admin1, location.country].filter(Boolean).join(", ")}
             </p>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-              <span style={{ fontSize: 32, fontWeight: 800, color: theme.text }}>{Math.round(temp)}°</span>
-              <span style={{ fontSize: 20 }}>{cond.emoji}</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+              <span style={{ fontSize: 32, fontWeight: 800, color: theme.text }}>{Number(temp).toFixed(1)}°</span>
             </div>
-            <p style={{ fontSize: 12, color: theme.sub }}>{cond.label}</p>
+            <p style={{ fontSize: 12, color: theme.sub }}>{condition}</p>
           </div>
           <div style={{ textAlign: "right" }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>
-              최고 {Math.round(high)}° / 최저 {Math.round(low)}°
+              최고 {Number(high).toFixed(1)}° / 최저 {Number(low).toFixed(1)}°
             </p>
             <p style={{ fontSize: 11, color: theme.sub, marginTop: 3 }}>강수 {rain ?? 0}%</p>
-            <p style={{ fontSize: 11, color: theme.sub, marginTop: 2 }}>습도 {humidity}% · 체감 {Math.round(feelsLike)}°</p>
+            <p style={{ fontSize: 11, color: theme.sub, marginTop: 2 }}>습도 {humidity}% · 체감 {Number(feelsLike).toFixed(1)}°</p>
           </div>
         </div>
       ) : (
