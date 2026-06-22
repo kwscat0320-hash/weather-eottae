@@ -195,10 +195,14 @@ function DetailModal({ initialId, theme, onClose, favorites, weathers }) {
           onDragEnd={(_, info) => {
             if (info.velocity.y > 500 || info.offset.y > 150) onClose();
           }}
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 32, stiffness: 340 }}
+          variants={{
+            hidden: { y: "100%" },
+            visible: { y: 0, transition: { type: "spring", damping: 32, stiffness: 340 } },
+            exit:   { y: "100%", transition: { type: "tween", duration: 0.18, ease: "easeIn" } },
+          }}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
           onClick={e => e.stopPropagation()}
           style={{
             position: "relative", zIndex: 1, width: "100%", maxWidth: 393,
