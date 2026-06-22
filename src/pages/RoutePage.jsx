@@ -87,8 +87,8 @@ function SearchModal({ role, theme, onSelect, onClose }) {
             width: "100%", maxWidth: 393,
             background: theme.card,
             borderRadius: "28px 28px 0 0",
-            padding: "24px 20px 48px",
-            maxHeight: "80vh", display: "flex", flexDirection: "column",
+            padding: "24px 20px 32px",
+            height: "100dvh", display: "flex", flexDirection: "column",
           }}
         >
           {/* 핸들 */}

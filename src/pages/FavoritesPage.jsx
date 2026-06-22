@@ -78,7 +78,7 @@ function SearchModal({ theme, onSelect, onClose }) {
           style={{
             position: "relative", zIndex: 1, width: "100%", maxWidth: 393,
             background: theme.card, borderRadius: "28px 28px 0 0",
-            padding: "24px 20px 52px", maxHeight: "80vh", display: "flex", flexDirection: "column",
+            padding: "24px 20px 32px", height: "100dvh", display: "flex", flexDirection: "column",
           }}
         >
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(0,0,0,0.15)", margin: "0 auto 20px" }} />
@@ -158,6 +158,12 @@ function DetailModal({ location, weather, theme, onClose }) {
       >
         <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,1)" }} />
         <motion.div
+          drag="y"
+          dragConstraints={{ top: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(_, info) => {
+            if (info.velocity.y > 500 || info.offset.y > 150) onClose();
+          }}
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
@@ -167,6 +173,7 @@ function DetailModal({ location, weather, theme, onClose }) {
             position: "relative", zIndex: 1, width: "100%", maxWidth: 393,
             background: theme.cardsBg ?? "#f1f5f9",
             borderRadius: "28px 28px 0 0", maxHeight: "92vh", overflowY: "auto", scrollbarWidth: "none",
+            cursor: "grab",
           }}
         >
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(0,0,0,0.15)", margin: "16px auto 0" }} />
