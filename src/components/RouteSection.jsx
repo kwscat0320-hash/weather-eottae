@@ -78,27 +78,25 @@ function SearchModal({ role, theme, onSelect, onClose }) {
         exit={{ opacity: 0 }}
         style={{
           position: "fixed", inset: 0, zIndex: 9999,
-          display: "flex", alignItems: "flex-end", justifyContent: "center",
+          display: "flex", alignItems: "flex-start", justifyContent: "center",
         }}
       >
-        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
+        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0)" }} />
         <motion.div
-          initial={{ y: "100%" }}
+          initial={{ y: "-100%" }}
           animate={{ y: 0 }}
-          exit={{ y: "100%" }}
+          exit={{ y: "-100%" }}
           transition={{ type: "spring", damping: 32, stiffness: 340 }}
           onClick={e => e.stopPropagation()}
           style={{
             position: "relative", zIndex: 1,
             width: "100%", maxWidth: 393,
             background: theme.card,
-            borderRadius: "28px 28px 0 0",
-            padding: "24px 20px 32px",
-            height: "100dvh", display: "flex", flexDirection: "column",
+            borderRadius: "0 0 28px 28px",
+            padding: "60px 20px 24px",
+            maxHeight: "80vh", display: "flex", flexDirection: "column",
           }}
         >
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(0,0,0,0.15)", margin: "0 auto 20px" }} />
-
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <span style={{ fontSize: 18 }}>{role.emoji}</span>
             <p style={{ fontSize: 16, fontWeight: 800, color: theme.text }}>{role.label} 검색</p>
