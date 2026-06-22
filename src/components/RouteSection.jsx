@@ -81,7 +81,7 @@ function SearchModal({ role, theme, onSelect, onClose }) {
           display: "flex", alignItems: "flex-start", justifyContent: "center",
         }}
       >
-        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0)" }} />
+        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,1)" }} />
         <motion.div
           initial={{ y: "-100%" }}
           animate={{ y: 0 }}
