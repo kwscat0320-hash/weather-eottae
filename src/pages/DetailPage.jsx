@@ -56,7 +56,7 @@ function AddFavModal({ theme, onSelect, onClose }) {
           initial={{ y: "-100%" }} animate={{ y: 0 }} exit={{ y: "-100%" }}
           transition={{ type: "spring", damping: 32, stiffness: 340 }}
           onClick={e => e.stopPropagation()}
-          style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 393, background: theme.card, borderRadius: "0 0 28px 28px", padding: "60px 20px 24px", maxHeight: "80vh", display: "flex", flexDirection: "column" }}
+          style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: "100%", background: theme.card, borderRadius: "0 0 28px 28px", padding: "60px 20px 24px", maxHeight: "80vh", display: "flex", flexDirection: "column" }}
         >
           <p style={{ fontSize: 16, fontWeight: 800, color: theme.text, marginBottom: 16 }}>관심지역 추가</p>
           <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(0,0,0,0.06)", borderRadius: 14, padding: "10px 14px", marginBottom: 12 }}>
@@ -328,7 +328,7 @@ export default function DetailPage({ scrollRef }) {
       <div ref={scrollRef} className="absolute inset-0 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
         <PullIndicator pullDist={pullDist} PULL_THRESHOLD={PULL_THRESHOLD} />
 
-        <div className="px-6 pt-10 pb-4">
+        <div className="px-6 pb-4" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 24px)" }}>
           <p className="text-xs mb-1" style={{ color: theme.sub }}>상세 예보</p>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h1 className="text-xl font-bold" style={{ color: theme.text }}>{activeName}</h1>

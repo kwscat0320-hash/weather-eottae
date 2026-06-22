@@ -93,7 +93,7 @@ function SearchModal({ theme, onSelect, onClose }) {
           transition={{ type: "spring", damping: 32, stiffness: 340 }}
           onClick={e => e.stopPropagation()}
           style={{
-            position: "relative", zIndex: 1, width: "100%", maxWidth: 393,
+            position: "relative", zIndex: 1, width: "100%", maxWidth: "100%",
             background: theme.card, borderRadius: "0 0 28px 28px",
             padding: "60px 20px 24px", maxHeight: "80vh", display: "flex", flexDirection: "column",
           }}
@@ -215,7 +215,7 @@ function DetailModal({ initialId, theme, onClose, favorites, weathers }) {
           initial={{ y: "100%" }}
           onClick={e => e.stopPropagation()}
           style={{
-            position: "relative", zIndex: 1, width: "100%", maxWidth: 393,
+            position: "relative", zIndex: 1, width: "100%", maxWidth: "100%",
             background: theme.cardsBg ?? "#f1f5f9",
             borderRadius: "28px 28px 0 0", maxHeight: "92vh", overflowY: "auto", scrollbarWidth: "none",
             cursor: "grab",
@@ -470,7 +470,7 @@ export default function FavoritesPage({ scrollRef }) {
     >
       <div ref={scrollRef} className="absolute inset-0 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
         {/* 헤더 */}
-        <div className="px-6 pt-10 pb-4">
+        <div className="px-6 pb-4" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 24px)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
               <p className="text-xs mb-1" style={{ color: theme.sub }}>관심지역</p>

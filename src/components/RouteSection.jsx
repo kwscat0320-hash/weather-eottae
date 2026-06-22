@@ -107,7 +107,7 @@ function SearchModal({ role, theme, onSelect, onClose }) {
           onClick={e => e.stopPropagation()}
           style={{
             position: "relative", zIndex: 1,
-            width: "100%", maxWidth: 393,
+            width: "100%", maxWidth: "100%",
             background: theme.card,
             borderRadius: "0 0 28px 28px",
             padding: "60px 20px 24px",
@@ -351,7 +351,7 @@ function RouteDetailModal({ location, role, weather, theme, onClose }) {
           onClick={e => e.stopPropagation()}
           style={{
             position: "relative", zIndex: 1,
-            width: "100%", maxWidth: 393,
+            width: "100%", maxWidth: "100%",
             background: theme.cardsBg ?? "#f1f5f9",
             borderRadius: "28px 28px 0 0",
             maxHeight: "92vh", overflowY: "auto",

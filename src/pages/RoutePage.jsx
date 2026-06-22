@@ -84,7 +84,7 @@ function SearchModal({ role, theme, onSelect, onClose }) {
           onClick={e => e.stopPropagation()}
           style={{
             position: "relative", zIndex: 1,
-            width: "100%", maxWidth: 393,
+            width: "100%", maxWidth: "100%",
             background: theme.card,
             borderRadius: "0 0 28px 28px",
             padding: "60px 20px 24px",
@@ -317,7 +317,7 @@ export default function RoutePage({ scrollRef }) {
     >
       <div ref={scrollRef} className="absolute inset-0 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
         {/* 헤더 */}
-        <div className="px-6 pt-10 pb-4">
+        <div className="px-6 pb-4" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 24px)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
               <p className="text-xs mb-1" style={{ color: theme.sub }}>경로 날씨</p>

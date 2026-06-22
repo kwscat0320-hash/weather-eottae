@@ -8,7 +8,7 @@ export default function SchedulePage({ scrollRef }) {
   return (
     <div ref={scrollRef} className={`flex-1 bg-gradient-to-b ${theme.bg} flex flex-col overflow-y-auto`}
       style={{ scrollbarWidth: "none" }}>
-      <div className="px-6 pt-10 pb-4">
+      <div className="px-6 pb-4" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 24px)" }}>
         <p className="text-xs mb-1" style={{ color: theme.sub }}>일정</p>
         <h1 className="text-xl font-bold" style={{ color: theme.text }}>일정별 날씨</h1>
         <p className="text-xs mt-1" style={{ color: theme.sub }}>달력에서 일정과 그날의 날씨를 한 번에</p>

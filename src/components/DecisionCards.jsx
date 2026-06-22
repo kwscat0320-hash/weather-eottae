@@ -70,7 +70,7 @@ function DetailModal({ decision, onClose, theme }) {
           onClick={e => e.stopPropagation()}
           style={{
             position: "relative", zIndex: 1,
-            width: "100%", maxWidth: 393,
+            width: "100%", maxWidth: "100%",
             background: theme.card,
             borderRadius: "28px 28px 0 0",
             padding: "28px 24px 52px",

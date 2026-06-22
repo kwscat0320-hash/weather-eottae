@@ -71,7 +71,7 @@ export default function HomePage({ scrollRef, onNavigate }) {
       <div ref={weatherRef} className="absolute top-0 left-0 right-0 z-10 pointer-events-auto">
 
         {/* 상단 바 */}
-        <div className="flex items-start justify-between px-6 pt-10 pb-0">
+        <div className="flex items-start justify-between px-6 pb-0" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 24px)" }}>
           <div>
             <p className="text-xs font-medium" style={{ color: theme.sub }}>{dateStr}</p>
             <div className="flex items-center gap-1 mt-0.5" style={{ color: theme.sub }}>

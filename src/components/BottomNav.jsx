@@ -41,19 +41,20 @@ export default function BottomNav({ current, onChange, scrollRef }) {
 
   return (
     <motion.div
-      className="fixed bottom-0 left-1/2 z-50"
-      style={{ x: "-50%", width: "100%", maxWidth: 393 }}
+      className="fixed bottom-0 left-0 z-50"
+      style={{ width: "100%" }}
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: hidden ? 100 : 0, opacity: hidden ? 0 : 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       <div
-        className="mx-3 mb-4 rounded-3xl flex items-center justify-around px-2 py-2"
+        className="mx-3 rounded-3xl flex items-center justify-around px-2 py-2"
         style={{
           background: "rgba(15, 23, 42, 0.82)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           boxShadow: "0 8px 32px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.06) inset",
+          marginBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)",
         }}
       >
         {TABS.map(({ id, label, Icon }) => {
