@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import {
   getUmbrellaDecision,
   getLaundryDecision,
@@ -40,43 +40,60 @@ const ICONS = {
 // createPortal로 body에 직접 마운트 → framer-motion transform 부모 영향 없음
 function DetailModal({ decision, onClose, theme }) {
   const st = STATUS[decision.status] || STATUS.normal;
+  const controls = useAnimation();
+
+  useEffect(() => {
+    controls.start({ y: 0, transition: { type: "spring", damping: 32, stiffness: 340 } });
+  }, []);
+
+  const dismiss = async () => {
+    await controls.start({ y: "100%", transition: { type: "tween", duration: 0.18, ease: "easeIn" } });
+    onClose();
+  };
+
+  const handleDragEnd = (_, info) => {
+    if (info.velocity.y > 400 || info.offset.y > 120) {
+      dismiss();
+    } else {
+      controls.start({ y: 0, transition: { type: "spring", damping: 32, stiffness: 400 } });
+    }
+  };
 
   const content = (
-    <AnimatePresence>
+    <div
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        display: "flex", alignItems: "flex-end", justifyContent: "center",
+      }}
+    >
       <motion.div
-        key="modal-root"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+        onClick={dismiss}
         style={{
-          position: "fixed", inset: 0, zIndex: 9999,
-          display: "flex", alignItems: "flex-end", justifyContent: "center",
+          position: "absolute", inset: 0,
+          background: "rgba(0,0,0,0.25)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+        }}
+      />
+
+      {/* 바텀 시트 */}
+      <motion.div
+        drag="y"
+        dragConstraints={{ top: 0 }}
+        dragElastic={{ top: 0.05, bottom: 0.8 }}
+        onDragEnd={handleDragEnd}
+        animate={controls}
+        initial={{ y: "100%" }}
+        onClick={e => e.stopPropagation()}
+        style={{
+          position: "relative", zIndex: 1,
+          width: "100%", maxWidth: "100%",
+          background: theme.card,
+          borderRadius: "28px 28px 0 0",
+          padding: "28px 24px 52px",
+          maxHeight: "88vh", overflowY: "auto",
+          cursor: "grab",
         }}
       >
-        <div
-          onClick={onClose}
-          style={{
-            position: "absolute", inset: 0,
-            background: "rgba(0,0,0,0.25)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
-          }}
-        />
-
-        {/* 바텀 시트 */}
-        <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 32, stiffness: 340 }}
-          onClick={e => e.stopPropagation()}
-          style={{
-            position: "relative", zIndex: 1,
-            width: "100%", maxWidth: "100%",
-            background: theme.card,
-            borderRadius: "28px 28px 0 0",
-            padding: "28px 24px 52px",
-            maxHeight: "88vh", overflowY: "auto",
-          }}
-        >
         {/* 핸들 */}
         <div style={{
           width: 36, height: 4, borderRadius: 2,
@@ -173,9 +190,8 @@ function DetailModal({ decision, onClose, theme }) {
             ))}
           </div>
         )}
-        </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </div>
   );
 
   return createPortal(content, document.body);
