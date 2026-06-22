@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useWeather } from "../context/WeatherContext";
 import { HourlyCompareChart, HourlyRainChart, DailyTempChart, DailyRainChart, DailyConditionCard } from "../components/WeatherCharts";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
@@ -6,108 +6,160 @@ import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
 
 const FAV_KEY = "favorites_locations_v1";
 
-function conditionToEmoji(condition) {
-  if (!condition) return "🌡️";
-  const c = condition;
-  if (c.includes("뇌우")) return "⛈️";
-  if (c.includes("눈") && c.includes("비")) return "🌨️";
-  if (c.includes("눈")) return "❄️";
-  if (c.includes("소나기")) return "🌦️";
-  if (c.includes("비")) return "🌧️";
-  if (c.includes("이슬비") || c.includes("안개비")) return "🌦️";
-  if (c.includes("안개")) return "🌫️";
-  if (c.includes("황사") || c.includes("먼지")) return "🌪️";
-  if (c.includes("구름많음") || c.includes("흐림")) return "☁️";
-  if (c.includes("구름조금") || c.includes("구름")) return "⛅";
-  if (c.includes("맑음")) return "☀️";
-  return "🌡️";
+// KMA { current, forecast } → 차트가 요구하는 포맷으로 변환
+function buildChartData(kmaData) {
+  if (!kmaData) return null;
+  const { current, forecast = [] } = kmaData;
+
+  // hourSlots: 현재 시각부터 24시간
+  const now = new Date();
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours());
+  const hourSlots = Array.from({ length: 24 }, (_, i) => {
+    const t = new Date(base.getTime() + i * 3600 * 1000);
+    return { hour: t.getHours(), timestamp: t.getTime(), label: i === 0 ? "지금" : `${t.getHours()}시`, isMidnight: t.getHours() === 0 };
+  });
+
+  // alignedHourly.kma: forecast → 24슬롯 정렬
+  const kmaSlots = Array(24).fill(null);
+  const startMs = hourSlots[0].timestamp;
+  forecast.forEach(f => {
+    let idx;
+    if (f.isoTime) {
+      idx = Math.round((new Date(f.isoTime).getTime() - startMs) / 3600000);
+    } else if (f.timeLabel) {
+      const fh = parseInt(String(f.timeLabel).split(":")[0], 10);
+      idx = (fh - hourSlots[0].hour + 24) % 24;
+    }
+    if (idx >= 0 && idx < 24 && !kmaSlots[idx]) kmaSlots[idx] = f;
+  });
+
+  // 슬롯 0에 실측값 덮어쓰기 (현재 위치와 동일한 방식)
+  if (current) {
+    const base0 = kmaSlots[0] ?? {};
+    kmaSlots[0] = {
+      ...base0,
+      temp: current.temp,
+      humidity: current.humidity,
+      wind: current.wind,
+      rainChance: current.rainChance ?? base0.rainChance ?? 0,
+      condition: current.condition ?? base0.condition,
+      timeLabel: base0.timeLabel ?? `${String(now.getHours()).padStart(2, "0")}:00`,
+      precipitation: base0.precipitation ?? 0,
+    };
+  }
+
+  // forward-fill 빈 슬롯
+  const filled = [...kmaSlots];
+  let last = null;
+  for (let i = 0; i < filled.length; i++) {
+    if (filled[i]) last = filled[i];
+    else if (last) filled[i] = { ...last, _filled: true };
+  }
+  if (!filled[0]) {
+    const first = filled.find(v => v);
+    if (first) for (let i = 0; i < filled.length && !filled[i]; i++) filled[i] = { ...first, _filled: true };
+  }
+
+  const alignedHourly = {
+    kma: filled,
+    ow: Array(24).fill(null),
+    meteo: Array(24).fill(null),
+    wapi: Array(24).fill(null),
+  };
+
+  // dailyForecasts: 오늘 제외 날짜별 집계
+  const todayLabel = new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" });
+  const byDate = {};
+  forecast.forEach(f => {
+    if (f.dateLabel === todayLabel) return;
+    if (!byDate[f.dateLabel]) byDate[f.dateLabel] = { tmps: [], conditions: [], rainChances: [], max: null, min: null };
+    const d = byDate[f.dateLabel];
+    if (f.officialTMX != null && d.max == null) d.max = f.officialTMX;
+    if (f.officialTMN != null && d.min == null) d.min = f.officialTMN;
+    if (f.temp != null) d.tmps.push(f.temp);
+    if (f.condition) d.conditions.push(f.condition);
+    d.rainChances.push(f.rainChance ?? 0);
+  });
+  const dailyForecasts = Object.entries(byDate)
+    .map(([date, v]) => ({
+      date,
+      max: v.max ?? (v.tmps.length ? Math.max(...v.tmps) : null),
+      min: v.min ?? (v.tmps.length ? Math.min(...v.tmps) : null),
+      rainChance: Math.max(...v.rainChances),
+      condition: v.conditions[Math.floor(v.conditions.length / 2)] ?? null,
+    }))
+    .filter(d => d.max != null && d.min != null)
+    .slice(0, 5);
+
+  // weather 객체 (차트 범례·기준값용)
+  const weather = current ? {
+    condition: current.condition,
+    temp: Number(current.temp),
+    feelsLike: Number(current.feelsLike ?? current.temp),
+    high: Number(current.high ?? current.temp),
+    low: Number(current.low ?? current.temp),
+    rainChance: current.rainChance ?? 0,
+    humidity: current.humidity ?? 0,
+    wind: current.wind ?? 0,
+  } : null;
+
+  return { hourSlots, alignedHourly, dailyForecasts, weather };
 }
 
-// 관심지역 KMA 데이터 → 시간별/일별 단순 뷰
-function FavDetailView({ weather, theme }) {
-  const cur = weather?.current;
-  const forecast = weather?.forecast ?? [];
-
-  const dailyMap = {};
-  forecast.forEach(f => {
-    if (!dailyMap[f.dateLabel]) dailyMap[f.dateLabel] = [];
-    dailyMap[f.dateLabel].push(f);
-  });
-  const dailyEntries = Object.entries(dailyMap).slice(0, 5);
-  const hourlySlots = forecast.slice(0, 24);
-
+// 현재위치/관심지역 공통 차트 레이아웃
+function ChartLayout({ hourSlots, alignedHourly, weather, compareWeather, meteoWeather, wapiWeather, dailyForecasts, owDailyForecasts, wapiDailyForecasts, theme }) {
   return (
     <div className="px-4 pb-32 space-y-3">
-      {/* 현재 날씨 요약 */}
-      {cur && (
-        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-            <div>
-              <span style={{ fontSize: 52, fontWeight: 800, color: theme.text, lineHeight: 1 }}>
-                {Number(cur.temp).toFixed(1)}°
-              </span>
-              <p style={{ fontSize: 14, color: theme.sub, marginTop: 4 }}>
-                {conditionToEmoji(cur.condition)} {cur.condition}
-              </p>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>
-                최고 {Number(cur.high).toFixed(1)}° / 최저 {Number(cur.low).toFixed(1)}°
-              </p>
-              <p style={{ fontSize: 12, color: theme.sub, marginTop: 4 }}>체감 {Number(cur.feelsLike).toFixed(1)}°</p>
-              <p style={{ fontSize: 12, color: theme.sub, marginTop: 2 }}>강수 {cur.rainChance}% · 습도 {cur.humidity}%</p>
-              <p style={{ fontSize: 12, color: theme.sub, marginTop: 2 }}>바람 {Number(cur.wind).toFixed(1)}m/s</p>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 온도</p>
+        <HourlyCompareChart
+          alignedHourly={alignedHourly}
+          hourSlots={hourSlots}
+          weather={weather}
+          compareWeather={compareWeather}
+          meteoWeather={meteoWeather}
+          wapiWeather={wapiWeather}
+          theme={theme}
+        />
+      </div>
 
-      {/* 시간별 예보 */}
-      {hourlySlots.length > 0 && (
-        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간별 예보</p>
-          <div style={{ overflowX: "auto", scrollbarWidth: "none" }}>
-            <div style={{ display: "flex", gap: 14, minWidth: "max-content" }}>
-              {hourlySlots.map((f, i) => (
-                <div key={i} style={{ textAlign: "center", minWidth: 44 }}>
-                  <p style={{ fontSize: 11, color: theme.sub, marginBottom: 6 }}>{f.timeLabel}</p>
-                  <p style={{ fontSize: 18, marginBottom: 4 }}>{conditionToEmoji(f.condition)}</p>
-                  <p style={{ fontSize: 14, fontWeight: 800, color: theme.text }}>{f.temp != null ? `${Number(f.temp).toFixed(0)}°` : "—"}</p>
-                  <p style={{ fontSize: 10, color: "#3B82F6", marginTop: 4 }}>{f.rainChance}%</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 강수확률</p>
+        <HourlyRainChart alignedHourly={alignedHourly} hourSlots={hourSlots} theme={theme} />
+      </div>
 
-      {/* 일별 예보 */}
-      {dailyEntries.length > 0 && (
-        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>일별 예보</p>
-          {dailyEntries.map(([dateLabel, slots], i) => {
-            const temps = slots.map(s => s.temp).filter(v => v != null);
-            const maxTemp = slots[0]?.officialTMX ?? (temps.length ? Math.max(...temps) : null);
-            const minTemp = slots[0]?.officialTMN ?? (temps.length ? Math.min(...temps) : null);
-            const rainMax = Math.max(...slots.map(s => s.rainChance ?? 0));
-            const cond = slots[Math.floor(slots.length / 2)]?.condition ?? "";
-            return (
-              <div key={dateLabel} style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "10px 0",
-                borderBottom: i < dailyEntries.length - 1 ? "1px solid rgba(0,0,0,0.06)" : "none",
-              }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: theme.text, width: 100 }}>{dateLabel}</p>
-                <p style={{ fontSize: 20, flex: 1, textAlign: "center" }}>{conditionToEmoji(cond)}</p>
-                <p style={{ fontSize: 11, color: "#3B82F6", width: 36, textAlign: "right" }}>{rainMax}%</p>
-                <p style={{ fontSize: 13, fontWeight: 700, color: theme.text, width: 80, textAlign: "right" }}>
-                  {minTemp != null ? `${Number(minTemp).toFixed(0)}°` : "—"} / {maxTemp != null ? `${Number(maxTemp).toFixed(0)}°` : "—"}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 기온</p>
+        <DailyTempChart
+          dailyForecasts={dailyForecasts}
+          owDailyForecasts={owDailyForecasts ?? []}
+          meteoDaily={meteoWeather?.daily}
+          wapiDailyForecasts={wapiDailyForecasts ?? []}
+          theme={theme}
+        />
+      </div>
+
+      <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 강수확률</p>
+        <DailyRainChart
+          dailyForecasts={dailyForecasts}
+          owDailyForecasts={owDailyForecasts ?? []}
+          meteoDaily={meteoWeather?.daily}
+          wapiDailyForecasts={wapiDailyForecasts ?? []}
+          theme={theme}
+        />
+      </div>
+
+      <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 날씨</p>
+        <DailyConditionCard
+          dailyForecasts={dailyForecasts}
+          owDailyForecasts={owDailyForecasts ?? []}
+          meteoDaily={meteoWeather?.daily}
+          wapiDailyForecasts={wapiDailyForecasts ?? []}
+          theme={theme}
+        />
+      </div>
     </div>
   );
 }
@@ -126,7 +178,7 @@ export default function DetailPage({ scrollRef }) {
     catch { return []; }
   });
 
-  const [selectedId, setSelectedId] = useState(null); // null = 현재위치
+  const [selectedId, setSelectedId] = useState(null);
   const [favWeather, setFavWeather] = useState(null);
   const [favLoading, setFavLoading] = useState(false);
 
@@ -141,6 +193,8 @@ export default function DetailPage({ scrollRef }) {
       .catch(() => setFavWeather(null))
       .finally(() => setFavLoading(false));
   }, [selectedId]);
+
+  const favChartData = useMemo(() => buildChartData(favWeather), [favWeather]);
 
   const handleForceRefresh = () => requestCurrentLocation(true);
   const { pullDist, PULL_THRESHOLD, showToast } = usePullToRefresh(scrollRef, handleForceRefresh, loading);
@@ -174,7 +228,6 @@ export default function DetailPage({ scrollRef }) {
         {favorites.length > 0 && (
           <div style={{ overflowX: "auto", scrollbarWidth: "none", paddingLeft: 16, paddingRight: 16, marginBottom: 12 }}>
             <div style={{ display: "flex", gap: 8, minWidth: "max-content" }}>
-              {/* 현재위치 */}
               <button
                 onClick={() => setSelectedId(null)}
                 style={{
@@ -189,7 +242,6 @@ export default function DetailPage({ scrollRef }) {
                 {displayLocation}
               </button>
 
-              {/* 관심지역들 */}
               {favorites.map(fav => (
                 <button
                   key={fav.id}
@@ -214,66 +266,33 @@ export default function DetailPage({ scrollRef }) {
             <div style={{ textAlign: "center", padding: "48px 0" }}>
               <p style={{ fontSize: 13, color: theme.sub }}>날씨 불러오는 중...</p>
             </div>
-          ) : (
-            <FavDetailView weather={favWeather} theme={theme} />
-          )
+          ) : favChartData ? (
+            <ChartLayout
+              hourSlots={favChartData.hourSlots}
+              alignedHourly={favChartData.alignedHourly}
+              weather={favChartData.weather}
+              compareWeather={null}
+              meteoWeather={null}
+              wapiWeather={null}
+              dailyForecasts={favChartData.dailyForecasts}
+              owDailyForecasts={[]}
+              wapiDailyForecasts={[]}
+              theme={theme}
+            />
+          ) : null
         ) : (
-          <div className="px-4 pb-32 space-y-3">
-            <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-              <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 온도</p>
-              <HourlyCompareChart
-                alignedHourly={alignedHourly}
-                hourSlots={hourSlots}
-                weather={weather}
-                compareWeather={compareWeather}
-                meteoWeather={meteoWeather}
-                wapiWeather={wapiWeather}
-                theme={theme}
-              />
-            </div>
-
-            <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-              <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 강수확률</p>
-              <HourlyRainChart
-                alignedHourly={alignedHourly}
-                hourSlots={hourSlots}
-                theme={theme}
-              />
-            </div>
-
-            <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-              <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 기온</p>
-              <DailyTempChart
-                dailyForecasts={dailyForecasts}
-                owDailyForecasts={owDailyForecasts}
-                meteoDaily={meteoWeather?.daily}
-                wapiDailyForecasts={wapiDailyForecasts}
-                theme={theme}
-              />
-            </div>
-
-            <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-              <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 강수확률</p>
-              <DailyRainChart
-                dailyForecasts={dailyForecasts}
-                owDailyForecasts={owDailyForecasts}
-                meteoDaily={meteoWeather?.daily}
-                wapiDailyForecasts={wapiDailyForecasts}
-                theme={theme}
-              />
-            </div>
-
-            <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-              <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 날씨</p>
-              <DailyConditionCard
-                dailyForecasts={dailyForecasts}
-                owDailyForecasts={owDailyForecasts}
-                meteoDaily={meteoWeather?.daily}
-                wapiDailyForecasts={wapiDailyForecasts}
-                theme={theme}
-              />
-            </div>
-          </div>
+          <ChartLayout
+            hourSlots={hourSlots}
+            alignedHourly={alignedHourly}
+            weather={weather}
+            compareWeather={compareWeather}
+            meteoWeather={meteoWeather}
+            wapiWeather={wapiWeather}
+            dailyForecasts={dailyForecasts}
+            owDailyForecasts={owDailyForecasts}
+            wapiDailyForecasts={wapiDailyForecasts}
+            theme={theme}
+          />
         )}
       </div>
     </div>
