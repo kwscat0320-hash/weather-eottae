@@ -81,7 +81,7 @@ function SearchModal({ role, theme, onSelect, onClose }) {
           display: "flex", alignItems: "flex-start", justifyContent: "center",
         }}
       >
-        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,1)" }} />
+        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} />
         <motion.div
           initial={{ y: "-100%" }}
           animate={{ y: 0 }}
@@ -302,7 +302,7 @@ function RouteDetailModal({ location, role, weather, theme, onClose }) {
         }}
       >
         {/* 배경 */}
-        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,1)" }} />
+        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} />
 
         {/* 시트 */}
         <motion.div

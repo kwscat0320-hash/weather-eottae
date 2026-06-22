@@ -68,7 +68,7 @@ function SearchModal({ theme, onSelect, onClose }) {
         exit={{ opacity: 0 }}
         style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center" }}
       >
-        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,1)" }} />
+        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} />
         <motion.div
           initial={{ y: "-100%" }}
           animate={{ y: 0 }}
@@ -155,7 +155,7 @@ function DetailModal({ location, weather, theme, onClose }) {
         exit={{ opacity: 0 }}
         style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center" }}
       >
-        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,1)" }} />
+        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} />
         <motion.div
           drag="y"
           dragConstraints={{ top: 0 }}
