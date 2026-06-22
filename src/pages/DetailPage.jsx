@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Search, X, MapPin, ChevronRight } from "lucide-react";
 import { useWeather } from "../context/WeatherContext";
 import { fetchOpenMeteo } from "../utils/openmeteo-client";
 import { HourlyCompareChart, HourlyRainChart, DailyTempChart, DailyRainChart, DailyConditionCard } from "../components/WeatherCharts";
@@ -6,6 +9,81 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
 
 const FAV_KEY = "favorites_locations_v1";
+
+async function searchLocations(query) {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=8&accept-language=ko&countrycodes=kr`,
+    { headers: { "Accept-Language": "ko" } }
+  );
+  const data = await res.json();
+  return data.map(r => {
+    const a = r.address || {};
+    const district = a.borough || a.suburb || a.county || a.city_district || a.town || a.village || a.city || r.name;
+    return { name: district || r.display_name.split(",")[0].trim(), admin1: a.city || a.county || a.state || "", country: a.country || "대한민국", lat: parseFloat(r.lat), lng: parseFloat(r.lon), displayName: r.display_name };
+  }).filter((r, i, arr) => arr.findIndex(x => Math.abs(x.lat - r.lat) < 0.01 && Math.abs(x.lng - r.lng) < 0.01) === i);
+}
+
+function AddFavModal({ theme, onSelect, onClose }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef(null);
+  const timer = useRef(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const handleChange = v => {
+    setQuery(v);
+    clearTimeout(timer.current);
+    if (!v.trim()) { setResults([]); return; }
+    timer.current = setTimeout(async () => {
+      setLoading(true);
+      try { setResults(await searchLocations(v)); }
+      catch { setResults([]); }
+      finally { setLoading(false); }
+    }, 400);
+  };
+
+  return createPortal(
+    <AnimatePresence>
+      <motion.div
+        key="add-fav-overlay"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-start", justifyContent: "center" }}
+      >
+        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} />
+        <motion.div
+          initial={{ y: "-100%" }} animate={{ y: 0 }} exit={{ y: "-100%" }}
+          transition={{ type: "spring", damping: 32, stiffness: 340 }}
+          onClick={e => e.stopPropagation()}
+          style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 393, background: theme.card, borderRadius: "0 0 28px 28px", padding: "60px 20px 24px", maxHeight: "80vh", display: "flex", flexDirection: "column" }}
+        >
+          <p style={{ fontSize: 16, fontWeight: 800, color: theme.text, marginBottom: 16 }}>관심지역 추가</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(0,0,0,0.06)", borderRadius: 14, padding: "10px 14px", marginBottom: 12 }}>
+            <Search size={16} style={{ color: theme.sub, flexShrink: 0 }} />
+            <input ref={inputRef} value={query} onChange={e => handleChange(e.target.value)} placeholder="지역명 검색 (예: 강남구, 해운대구)" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 14, color: theme.text }} />
+            {query && <button onClick={() => handleChange("")}><X size={14} style={{ color: theme.sub }} /></button>}
+          </div>
+          <div style={{ overflowY: "auto", flex: 1 }}>
+            {loading && <p style={{ fontSize: 13, color: theme.sub, textAlign: "center", padding: "20px 0" }}>검색 중...</p>}
+            {!loading && results.length === 0 && query && <p style={{ fontSize: 13, color: theme.sub, textAlign: "center", padding: "20px 0" }}>검색 결과가 없어요</p>}
+            {results.map((r, i) => (
+              <button key={i} onClick={() => onSelect(r)} style={{ width: "100%", textAlign: "left", padding: "12px 4px", borderBottom: i < results.length - 1 ? "1px solid rgba(0,0,0,0.06)" : "none", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+                <MapPin size={16} style={{ color: "#3B82F6", flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>{r.name}</p>
+                  <p style={{ fontSize: 11, color: theme.sub, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.displayName}</p>
+                </div>
+                <ChevronRight size={14} style={{ color: theme.sub, flexShrink: 0 }} />
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
+  );
+}
 
 // 관심지역의 모든 소스 병렬 fetch
 async function fetchAllSources(lat, lng) {
@@ -197,14 +275,24 @@ export default function DetailPage({ scrollRef }) {
     requestCurrentLocation,
   } = useWeather();
 
-  const [favorites] = useState(() => {
+  const [favorites, setFavorites] = useState(() => {
     try { return JSON.parse(localStorage.getItem(FAV_KEY)) || []; }
     catch { return []; }
   });
 
+  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [favSources, setFavSources] = useState(null);
   const [favLoading, setFavLoading] = useState(false);
+
+  const handleAddFav = (location) => {
+    const id = `${location.lat.toFixed(4)}_${location.lng.toFixed(4)}`;
+    if (favorites.some(f => f.id === id)) { setShowAddModal(false); return; }
+    const next = [...favorites, { ...location, id }];
+    setFavorites(next);
+    localStorage.setItem(FAV_KEY, JSON.stringify(next));
+    setShowAddModal(false);
+  };
 
   useEffect(() => {
     if (!selectedId) { setFavSources(null); return; }
@@ -242,8 +330,21 @@ export default function DetailPage({ scrollRef }) {
 
         <div className="px-6 pt-10 pb-4">
           <p className="text-xs mb-1" style={{ color: theme.sub }}>상세 예보</p>
-          <h1 className="text-xl font-bold" style={{ color: theme.text }}>{activeName}</h1>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <h1 className="text-xl font-bold" style={{ color: theme.text }}>{activeName}</h1>
+            <button
+              onClick={() => setShowAddModal(true)}
+              style={{ display: "flex", alignItems: "center", gap: 6, background: "#3B82F6", border: "none", borderRadius: 20, padding: "7px 14px", cursor: "pointer" }}
+            >
+              <Plus size={13} color="#fff" />
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>관심지역 추가</span>
+            </button>
+          </div>
         </div>
+
+        {showAddModal && (
+          <AddFavModal theme={theme} onSelect={handleAddFav} onClose={() => setShowAddModal(false)} />
+        )}
 
         {favorites.length > 0 && (
           <div style={{ overflowX: "auto", scrollbarWidth: "none", paddingLeft: 16, paddingRight: 16, marginBottom: 12 }}>
