@@ -151,9 +151,24 @@ function SearchModal({ theme, onSelect, onClose }) {
 }
 
 // ── 상세 날씨 모달 ─────────────────────────────────────────────────────────
-function DetailModal({ location, weather, theme, onClose }) {
-  const cur = weather?.current;
-  const forecast = weather?.forecast ?? [];
+const CURRENT_ID = "__current__";
+
+function DetailModal({ initialId, theme, onClose, favorites, weathers }) {
+  const { currentWeather: ctxCurrent, forecast: ctxForecast, displayLocation } = useWeather();
+  const [selectedId, setSelectedId] = useState(initialId ?? CURRENT_ID);
+
+  const currentLocationWeather = { current: ctxCurrent, forecast: ctxForecast ?? [] };
+
+  const allLocations = [
+    { id: CURRENT_ID, name: displayLocation || "현재위치", isCurrent: true },
+    ...favorites,
+  ];
+
+  const activeLocation = allLocations.find(l => l.id === selectedId) ?? allLocations[0];
+  const activeWeather = selectedId === CURRENT_ID ? currentLocationWeather : weathers[selectedId];
+
+  const cur = activeWeather?.current;
+  const forecast = activeWeather?.forecast ?? [];
 
   const dailyMap = {};
   forecast.forEach(f => {
@@ -196,24 +211,53 @@ function DetailModal({ location, weather, theme, onClose }) {
 
           {/* 헤더 */}
           <div style={{ padding: "16px 20px 20px", background: theme.card, borderRadius: "28px 28px 0 0", marginBottom: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <MapPin size={14} style={{ color: "#3B82F6" }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#3B82F6" }}>관심지역</span>
+            {/* 지역 탭 */}
+            <div style={{ overflowX: "auto", scrollbarWidth: "none", marginBottom: 16 }}>
+              <div style={{ display: "flex", gap: 8, minWidth: "max-content" }}>
+                {allLocations.map(loc => {
+                  const isActive = loc.id === selectedId;
+                  return (
+                    <button
+                      key={loc.id}
+                      onClick={e => { e.stopPropagation(); setSelectedId(loc.id); }}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: 20,
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        background: isActive ? "#3B82F6" : "rgba(0,0,0,0.06)",
+                        color: isActive ? "#fff" : theme.sub,
+                        display: "flex", alignItems: "center", gap: 5,
+                        transition: "all 0.15s",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {loc.isCurrent && <span style={{ fontSize: 11 }}>📍</span>}
+                      {loc.name}
+                    </button>
+                  );
+                })}
               </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
               <button
                 onClick={onClose}
                 style={{ background: "rgba(0,0,0,0.06)", border: "none", borderRadius: 20, padding: "4px 12px", cursor: "pointer", fontSize: 12, color: theme.sub }}
               >닫기</button>
             </div>
 
-            <p style={{ fontSize: 20, fontWeight: 800, color: theme.text }}>{location.name}</p>
-            <p style={{ fontSize: 11, color: theme.sub, marginBottom: 12 }}>
-              {[location.admin1, location.country].filter(Boolean).join(", ")}
-            </p>
+            <p style={{ fontSize: 20, fontWeight: 800, color: theme.text }}>{activeLocation?.name}</p>
+            {!activeLocation?.isCurrent && (
+              <p style={{ fontSize: 11, color: theme.sub, marginBottom: 12 }}>
+                {[activeLocation?.admin1, activeLocation?.country].filter(Boolean).join(", ")}
+              </p>
+            )}
 
             {cur && (
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: 12 }}>
                 <div>
                   <span style={{ fontSize: 52, fontWeight: 800, color: theme.text, lineHeight: 1 }}>
                     {Number(cur.temp).toFixed(1)}°
@@ -487,10 +531,11 @@ export default function FavoritesPage({ scrollRef }) {
       {/* 상세 모달 */}
       {detailTarget && (
         <DetailModal
-          location={detailTarget.location}
-          weather={weathers[detailTarget.id]}
+          initialId={detailTarget.id}
           theme={theme}
           onClose={() => setDetailTarget(null)}
+          favorites={favorites}
+          weathers={weathers}
         />
       )}
     </div>
