@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { createPortal } from "react-dom";
 import { Plus, Search, X, MapPin, ChevronRight, Trash2, RotateCcw } from "lucide-react";
 import { useWeather } from "../context/WeatherContext";
@@ -156,6 +156,24 @@ const CURRENT_ID = "__current__";
 function DetailModal({ initialId, theme, onClose, favorites, weathers }) {
   const { currentWeather: ctxCurrent, forecast: ctxForecast, displayLocation } = useWeather();
   const [selectedId, setSelectedId] = useState(initialId ?? CURRENT_ID);
+  const controls = useAnimation();
+
+  useEffect(() => {
+    controls.start({ y: 0, transition: { type: "spring", damping: 32, stiffness: 340 } });
+  }, []);
+
+  const dismiss = async () => {
+    await controls.start({ y: "100%", transition: { type: "tween", duration: 0.18, ease: "easeIn" } });
+    onClose();
+  };
+
+  const handleDragEnd = (_, info) => {
+    if (info.velocity.y > 400 || info.offset.y > 120) {
+      dismiss();
+    } else {
+      controls.start({ y: 0, transition: { type: "spring", damping: 32, stiffness: 400 } });
+    }
+  };
 
   const currentLocationWeather = { current: ctxCurrent, forecast: ctxForecast ?? [] };
 
@@ -187,22 +205,14 @@ function DetailModal({ initialId, theme, onClose, favorites, weathers }) {
         exit={{ opacity: 0 }}
         style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center" }}
       >
-        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} />
+        <div onClick={dismiss} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} />
         <motion.div
           drag="y"
           dragConstraints={{ top: 0 }}
-          dragElastic={0.2}
-          onDragEnd={(_, info) => {
-            if (info.velocity.y > 500 || info.offset.y > 150) onClose();
-          }}
-          variants={{
-            hidden: { y: "100%" },
-            visible: { y: 0, transition: { type: "spring", damping: 32, stiffness: 340 } },
-            exit:   { y: "100%", transition: { type: "tween", duration: 0.18, ease: "easeIn" } },
-          }}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
+          dragElastic={{ top: 0.05, bottom: 0.8 }}
+          onDragEnd={handleDragEnd}
+          animate={controls}
+          initial={{ y: "100%" }}
           onClick={e => e.stopPropagation()}
           style={{
             position: "relative", zIndex: 1, width: "100%", maxWidth: 393,
@@ -248,7 +258,7 @@ function DetailModal({ initialId, theme, onClose, favorites, weathers }) {
 
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
               <button
-                onClick={onClose}
+                onClick={dismiss}
                 style={{ background: "rgba(0,0,0,0.06)", border: "none", borderRadius: 20, padding: "4px 12px", cursor: "pointer", fontSize: 12, color: theme.sub }}
               >닫기</button>
             </div>

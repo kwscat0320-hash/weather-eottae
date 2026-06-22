@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { createPortal } from "react-dom";
 import { Search, X, MapPin, ChevronRight, RotateCcw } from "lucide-react";
 
@@ -286,6 +286,25 @@ function RouteCard({ role, location, weather, loading, theme, onEdit, onRemove, 
 
 // ── 상세 날씨 모달 ────────────────────────────────────────────────────────
 function RouteDetailModal({ location, role, weather, theme, onClose }) {
+  const controls = useAnimation();
+
+  useEffect(() => {
+    controls.start({ y: 0, transition: { type: "spring", damping: 32, stiffness: 340 } });
+  }, []);
+
+  const dismiss = async () => {
+    await controls.start({ y: "100%", transition: { type: "tween", duration: 0.18, ease: "easeIn" } });
+    onClose();
+  };
+
+  const handleDragEnd = (_, info) => {
+    if (info.velocity.y > 400 || info.offset.y > 120) {
+      dismiss();
+    } else {
+      controls.start({ y: 0, transition: { type: "spring", damping: 32, stiffness: 400 } });
+    }
+  };
+
   const cur      = weather?.current;
   const forecast = weather?.forecast ?? [];
 
@@ -319,24 +338,16 @@ function RouteDetailModal({ location, role, weather, theme, onClose }) {
         }}
       >
         {/* 배경 */}
-        <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} />
+        <div onClick={dismiss} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }} />
 
         {/* 시트 */}
         <motion.div
           drag="y"
           dragConstraints={{ top: 0 }}
-          dragElastic={0.2}
-          onDragEnd={(_, info) => {
-            if (info.velocity.y > 500 || info.offset.y > 150) onClose();
-          }}
-          variants={{
-            hidden: { y: "100%" },
-            visible: { y: 0, transition: { type: "spring", damping: 32, stiffness: 340 } },
-            exit:   { y: "100%", transition: { type: "tween", duration: 0.18, ease: "easeIn" } },
-          }}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
+          dragElastic={{ top: 0.05, bottom: 0.8 }}
+          onDragEnd={handleDragEnd}
+          animate={controls}
+          initial={{ y: "100%" }}
           onClick={e => e.stopPropagation()}
           style={{
             position: "relative", zIndex: 1,
@@ -364,7 +375,7 @@ function RouteDetailModal({ location, role, weather, theme, onClose }) {
                 <span style={{ fontSize: 12, fontWeight: 700, color: role.color }}>{role.label}</span>
               </div>
               <button
-                onClick={onClose}
+                onClick={dismiss}
                 style={{ background: "rgba(0,0,0,0.06)", border: "none", borderRadius: 20, padding: "4px 12px", cursor: "pointer", fontSize: 12, color: theme.sub }}
               >
                 닫기
