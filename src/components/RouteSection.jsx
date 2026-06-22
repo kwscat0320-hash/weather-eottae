@@ -41,6 +41,23 @@ async function searchLocations(query) {
   );
 }
 
+function conditionToEmoji(condition) {
+  if (!condition) return "🌡️";
+  const c = condition;
+  if (c.includes("뇌우")) return "⛈️";
+  if (c.includes("눈") && c.includes("비")) return "🌨️";
+  if (c.includes("눈")) return "❄️";
+  if (c.includes("소나기")) return "🌦️";
+  if (c.includes("비")) return "🌧️";
+  if (c.includes("이슬비") || c.includes("안개비")) return "🌦️";
+  if (c.includes("안개")) return "🌫️";
+  if (c.includes("황사") || c.includes("먼지")) return "🌪️";
+  if (c.includes("구름많음") || c.includes("흐림")) return "☁️";
+  if (c.includes("구름조금") || c.includes("구름")) return "⛅";
+  if (c.includes("맑음")) return "☀️";
+  return "🌡️";
+}
+
 async function fetchLocationWeather(lat, lng) {
   const res = await fetch(`/api/kma?lat=${lat}&lon=${lng}`);
   if (!res.ok) throw new Error("KMA fetch failed");
@@ -386,7 +403,7 @@ function RouteDetailModal({ location, role, weather, theme, onClose }) {
                     {hourlySlots.map((f, i) => (
                       <div key={i} style={{ textAlign: "center", minWidth: 44 }}>
                         <p style={{ fontSize: 11, color: theme.sub, marginBottom: 6 }}>{f.timeLabel}</p>
-                        <p style={{ fontSize: 11, color: theme.sub, marginBottom: 4 }}>{f.condition?.slice(0, 2)}</p>
+                        <p style={{ fontSize: 18, marginBottom: 4 }}>{conditionToEmoji(f.condition)}</p>
                         <p style={{ fontSize: 14, fontWeight: 800, color: theme.text }}>{f.temp != null ? `${Number(f.temp).toFixed(0)}°` : "—"}</p>
                         <p style={{ fontSize: 10, color: "#3B82F6", marginTop: 4 }}>{f.rainChance}%</p>
                       </div>
@@ -413,7 +430,7 @@ function RouteDetailModal({ location, role, weather, theme, onClose }) {
                       borderBottom: i < dailyEntries.length - 1 ? `1px solid rgba(0,0,0,0.06)` : "none",
                     }}>
                       <p style={{ fontSize: 13, fontWeight: 600, color: theme.text, width: 100 }}>{dateLabel}</p>
-                      <p style={{ fontSize: 12, color: theme.sub, flex: 1, textAlign: "center" }}>{cond}</p>
+                      <p style={{ fontSize: 20, flex: 1, textAlign: "center" }}>{conditionToEmoji(cond)}</p>
                       <p style={{ fontSize: 11, color: "#3B82F6", width: 36, textAlign: "right" }}>
                         {rainMax}%
                       </p>
