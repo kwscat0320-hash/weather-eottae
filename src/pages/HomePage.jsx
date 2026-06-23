@@ -134,8 +134,16 @@ export default function HomePage({ scrollRef, onNavigate }) {
             minHeight: "100vh",
           }}>
 
-        {/* 요약 카드 */}
-        <div className="rounded-3xl p-4" style={{ background: theme.card }}>
+        {/* 요약 카드 — 클릭 시 상세 탭 이동 */}
+        <div
+          className="rounded-3xl p-4"
+          style={{ background: theme.card, cursor: "pointer" }}
+          onClick={() => onNavigate?.("detail")}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: theme.sub, opacity: 0.7 }}>현재 날씨</p>
+            <p style={{ fontSize: 10, color: theme.sub, opacity: 0.5 }}>상세 보기 →</p>
+          </div>
           <div className="grid grid-cols-3 gap-3">
             <Metric icon={<Droplets size={18} />} label="습도" value={`${weather?.humidity}%`} sub={theme.sub} text={theme.text} />
             <Metric icon={<Wind size={18} />} label="풍속" value={`${Number(weather?.wind).toFixed(1)}m/s`} sub={theme.sub} text={theme.text} />
