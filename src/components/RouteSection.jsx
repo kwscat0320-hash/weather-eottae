@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { createPortal } from "react-dom";
 import { Search, X, MapPin, ChevronRight, RotateCcw } from "lucide-react";
+import { apiUrl } from "../utils/api";
 
 const STORAGE_KEY = "route_locations_v1";
 
@@ -59,7 +60,7 @@ function conditionToEmoji(condition) {
 }
 
 async function fetchLocationWeather(lat, lng) {
-  const res = await fetch(`/api/kma?lat=${lat}&lon=${lng}`);
+  const res = await fetch(apiUrl(`/api/kma?lat=${lat}&lon=${lng}`));
   if (!res.ok) throw new Error("KMA fetch failed");
   return res.json(); // { current, forecast }
 }

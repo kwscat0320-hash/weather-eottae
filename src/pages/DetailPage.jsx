@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, X, MapPin, ChevronRight } from "lucide-react";
 import { useWeather } from "../context/WeatherContext";
 import { fetchOpenMeteo } from "../utils/openmeteo-client";
+import { apiUrl } from "../utils/api";
 import { HourlyCompareChart, HourlyRainChart, DailyTempChart, DailyRainChart, DailyConditionCard } from "../components/WeatherCharts";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { PullIndicator, RefreshToast } from "../components/PullToRefreshUI";
@@ -88,10 +89,10 @@ function AddFavModal({ theme, onSelect, onClose }) {
 // 관심지역의 모든 소스 병렬 fetch
 async function fetchAllSources(lat, lng) {
   const [kmaRes, owRes, meteoRes, wapiRes] = await Promise.allSettled([
-    fetch(`/api/kma?lat=${lat}&lon=${lng}`).then(r => r.json()),
-    fetch(`/api/openweather?lat=${lat}&lon=${lng}`).then(r => r.json()),
+    fetch(apiUrl(`/api/kma?lat=${lat}&lon=${lng}`)).then(r => r.json()),
+    fetch(apiUrl(`/api/openweather?lat=${lat}&lon=${lng}`)).then(r => r.json()),
     fetchOpenMeteo(lat, lng),
-    fetch(`/api/weatherapi?lat=${lat}&lon=${lng}`).then(r => r.json()),
+    fetch(apiUrl(`/api/weatherapi?lat=${lat}&lon=${lng}`)).then(r => r.json()),
   ]);
   return {
     kma:   kmaRes.status   === "fulfilled" ? kmaRes.value   : null,

@@ -1,6 +1,7 @@
 ﻿import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { DEFAULT_LOCATION, getTheme, getSpeech, isKorea } from "../utils/weather";
 import { fetchOpenMeteo } from "../utils/openmeteo-client";
+import { apiUrl } from "../utils/api";
 
 // 날씨 상태값 우선순위 (낮을수록 심각, 1-4=비, 5-7=흐림, 8=맑음)
 const COND_PRIORITY = {
@@ -22,7 +23,7 @@ function pickCondition(conditions) {
 
 async function reverseGeocode(lat, lon) {
   try {
-    const res = await fetch(`/api/geocode?lat=${lat}&lon=${lon}&_=${Date.now()}`);
+    const res = await fetch(apiUrl(`/api/geocode?lat=${lat}&lon=${lon}&_=${Date.now()}`));
     const data = await res.json();
     return data.name || "현재 위치";
   } catch {
@@ -60,17 +61,17 @@ export function WeatherProvider({ children }) {
 
   const fetchAir = (lat, lon) => {
     // 에어코리아
-    fetch(`/api/air?lat=${lat}&lon=${lon}`)
+    fetch(apiUrl(`/api/air?lat=${lat}&lon=${lon}`))
       .then(r => r.json())
       .then(d => { if (d && !d.error) setAir(d); })
       .catch(() => {});
     // OpenWeather 대기오염 (비교용)
-    fetch(`/api/air-ow?lat=${lat}&lon=${lon}`)
+    fetch(apiUrl(`/api/air-ow?lat=${lat}&lon=${lon}`))
       .then(r => r.json())
       .then(d => { if (d && !d.error) setAirOw(d); })
       .catch(() => {});
     // 5일 미세먼지 예보
-    fetch(`/api/air-forecast?lat=${lat}&lon=${lon}`)
+    fetch(apiUrl(`/api/air-forecast?lat=${lat}&lon=${lon}`))
       .then(r => r.json())
       .then(d => { if (d && !d.error) setAirForecast(d); })
       .catch(() => {});
@@ -122,7 +123,7 @@ export function WeatherProvider({ children }) {
 
       if (korea) {
         // 기상청만 blocking — 나머지는 loading 종료 후 백그라운드
-        const kmaRes = await fetchWithTimeout(`/api/kma?lat=${lat}&lon=${lon}${forceParam}`, 15000)
+        const kmaRes = await fetchWithTimeout(apiUrl(`/api/kma?lat=${lat}&lon=${lon}${forceParam}`), 15000)
           .catch(e => ({ ok: false, _err: e.message }));
 
         if (!kmaRes.ok) {
@@ -140,7 +141,7 @@ export function WeatherProvider({ children }) {
             if (meteoData.air) setAirMeteo(meteoData.air);
           }).catch(() => {});
 
-        fetchWithTimeout(`/api/weatherapi?lat=${lat}&lon=${lon}`, 20000)
+        fetchWithTimeout(apiUrl(`/api/weatherapi?lat=${lat}&lon=${lon}`), 20000)
           .then(r => r.ok ? r.json() : null).then(wapiData => {
             if (!wapiData || wapiData.error) return;
             setWapiWeather(wapiData.current);
@@ -149,7 +150,7 @@ export function WeatherProvider({ children }) {
             if (wapiData.air) setAirWapi(wapiData.air);
           }).catch(() => {});
 
-        fetchWithTimeout(`/api/openweather?lat=${lat}&lon=${lon}`, 20000)
+        fetchWithTimeout(apiUrl(`/api/openweather?lat=${lat}&lon=${lon}`), 20000)
           .then(r => r.ok ? r.json() : null)
           .then(owData => {
             if (!owData) return;
@@ -200,7 +201,7 @@ export function WeatherProvider({ children }) {
           .catch(() => {});
 
         // 이력 조회 (비동기 — 실패해도 무시)
-        fetch(`/api/kma-history?lat=${lat}&lon=${lon}`)
+        fetch(apiUrl(`/api/kma-history?lat=${lat}&lon=${lon}`))
           .then(r => r.json())
           .then(d => {
             if (Array.isArray(d)) {
@@ -213,14 +214,14 @@ export function WeatherProvider({ children }) {
         setMidForecast([]); // 초기화
 
         // 중기예보는 별도 state로 보관 — dailyForecasts useMemo에서 합산
-        fetch(`/api/kma-mid?lat=${lat}&lon=${lon}`)
+        fetch(apiUrl(`/api/kma-mid?lat=${lat}&lon=${lon}`))
           .then(r => r.ok ? r.json() : null)
           .then(midData => {
             if (midData?.forecast?.length) setMidForecast(midData.forecast);
           })
           .catch(() => {});
       } else {
-        const res = await fetch(`/api/openweather?lat=${lat}&lon=${lon}`);
+        const res = await fetch(apiUrl(`/api/openweather?lat=${lat}&lon=${lon}`));
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || `날씨 API 오류 (${res.status})`);

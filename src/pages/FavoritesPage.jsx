@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { createPortal } from "react-dom";
 import { Plus, Search, X, MapPin, ChevronRight, Trash2, RotateCcw } from "lucide-react";
 import { useWeather } from "../context/WeatherContext";
+import { apiUrl } from "../utils/api";
 
 const STORAGE_KEY = "favorites_locations_v1";
 
@@ -32,7 +33,7 @@ async function searchLocations(query) {
 }
 
 async function fetchWeather(lat, lng) {
-  const res = await fetch(`/api/kma?lat=${lat}&lon=${lng}`);
+  const res = await fetch(apiUrl(`/api/kma?lat=${lat}&lon=${lng}`));
   if (!res.ok) throw new Error("KMA fetch failed");
   return res.json();
 }
