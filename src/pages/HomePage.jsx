@@ -102,7 +102,11 @@ export default function HomePage({ scrollRef, onNavigate }) {
               style={{ borderBottomRightRadius: 4 }}>
               <p className="text-xs font-semibold leading-relaxed" style={{ color: "#1C283C" }}>{speech}</p>
             </motion.div>
-            <WeatherCharacter img={theme.img} condition={weather?.condition} airBad={air && (Number(air.pm10Grade) >= 3 || Number(air.pm25Grade) >= 3)} />
+            <motion.img key={theme.img} src={theme.img} alt="날씨 캐릭터"
+              initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              style={{ width: 160, height: 160, objectFit: "contain" }}
+              className="drop-shadow-xl" />
           </div>
         </div>
 
@@ -468,81 +472,6 @@ function HourlyForecastCard({ hourSlots, alignedHourly, theme }) {
         </motion.div>
       </AnimatePresence>
     </div>
-  );
-}
-
-// ── 날씨 캐릭터 애니메이션 ────────────────────────────────────────────────
-
-function getCharacterAnim(condition = "", airBad = false) {
-  if (condition.includes("천둥") || condition.includes("번개")) {
-    // 진동 + 깜빡임
-    return {
-      animate: { x: [0, -4, 4, -4, 4, 0], opacity: [1, 0.6, 1, 0.6, 1, 1] },
-      transition: { duration: 0.5, repeat: Infinity, repeatDelay: 2, ease: "easeInOut" },
-    };
-  }
-  if (condition.includes("소나기")) {
-    // 빠르게 좌우 흔들
-    return {
-      animate: { rotate: [-4, 4, -4, 4, 0], y: [0, -6, 0, -6, 0] },
-      transition: { duration: 0.6, repeat: Infinity, repeatDelay: 0.8, ease: "easeInOut" },
-    };
-  }
-  if (condition.includes("비")) {
-    // 위아래 흔들 + 살짝 기울기
-    return {
-      animate: { y: [0, -8, 0], rotate: [-2, 2, -2] },
-      transition: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-    };
-  }
-  if (condition.includes("눈")) {
-    // 천천히 둥실 + 부드러운 회전
-    return {
-      animate: { y: [0, -10, 0], rotate: [-3, 3, -3] },
-      transition: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-    };
-  }
-  if (condition.includes("흐림") || condition.includes("구름")) {
-    // 천천히 좌우 흔들
-    return {
-      animate: { x: [0, 6, 0, -6, 0] },
-      transition: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-    };
-  }
-  if (airBad) {
-    // 느리고 무거운 좌우 흔들
-    return {
-      animate: { x: [0, 5, 0, -5, 0], opacity: [1, 0.85, 1, 0.85, 1] },
-      transition: { duration: 5, repeat: Infinity, ease: "easeInOut" },
-    };
-  }
-  // 맑음 — 위아래 둥실둥실
-  return {
-    animate: { y: [0, -12, 0] },
-    transition: { duration: 2.5, repeat: Infinity, ease: "easeInOut" },
-  };
-}
-
-function WeatherCharacter({ img, condition, airBad }) {
-  const anim = getCharacterAnim(condition, airBad);
-  return (
-    // 외부: 등장 애니메이션 (1회)
-    <motion.div
-      key={img}
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-    >
-      {/* 내부: 반복 루프 애니메이션 */}
-      <motion.img
-        src={img}
-        alt="날씨 캐릭터"
-        animate={anim.animate}
-        transition={anim.transition}
-        style={{ width: 160, height: 160, objectFit: "contain", display: "block" }}
-        className="drop-shadow-xl"
-      />
-    </motion.div>
   );
 }
 
