@@ -19,7 +19,10 @@ export async function reverseGeocode(lat, lon) {
   }
 }
 
-export function getTheme(condition = "") {
+export function getTheme(condition = "", air = null) {
+  // 미세먼지/초미세먼지 나쁨(3) 이상이면 우선 적용 — 단, 천둥·눈·비 등 악천후보다는 후순위
+  const airBad = air && (Number(air.pm10Grade) >= 3 || Number(air.pm25Grade) >= 3);
+
   if (condition.includes("천둥") || condition.includes("번개"))
     return {
       img: "/characters/thunder.png",
@@ -73,6 +76,16 @@ export function getTheme(condition = "") {
       text: "#1e293b", sub: "#64748b",
       bubble: "bg-white", bubbleText: "#1C283C",
       speech: ["구름이 좀 있지만 괜찮아요!", "야외 활동 해볼 만해요 🐾", "가볍게 겉옷 하나 챙겨요~"],
+    };
+  // 미세먼지 나쁨 (맑음/구름 상황에서만 적용)
+  if (airBad)
+    return {
+      img: "/characters/dust.png",
+      bg: "from-amber-200 via-orange-100 to-yellow-200",
+      card: "rgba(255,255,255,0.45)", cardsBg: "#e8d5b0",
+      text: "#1c1309", sub: "#92400e",
+      bubble: "bg-white", bubbleText: "#1C283C",
+      speech: ["오늘 미세먼지 나쁨이에요 😷", "마스크 꼭 쓰고 나가세요!", "가능하면 실내에 있어요~"],
     };
   // 맑음 (기본)
   return {

@@ -237,7 +237,7 @@ export function WeatherProvider({ children }) {
     }
   };
 
-  const theme = useMemo(() => getTheme(currentWeather?.condition), [currentWeather]);
+  const theme = useMemo(() => getTheme(currentWeather?.condition, air), [currentWeather, air]);
 
   const weather = useMemo(() => {
     if (!currentWeather) return null;
