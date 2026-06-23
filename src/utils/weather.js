@@ -80,7 +80,7 @@ export function getTheme(condition = "", air = null) {
   // 미세먼지 나쁨 (맑음/구름 상황에서만 적용)
   if (airBad)
     return {
-      img: "/characters/dust.png",
+      img: "/characters/air.png",
       bg: "from-amber-200 via-orange-100 to-yellow-200",
       card: "rgba(255,255,255,0.45)", cardsBg: "#e8d5b0",
       text: "#1c1309", sub: "#92400e",
