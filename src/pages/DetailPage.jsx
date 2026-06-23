@@ -243,23 +243,23 @@ function ChartLayout({ hourSlots, alignedHourly, weather, compareWeather, meteoW
   return (
     <div className="px-4 pb-32 space-y-3">
       <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 온도</p>
+        <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: theme.sub }}>시간대별 온도</p>
         <HourlyCompareChart alignedHourly={alignedHourly} hourSlots={hourSlots} weather={weather} compareWeather={compareWeather} meteoWeather={meteoWeather} wapiWeather={wapiWeather} theme={theme} />
       </div>
       <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>시간대별 강수확률</p>
+        <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: theme.sub }}>시간대별 강수확률</p>
         <HourlyRainChart alignedHourly={alignedHourly} hourSlots={hourSlots} theme={theme} />
       </div>
       <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 기온</p>
+        <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: theme.sub }}>5일 기온</p>
         <DailyTempChart dailyForecasts={dailyForecasts} owDailyForecasts={owDailyForecasts ?? []} meteoDaily={meteoWeather?.daily} wapiDailyForecasts={wapiDailyForecasts ?? []} theme={theme} />
       </div>
       <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 강수확률</p>
+        <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: theme.sub }}>5일 강수확률</p>
         <DailyRainChart dailyForecasts={dailyForecasts} owDailyForecasts={owDailyForecasts ?? []} meteoDaily={meteoWeather?.daily} wapiDailyForecasts={wapiDailyForecasts ?? []} theme={theme} />
       </div>
       <div className="rounded-3xl p-4" style={{ background: theme.card }}>
-        <p className="text-xs font-semibold mb-3" style={{ color: theme.sub }}>5일 날씨</p>
+        <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: theme.sub }}>5일 날씨</p>
         <DailyConditionCard dailyForecasts={dailyForecasts} owDailyForecasts={owDailyForecasts ?? []} meteoDaily={meteoWeather?.daily} wapiDailyForecasts={wapiDailyForecasts ?? []} theme={theme} />
       </div>
     </div>
@@ -329,9 +329,9 @@ export default function DetailPage({ scrollRef }) {
         <PullIndicator pullDist={pullDist} PULL_THRESHOLD={PULL_THRESHOLD} />
 
         <div className="px-6 pb-4" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 24px)" }}>
-          <p className="text-xs mb-1" style={{ color: theme.sub }}>상세 예보</p>
+          <p style={{ fontSize: 13, marginBottom: 4, color: theme.sub }}>상세 예보</p>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <h1 className="text-xl font-bold" style={{ color: theme.text }}>{activeName}</h1>
+            <h1 className="text-2xl font-bold" style={{ color: theme.text }}>{activeName}</h1>
             <button
               onClick={() => setShowAddModal(true)}
               style={{ display: "flex", alignItems: "center", gap: 6, background: "#3B82F6", border: "none", borderRadius: 20, padding: "7px 14px", cursor: "pointer" }}
@@ -351,7 +351,7 @@ export default function DetailPage({ scrollRef }) {
             <div style={{ display: "flex", gap: 8, minWidth: "max-content" }}>
               <button
                 onClick={() => setSelectedId(null)}
-                style={{ padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, flexShrink: 0, background: selectedId === null ? "#3B82F6" : "rgba(0,0,0,0.06)", color: selectedId === null ? "#fff" : theme.sub, display: "flex", alignItems: "center", gap: 5 }}
+                style={{ padding: "7px 16px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, flexShrink: 0, background: selectedId === null ? "#3B82F6" : "rgba(0,0,0,0.06)", color: selectedId === null ? "#fff" : theme.sub, display: "flex", alignItems: "center", gap: 5 }}
               >
                 <span style={{ fontSize: 11 }}>📍</span>{displayLocation}
               </button>
@@ -359,7 +359,7 @@ export default function DetailPage({ scrollRef }) {
                 <button
                   key={fav.id}
                   onClick={() => setSelectedId(fav.id)}
-                  style={{ padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, flexShrink: 0, background: selectedId === fav.id ? "#3B82F6" : "rgba(0,0,0,0.06)", color: selectedId === fav.id ? "#fff" : theme.sub }}
+                  style={{ padding: "7px 16px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, flexShrink: 0, background: selectedId === fav.id ? "#3B82F6" : "rgba(0,0,0,0.06)", color: selectedId === fav.id ? "#fff" : theme.sub }}
                 >
                   {fav.name}
                 </button>

@@ -14,7 +14,7 @@ export function ChartLegend({ sources, theme, activeSrcs, onToggle }) {
           >
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.color,
               boxShadow: isActive ? `0 0 0 2px ${s.color}44` : "none" }} />
-            <span style={{ fontSize: 11, fontWeight: isActive ? 700 : 600,
+            <span style={{ fontSize: 13, fontWeight: isActive ? 700 : 600,
               color: isActive ? s.color : theme.sub }}>{s.name}</span>
           </div>
         );
@@ -59,8 +59,8 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
   const minT = Math.floor(rawMin - pad);
   const maxT = Math.ceil(rawMax + pad);
 
-  const W = 360, H = 176;
-  const mTop = 18, mRight = 12, mBottom = 34, mLeft = 30;
+  const W = 560, H = 200;
+  const mTop = 20, mRight = 14, mBottom = 38, mLeft = 36;
   const cW = W - mLeft - mRight;
   const cH = H - mTop - mBottom;
 
@@ -75,112 +75,113 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
   const activeIdx = hoverIdx ?? 0;
   const slotW = nSlots > 1 ? cW / (nSlots - 1) : cW;
 
-
   return (
     <div>
       <ChartLegend sources={sourceDefs} theme={theme} activeSrcs={activeSrcs} onToggle={toggleSrc} />
 
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        style={{ width: "100%", height: "auto", display: "block" }}
-        onMouseLeave={() => setHoverIdx(null)}
-      >
-        {/* Y 그리드 */}
-        {yTicks.map(v => {
-          const y = yScale(v);
-          return (
-            <g key={v}>
-              <line x1={mLeft} y1={y} x2={W - mRight} y2={y}
-                stroke="rgba(0,0,0,0.06)" strokeWidth={1} />
-              <text x={mLeft - 4} y={y + 3.5} textAnchor="end"
-                fontSize={8} fill="rgba(0,0,0,0.35)">{v}°</text>
-            </g>
-          );
-        })}
+      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          style={{ width: `${W}px`, minWidth: `${W}px`, height: "auto", display: "block" }}
+          onMouseLeave={() => setHoverIdx(null)}
+        >
+          {/* Y 그리드 */}
+          {yTicks.map(v => {
+            const y = yScale(v);
+            return (
+              <g key={v}>
+                <line x1={mLeft} y1={y} x2={W - mRight} y2={y}
+                  stroke="rgba(0,0,0,0.06)" strokeWidth={1} />
+                <text x={mLeft - 5} y={y + 4} textAnchor="end"
+                  fontSize={10} fill="rgba(0,0,0,0.35)">{v}°</text>
+              </g>
+            );
+          })}
 
-        {/* X축 */}
-        <line x1={mLeft} y1={mTop + cH} x2={W - mRight} y2={mTop + cH}
-          stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
+          {/* X축 */}
+          <line x1={mLeft} y1={mTop + cH} x2={W - mRight} y2={mTop + cH}
+            stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
 
-        {/* X 레이블 */}
-        {slots.map((s, i) => {
-          if (i !== 0 && i % 3 !== 0 && !s.isMidnight) return null;
-          return (
-            <text key={i} x={xScale(i)} y={H - mBottom + 11}
-              textAnchor="middle" fontSize={8.5}
-              fill={s.isMidnight ? "rgba(0,0,0,0.65)" : "rgba(0,0,0,0.38)"}
-              fontWeight={s.isMidnight ? "700" : "400"}>
-              {s.label}
+          {/* X 레이블 */}
+          {slots.map((s, i) => {
+            if (i !== 0 && i % 3 !== 0 && !s.isMidnight) return null;
+            return (
+              <text key={i} x={xScale(i)} y={H - mBottom + 13}
+                textAnchor="middle" fontSize={11}
+                fill={s.isMidnight ? "rgba(0,0,0,0.65)" : "rgba(0,0,0,0.38)"}
+                fontWeight={s.isMidnight ? "700" : "400"}>
+                {s.label}
+              </text>
+            );
+          })}
+
+          {/* 소스별 라인 + 활성 점/레이블 */}
+          {sourceDefs.map(src => {
+            const isActive = activeSrcs.includes(src.name);
+            const opacity = isActive ? 1 : 0.1;
+            const pts = slots.map((_, i) => {
+              const d = src.data?.[i];
+              return d?.temp != null ? { x: xScale(i), y: yScale(Number(d.temp)), i } : null;
+            });
+
+            const segments = [];
+            let seg = [];
+            pts.forEach(p => {
+              if (p) { seg.push(`${p.x},${p.y}`); }
+              else if (seg.length) { segments.push(seg); seg = []; }
+            });
+            if (seg.length) segments.push(seg);
+
+            const activePt = pts[activeIdx];
+
+            return (
+              <g key={src.name} style={{ transition: "opacity 0.15s" }} opacity={opacity}>
+                {segments.map((s, si) => (
+                  <polyline key={si} points={s.join(" ")}
+                    fill="none" stroke={src.color}
+                    strokeWidth={src.kma ? 2.5 : 1.8}
+                    strokeDasharray={src.kma ? "none" : "5,3"}
+                    strokeLinejoin="round" strokeLinecap="round" />
+                ))}
+                {activePt && isActive && (
+                  <g>
+                    <circle cx={activePt.x} cy={activePt.y} r={5}
+                      fill={src.color} stroke="white" strokeWidth={1.5} />
+                    <text x={activePt.x} y={activePt.y - 8} textAnchor="middle"
+                      fontSize={11} fill={src.color} fontWeight="700">
+                      {Number(src.data?.[activeIdx]?.temp).toFixed(1)}°
+                    </text>
+                  </g>
+                )}
+              </g>
+            );
+          })}
+
+          {/* hover 수직선 */}
+          {hoverIdx != null && (
+            <line x1={xScale(hoverIdx)} y1={mTop} x2={xScale(hoverIdx)} y2={mTop + cH}
+              stroke="rgba(0,0,0,0.18)" strokeWidth={1} strokeDasharray="3,2" />
+          )}
+
+          {/* hover 시각 레이블 */}
+          {hoverIdx != null && slots[hoverIdx] && (
+            <text x={xScale(hoverIdx)} y={mTop - 6} textAnchor="middle"
+              fontSize={11} fill="rgba(0,0,0,0.5)">
+              {slots[hoverIdx].label}
             </text>
-          );
-        })}
+          )}
 
-        {/* 소스별 라인 + 활성 점/레이블 */}
-        {sourceDefs.map(src => {
-          const isActive = activeSrcs.includes(src.name);
-          const opacity = isActive ? 1 : 0.1;
-          const pts = slots.map((_, i) => {
-            const d = src.data?.[i];
-            return d?.temp != null ? { x: xScale(i), y: yScale(Number(d.temp)), i } : null;
-          });
-
-          const segments = [];
-          let seg = [];
-          pts.forEach(p => {
-            if (p) { seg.push(`${p.x},${p.y}`); }
-            else if (seg.length) { segments.push(seg); seg = []; }
-          });
-          if (seg.length) segments.push(seg);
-
-          const activePt = pts[activeIdx];
-
-          return (
-            <g key={src.name} style={{ transition: "opacity 0.15s" }} opacity={opacity}>
-              {segments.map((s, si) => (
-                <polyline key={si} points={s.join(" ")}
-                  fill="none" stroke={src.color}
-                  strokeWidth={src.kma ? 2.5 : 1.8}
-                  strokeDasharray={src.kma ? "none" : "5,3"}
-                  strokeLinejoin="round" strokeLinecap="round" />
-              ))}
-              {activePt && isActive && (
-                <g>
-                  <circle cx={activePt.x} cy={activePt.y} r={4}
-                    fill={src.color} stroke="white" strokeWidth={1.5} />
-                  <text x={activePt.x} y={activePt.y - 7} textAnchor="middle"
-                    fontSize={9} fill={src.color} fontWeight="700">
-                    {Number(src.data?.[activeIdx]?.temp).toFixed(1)}°
-                  </text>
-                </g>
-              )}
-            </g>
-          );
-        })}
-
-        {/* hover 수직선 */}
-        {hoverIdx != null && (
-          <line x1={xScale(hoverIdx)} y1={mTop} x2={xScale(hoverIdx)} y2={mTop + cH}
-            stroke="rgba(0,0,0,0.18)" strokeWidth={1} strokeDasharray="3,2" />
-        )}
-
-        {/* hover 시각 레이블 */}
-        {hoverIdx != null && slots[hoverIdx] && (
-          <text x={xScale(hoverIdx)} y={mTop - 5} textAnchor="middle"
-            fontSize={8.5} fill="rgba(0,0,0,0.5)">
-            {slots[hoverIdx].label}
-          </text>
-        )}
-
-        {/* 투명 hover 존 */}
-        {slots.map((_, i) => (
-          <rect key={i}
-            x={xScale(i) - slotW / 2} y={mTop}
-            width={slotW} height={cH}
-            fill="transparent"
-            onMouseEnter={() => setHoverIdx(i)}
-          />
-        ))}
-      </svg>
+          {/* 투명 hover 존 */}
+          {slots.map((_, i) => (
+            <rect key={i}
+              x={xScale(i) - slotW / 2} y={mTop}
+              width={slotW} height={cH}
+              fill="transparent"
+              onMouseEnter={() => setHoverIdx(i)}
+            />
+          ))}
+        </svg>
+      </div>
 
       {/* 현재 시각 기준 소스별 미니 카드 */}
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
@@ -200,8 +201,8 @@ export function HourlyCompareChart({ alignedHourly, hourSlots, weather, compareW
               }}
               onClick={() => toggleSrc(src.name)}
             >
-              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
-              <p style={{ fontSize: 16, fontWeight: 800, color: theme.text, lineHeight: 1.2 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
+              <p style={{ fontSize: 18, fontWeight: 800, color: theme.text, lineHeight: 1.2 }}>
                 {d?.temp != null ? `${Number(d.temp).toFixed(1)}°` : "—"}
               </p>
             </div>
@@ -238,8 +239,8 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
   const nSlots = slots.length;
   const nSrc = sourceDefs.length;
 
-  const W = 360, H = 160;
-  const mTop = 14, mRight = 12, mBottom = 34, mLeft = 30;
+  const W = 560, H = 180;
+  const mTop = 16, mRight = 14, mBottom = 38, mLeft = 36;
   const cW = W - mLeft - mRight;
   const cH = H - mTop - mBottom;
 
@@ -255,99 +256,100 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
   const groupX = i => mLeft + i * groupW;
   const barX = (i, bi) => groupX(i) + barPad + bi * (barW + barGap);
 
-
   return (
     <div>
       <ChartLegend sources={sourceDefs} theme={theme} activeSrcs={activeSrcs} onToggle={toggleSrc} />
 
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        style={{ width: "100%", height: "auto", display: "block" }}
-        onMouseLeave={() => setHoverIdx(null)}
-      >
-        {/* Y 그리드 */}
-        {yTicks.map(v => {
-          const y = yScale(v);
-          return (
-            <g key={v}>
-              <line x1={mLeft} y1={y} x2={W - mRight} y2={y}
-                stroke={v === 0 ? "rgba(0,0,0,0.1)" : "rgba(0,0,0,0.05)"}
-                strokeWidth={1} strokeDasharray={v === 0 ? "none" : "3,3"} />
-              <text x={mLeft - 4} y={y + 3.5} textAnchor="end"
-                fontSize={8} fill="rgba(0,0,0,0.35)">{v}%</text>
+      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          style={{ width: `${W}px`, minWidth: `${W}px`, height: "auto", display: "block" }}
+          onMouseLeave={() => setHoverIdx(null)}
+        >
+          {/* Y 그리드 */}
+          {yTicks.map(v => {
+            const y = yScale(v);
+            return (
+              <g key={v}>
+                <line x1={mLeft} y1={y} x2={W - mRight} y2={y}
+                  stroke={v === 0 ? "rgba(0,0,0,0.1)" : "rgba(0,0,0,0.05)"}
+                  strokeWidth={1} strokeDasharray={v === 0 ? "none" : "3,3"} />
+                <text x={mLeft - 5} y={y + 4} textAnchor="end"
+                  fontSize={10} fill="rgba(0,0,0,0.35)">{v}%</text>
+              </g>
+            );
+          })}
+
+          {/* X축 */}
+          <line x1={mLeft} y1={mTop + cH} x2={W - mRight} y2={mTop + cH}
+            stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
+
+          {/* X 레이블 */}
+          {slots.map((s, i) => {
+            if (i !== 0 && i % 3 !== 0 && !s.isMidnight) return null;
+            return (
+              <text key={i} x={groupX(i) + groupW / 2} y={H - mBottom + 13}
+                textAnchor="middle" fontSize={11}
+                fill={s.isMidnight ? "rgba(0,0,0,0.65)" : "rgba(0,0,0,0.38)"}
+                fontWeight={s.isMidnight ? "700" : "400"}>
+                {s.label}
+              </text>
+            );
+          })}
+
+          {/* hover 배경 */}
+          {hoverIdx != null && (
+            <rect x={groupX(hoverIdx)} y={mTop} width={groupW} height={cH}
+              fill="rgba(0,0,0,0.05)" rx={2} />
+          )}
+
+          {/* 소스별 막대 */}
+          {slots.map((_, i) => (
+            <g key={i}>
+              {sourceDefs.map((src, bi) => {
+                const d = src.data?.[i];
+                const val = d?.rainChance != null ? Number(d.rainChance) : 0;
+                if (val === 0) return null;
+                const x = barX(i, bi);
+                const y = yScale(val);
+                const bh = mTop + cH - y;
+                const isHover = hoverIdx === i;
+                const isActive = activeSrcs.includes(src.name);
+                return (
+                  <g key={src.name} style={{ transition: "opacity 0.15s" }} opacity={isActive ? 1 : 0.1}>
+                    <rect x={x} y={y} width={barW} height={Math.max(bh, 1)}
+                      fill={src.color} rx={1}
+                      opacity={isHover ? 1 : 0.82} />
+                    {isHover && isActive && val > 0 && (
+                      <text x={x + barW / 2} y={y - 4} textAnchor="middle"
+                        fontSize={10} fill={src.color} fontWeight="700">
+                        {val}%
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
             </g>
-          );
-        })}
+          ))}
 
-        {/* X축 */}
-        <line x1={mLeft} y1={mTop + cH} x2={W - mRight} y2={mTop + cH}
-          stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
-
-        {/* X 레이블 */}
-        {slots.map((s, i) => {
-          if (i !== 0 && i % 3 !== 0 && !s.isMidnight) return null;
-          return (
-            <text key={i} x={groupX(i) + groupW / 2} y={H - mBottom + 11}
-              textAnchor="middle" fontSize={8.5}
-              fill={s.isMidnight ? "rgba(0,0,0,0.65)" : "rgba(0,0,0,0.38)"}
-              fontWeight={s.isMidnight ? "700" : "400"}>
-              {s.label}
+          {/* hover 시각 레이블 */}
+          {hoverIdx != null && slots[hoverIdx] && (
+            <text x={groupX(hoverIdx) + groupW / 2} y={mTop - 4} textAnchor="middle"
+              fontSize={11} fill="rgba(0,0,0,0.5)">
+              {slots[hoverIdx].label}
             </text>
-          );
-        })}
+          )}
 
-        {/* hover 배경 */}
-        {hoverIdx != null && (
-          <rect x={groupX(hoverIdx)} y={mTop} width={groupW} height={cH}
-            fill="rgba(0,0,0,0.05)" rx={2} />
-        )}
-
-        {/* 소스별 막대 */}
-        {slots.map((_, i) => (
-          <g key={i}>
-            {sourceDefs.map((src, bi) => {
-              const d = src.data?.[i];
-              const val = d?.rainChance != null ? Number(d.rainChance) : 0;
-              if (val === 0) return null;
-              const x = barX(i, bi);
-              const y = yScale(val);
-              const bh = mTop + cH - y;
-              const isHover = hoverIdx === i;
-              const isActive = activeSrcs.includes(src.name);
-              return (
-                <g key={src.name} style={{ transition: "opacity 0.15s" }} opacity={isActive ? 1 : 0.1}>
-                  <rect x={x} y={y} width={barW} height={Math.max(bh, 1)}
-                    fill={src.color} rx={1}
-                    opacity={isHover ? 1 : 0.82} />
-                  {isHover && isActive && val > 0 && (
-                    <text x={x + barW / 2} y={y - 3} textAnchor="middle"
-                      fontSize={7.5} fill={src.color} fontWeight="700">
-                      {val}%
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-          </g>
-        ))}
-
-        {/* hover 시각 레이블 */}
-        {hoverIdx != null && slots[hoverIdx] && (
-          <text x={groupX(hoverIdx) + groupW / 2} y={mTop - 3} textAnchor="middle"
-            fontSize={8.5} fill="rgba(0,0,0,0.5)">
-            {slots[hoverIdx].label}
-          </text>
-        )}
-
-        {/* 투명 hover 존 */}
-        {slots.map((_, i) => (
-          <rect key={i}
-            x={groupX(i)} y={mTop} width={groupW} height={cH}
-            fill="transparent"
-            onMouseEnter={() => setHoverIdx(i)}
-          />
-        ))}
-      </svg>
+          {/* 투명 hover 존 */}
+          {slots.map((_, i) => (
+            <rect key={i}
+              x={groupX(i)} y={mTop} width={groupW} height={cH}
+              fill="transparent"
+              onMouseEnter={() => setHoverIdx(i)}
+            />
+          ))}
+        </svg>
+      </div>
 
       {/* 현재 시각 기준 소스별 미니 카드 */}
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
@@ -367,8 +369,8 @@ export function HourlyRainChart({ alignedHourly, hourSlots, theme }) {
               }}
               onClick={() => toggleSrc(src.name)}
             >
-              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
-              <p style={{ fontSize: 16, fontWeight: 800, color: theme.text, lineHeight: 1.2 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
+              <p style={{ fontSize: 18, fontWeight: 800, color: theme.text, lineHeight: 1.2 }}>
                 {d?.rainChance != null ? `${d.rainChance}%` : "—"}
               </p>
             </div>
@@ -593,17 +595,14 @@ export function WeatherRadarChart({ weather, compareWeather, meteoWeather, wapiW
 }
 
 // ── 공통: 날짜 짧게 변환 → ["15일", "(일)"]
-// "일" 문자 탐색 대신 숫자로 추출 (일요일 "(일)"과 충돌 방지)
 function splitDateLabel(str) {
   if (!str) return ["", ""];
   const nums = str.match(/\d+/g) || [];
-  // 마지막 숫자가 일(day) — 형식: "6월 15일 (목)" or "6. 15. (목)"
   const dayNum = nums[nums.length - 1];
   const dow = str.match(/\(([가-힣]+)\)/)?.[1] || "";
   return [dayNum ? `${dayNum}일` : "", dow ? `(${dow})` : ""];
 }
 
-// ══════════════════════════════════════════════════════════════════════════
 // ── 공통 소스 정의 헬퍼 ──────────────────────────────────────────────────
 function buildDailySources(dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts) {
   return [
@@ -629,7 +628,7 @@ export function DailyTempChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
   const nDays = Math.max(...sourceDefs.map(s => s.days.length));
   const refLabels = sourceDefs[0].days.map(d => d.date);
 
-  const W = 360, mLeft = 32, mRight = 12, mTop = 18, mBottom = 40;
+  const W = 360, mLeft = 38, mRight = 12, mTop = 18, mBottom = 48;
   const cW = W - mLeft - mRight, cH = 130, H = mTop + cH + mBottom;
   const groupW = cW / nDays;
   const groupCx = i => mLeft + i * groupW + groupW / 2;
@@ -656,7 +655,7 @@ export function DailyTempChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
           return (
             <g key={v}>
               <line x1={mLeft} y1={y} x2={W - mRight} y2={y} stroke="rgba(0,0,0,0.06)" strokeWidth={1} />
-              <text x={mLeft - 4} y={y + 3.5} textAnchor="end" fontSize={7.5} fill="rgba(0,0,0,0.38)">{v}°</text>
+              <text x={mLeft - 5} y={y + 4} textAnchor="end" fontSize={10} fill="rgba(0,0,0,0.38)">{v}°</text>
             </g>
           );
         })}
@@ -668,8 +667,8 @@ export function DailyTempChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
           const cx = groupCx(i);
           return (
             <g key={i}>
-              <text x={cx} y={H - mBottom + 13} textAnchor="middle" fontSize={8.5} fill="rgba(0,0,0,0.5)">{day}</text>
-              <text x={cx} y={H - mBottom + 24} textAnchor="middle" fontSize={8} fill="rgba(0,0,0,0.35)">{dow}</text>
+              <text x={cx} y={H - mBottom + 14} textAnchor="middle" fontSize={11} fill="rgba(0,0,0,0.5)">{day}</text>
+              <text x={cx} y={H - mBottom + 28} textAnchor="middle" fontSize={10} fill="rgba(0,0,0,0.35)">{dow}</text>
             </g>
           );
         })}
@@ -691,9 +690,9 @@ export function DailyTempChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
                 return (
                   <g>
                     {mx && <><circle cx={mx.x} cy={mx.y} r={4} fill={src.color} stroke="white" strokeWidth={1.5} />
-                      <text x={mx.x} y={mx.y - 7} textAnchor="middle" fontSize={9} fill={src.color} fontWeight="700">{mx.val.toFixed(1)}°</text></>}
+                      <text x={mx.x} y={mx.y - 8} textAnchor="middle" fontSize={11} fill={src.color} fontWeight="700">{mx.val.toFixed(1)}°</text></>}
                     {mn && <><circle cx={mn.x} cy={mn.y} r={3.5} fill={src.color} stroke="white" strokeWidth={1.5} />
-                      <text x={mn.x} y={mn.y + 15} textAnchor="middle" fontSize={9} fill={src.color} fontWeight="700">{mn.val.toFixed(1)}°</text></>}
+                      <text x={mn.x} y={mn.y + 17} textAnchor="middle" fontSize={11} fill={src.color} fontWeight="700">{mn.val.toFixed(1)}°</text></>}
                   </g>
                 );
               })()}
@@ -721,10 +720,10 @@ export function DailyTempChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
               background: `${src.color}12`, borderLeft: `3px solid ${src.color}`,
               opacity: isActive ? 1 : 0.2, transition: "opacity 0.15s", cursor: "pointer",
             }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
-              <p style={{ fontSize: 14, fontWeight: 800, color: theme.text, lineHeight: 1.3 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
+              <p style={{ fontSize: 16, fontWeight: 800, color: theme.text, lineHeight: 1.3 }}>
                 {d?.max != null ? `${Number(d.max).toFixed(0)}°` : "—"}
-                <span style={{ fontSize: 10, fontWeight: 500, color: theme.sub, marginLeft: 3 }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: theme.sub, marginLeft: 3 }}>
                   {d?.min != null ? `/ ${Number(d.min).toFixed(0)}°` : ""}
                 </span>
               </p>
@@ -752,7 +751,7 @@ export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
   const nSrc = sourceDefs.length;
   const refLabels = sourceDefs[0].days.map(d => d.date);
 
-  const W = 360, mLeft = 28, mRight = 12, mTop = 12, mBottom = 40;
+  const W = 360, mLeft = 36, mRight = 12, mTop = 12, mBottom = 48;
   const cW = W - mLeft - mRight, cH = 110, H = mTop + cH + mBottom;
   const groupW = cW / nDays;
   const groupX  = i => mLeft + i * groupW;
@@ -774,7 +773,7 @@ export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
           return (
             <g key={v}>
               <line x1={mLeft} y1={y} x2={W - mRight} y2={y} stroke="rgba(0,0,0,0.06)" strokeWidth={1} />
-              <text x={mLeft - 4} y={y + 3.5} textAnchor="end" fontSize={7.5} fill="rgba(0,100,200,0.45)">{v}%</text>
+              <text x={mLeft - 5} y={y + 4} textAnchor="end" fontSize={10} fill="rgba(0,100,200,0.45)">{v}%</text>
             </g>
           );
         })}
@@ -786,8 +785,8 @@ export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
           const cx = groupCx(i);
           return (
             <g key={i}>
-              <text x={cx} y={H - mBottom + 13} textAnchor="middle" fontSize={8.5} fill="rgba(0,0,0,0.5)">{day}</text>
-              <text x={cx} y={H - mBottom + 24} textAnchor="middle" fontSize={8} fill="rgba(0,0,0,0.35)">{dow}</text>
+              <text x={cx} y={H - mBottom + 14} textAnchor="middle" fontSize={11} fill="rgba(0,0,0,0.5)">{day}</text>
+              <text x={cx} y={H - mBottom + 28} textAnchor="middle" fontSize={10} fill="rgba(0,0,0,0.35)">{dow}</text>
             </g>
           );
         })}
@@ -804,7 +803,7 @@ export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
                     height={val > 0 ? Math.max(bh, 2) : 1}
                     fill={src.color} rx={1} opacity={hoverIdx === i ? 0.75 : 0.5} />
                   {hoverIdx === i && isActive && val > 0 && (
-                    <text x={x + barW / 2} y={y - 3} textAnchor="middle" fontSize={7.5} fill={src.color} fontWeight="700">{val}%</text>
+                    <text x={x + barW / 2} y={y - 4} textAnchor="middle" fontSize={10} fill={src.color} fontWeight="700">{val}%</text>
                   )}
                 </g>
               );
@@ -832,8 +831,8 @@ export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
               background: `${src.color}12`, borderLeft: `3px solid ${src.color}`,
               opacity: isActive ? 1 : 0.2, transition: "opacity 0.15s", cursor: "pointer",
             }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
-              <p style={{ fontSize: 14, fontWeight: 800, color: theme.text, lineHeight: 1.3 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: src.color, marginBottom: 2 }}>{src.name}</p>
+              <p style={{ fontSize: 16, fontWeight: 800, color: theme.text, lineHeight: 1.3 }}>
                 {d?.rainChance != null ? `${Number(d.rainChance).toFixed(0)}%` : "—"}
               </p>
             </div>
@@ -846,251 +845,6 @@ export function DailyRainChart({ dailyForecasts, owDailyForecasts, meteoDaily, w
 
 // DailyForecastChart — 하위 호환 alias
 export function DailyForecastChart(props) { return <DailyTempChart {...props} />; }
-
-
-// ══════════════════════════════════════════════════════════════════════════
-// _DailyRainChart_unused — deprecated
-// ══════════════════════════════════════════════════════════════════════════
-function _DailyRainChart_unused({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
-  const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
-  const [hoverIdx, setHoverIdx] = useState(null);
-
-  const toggleSrc = name => setActiveSrcs(prev =>
-    prev.includes(name)
-      ? prev.length > 1 ? prev.filter(n => n !== name) : prev
-      : [...prev, name]
-  );
-
-  const sourceDefs = [
-    { name: "기상청",    color: "#2563eb", days: dailyForecasts?.length    ? dailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max })) : null },
-    { name: "ECMWF",     color: "#8B5CF6", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max })) : null },
-    { name: "오픈메테오",color: "#059669", days: meteoDaily?.length         ? meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, min: d.tempMin, max: d.tempMax })) : null },
-    { name: "웨더API",   color: "#7c3aed", days: wapiDailyForecasts?.length ? wapiDailyForecasts.slice(0, 5).map(d => ({ date: d.date, min: d.min, max: d.max })) : null },
-  ].filter(s => s.days?.length);
-
-  if (!sourceDefs.length) return null;
-
-  const nDays = Math.max(...sourceDefs.map(s => s.days.length));
-  const refLabels = sourceDefs[0].days.map(d => d.date);
-
-  const allTemps = sourceDefs.flatMap(s => s.days.flatMap(d => [d.min, d.max].filter(v => v != null).map(Number)));
-  if (!allTemps.length) return null;
-
-  const rawMin = Math.min(...allTemps);
-  const rawMax = Math.max(...allTemps);
-  const pad = Math.max((rawMax - rawMin) * 0.25, 2);
-  const minT = Math.floor(rawMin - pad);
-  const maxT = Math.ceil(rawMax + pad);
-
-  const W = 360, H = 190;
-  const mTop = 18, mRight = 12, mBottom = 44, mLeft = 30;
-  const cW = W - mLeft - mRight;
-  const cH = H - mTop - mBottom;
-
-  const xScale = i => mLeft + (nDays > 1 ? (i / (nDays - 1)) * cW : cW / 2);
-  const yScale = v => mTop + cH - ((v - minT) / (maxT - minT || 1)) * cH;
-
-  const yRange = maxT - minT;
-  const tickStep = yRange <= 6 ? 2 : yRange <= 12 ? 3 : yRange <= 20 ? 4 : 5;
-  const yTicks = [];
-  for (let v = Math.ceil(minT / tickStep) * tickStep; v <= maxT; v += tickStep) yTicks.push(v);
-
-  const slotW = nDays > 1 ? cW / (nDays - 1) : cW;
-
-  return (
-    <div>
-      <ChartLegend sources={sourceDefs} theme={theme} activeSrcs={activeSrcs} onToggle={toggleSrc} />
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}
-        onMouseLeave={() => setHoverIdx(null)}>
-
-        {yTicks.map(v => {
-          const y = yScale(v);
-          return (
-            <g key={v}>
-              <line x1={mLeft} y1={y} x2={W - mRight} y2={y} stroke="rgba(0,0,0,0.06)" strokeWidth={1} />
-              <text x={mLeft - 4} y={y + 3.5} textAnchor="end" fontSize={8} fill="rgba(0,0,0,0.35)">{v}°</text>
-            </g>
-          );
-        })}
-
-        <line x1={mLeft} y1={mTop + cH} x2={W - mRight} y2={mTop + cH} stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
-
-        {Array.from({ length: nDays }, (_, i) => {
-          const [day, dow] = splitDateLabel(refLabels[i]);
-          return (
-            <g key={i}>
-              <text x={xScale(i)} y={H - mBottom + 13} textAnchor="middle" fontSize={8.5} fill="rgba(0,0,0,0.5)">{day}</text>
-              <text x={xScale(i)} y={H - mBottom + 24} textAnchor="middle" fontSize={8} fill="rgba(0,0,0,0.35)">{dow}</text>
-            </g>
-          );
-        })}
-
-        {sourceDefs.map(src => {
-          const isActive = activeSrcs.includes(src.name);
-          const maxPts = src.days.map((d, i) => d.max != null ? { x: xScale(i), y: yScale(Number(d.max)), val: Number(d.max) } : null);
-          const minPts = src.days.map((d, i) => d.min != null ? { x: xScale(i), y: yScale(Number(d.min)), val: Number(d.min) } : null);
-          const validMax = maxPts.filter(Boolean);
-          const validMin = minPts.filter(Boolean);
-          const bandPts = [...validMax, ...[...validMin].reverse()].map(p => `${p.x},${p.y}`).join(" ");
-
-          return (
-            <g key={src.name} opacity={isActive ? 1 : 0.1} style={{ transition: "opacity 0.15s" }}>
-              {validMax.length > 1 && <polygon points={bandPts} fill={`${src.color}18`} />}
-              {validMax.length > 1 && (
-                <polyline points={validMax.map(p => `${p.x},${p.y}`).join(" ")}
-                  fill="none" stroke={src.color} strokeWidth={2.2} strokeLinejoin="round" strokeLinecap="round" />
-              )}
-              {validMin.length > 1 && (
-                <polyline points={validMin.map(p => `${p.x},${p.y}`).join(" ")}
-                  fill="none" stroke={src.color} strokeWidth={1.5} strokeDasharray="4,2.5"
-                  strokeLinejoin="round" strokeLinecap="round" />
-              )}
-              {hoverIdx != null && isActive && (() => {
-                const mx = maxPts[hoverIdx];
-                const mn = minPts[hoverIdx];
-                return (
-                  <g>
-                    {mx && <>
-                      <circle cx={mx.x} cy={mx.y} r={4} fill={src.color} stroke="white" strokeWidth={1.5} />
-                      <text x={mx.x} y={mx.y - 7} textAnchor="middle" fontSize={9} fill={src.color} fontWeight="700">{mx.val.toFixed(1)}°</text>
-                    </>}
-                    {mn && <>
-                      <circle cx={mn.x} cy={mn.y} r={3.5} fill={src.color} stroke="white" strokeWidth={1.5} />
-                      <text x={mn.x} y={mn.y + 15} textAnchor="middle" fontSize={9} fill={src.color} fontWeight="700">{mn.val.toFixed(1)}°</text>
-                    </>}
-                  </g>
-                );
-              })()}
-            </g>
-          );
-        })}
-
-        {hoverIdx != null && (
-          <line x1={xScale(hoverIdx)} y1={mTop} x2={xScale(hoverIdx)} y2={mTop + cH}
-            stroke="rgba(0,0,0,0.18)" strokeWidth={1} strokeDasharray="3,2" />
-        )}
-
-        {Array.from({ length: nDays }, (_, i) => (
-          <rect key={i} x={xScale(i) - slotW / 2} y={mTop} width={slotW} height={cH}
-            fill="transparent" onMouseEnter={() => setHoverIdx(i)} />
-        ))}
-      </svg>
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════
-// _DailyRainChart_old — deprecated alias, replaced by new DailyRainChart above
-// ══════════════════════════════════════════════════════════════════════════
-function _DailyRainChart_old({ dailyForecasts, owDailyForecasts, meteoDaily, wapiDailyForecasts, theme }) {
-  const [activeSrcs, setActiveSrcs] = useState(["기상청"]);
-  const [hoverIdx, setHoverIdx] = useState(null);
-
-  const toggleSrc = name => setActiveSrcs(prev =>
-    prev.includes(name)
-      ? prev.length > 1 ? prev.filter(n => n !== name) : prev
-      : [...prev, name]
-  );
-
-  const sourceDefs = [
-    { name: "기상청",    color: "#2563eb", days: dailyForecasts?.length    ? dailyForecasts.slice(0, 5).map(d => ({ date: d.date, rainChance: d.rainChance })) : null },
-    { name: "ECMWF",     color: "#8B5CF6", days: owDailyForecasts?.length   ? owDailyForecasts.slice(0, 5).map(d => ({ date: d.date, rainChance: d.rainChance })) : null },
-    { name: "오픈메테오",color: "#059669", days: meteoDaily?.length         ? meteoDaily.slice(1, 6).map(d => ({ date: d.dateLabel, rainChance: d.rainChance })) : null },
-    { name: "웨더API",   color: "#7c3aed", days: wapiDailyForecasts?.length ? wapiDailyForecasts.slice(0, 5).map(d => ({ date: d.date, rainChance: d.rainChance })) : null },
-  ].filter(s => s.days?.length);
-
-  if (!sourceDefs.length) return null;
-
-  const nDays = Math.max(...sourceDefs.map(s => s.days.length));
-  const refLabels = sourceDefs[0].days.map(d => d.date);
-  const nSrc = sourceDefs.length;
-
-  const W = 360, H = 160;
-  const mTop = 14, mRight = 12, mBottom = 44, mLeft = 30;
-  const cW = W - mLeft - mRight;
-  const cH = H - mTop - mBottom;
-
-  const groupW = cW / nDays;
-  const barPad = 3;
-  const barGap = 1;
-  const barAreaW = groupW - barPad * 2;
-  const barW = Math.max((barAreaW - barGap * (nSrc - 1)) / nSrc, 2);
-
-  const yScale = v => mTop + cH - (Math.min(v, 100) / 100) * cH;
-  const yTicks = [0, 25, 50, 75, 100];
-  const groupX = i => mLeft + i * groupW;
-  const barX = (i, bi) => groupX(i) + barPad + bi * (barW + barGap);
-
-  return (
-    <div>
-      <ChartLegend sources={sourceDefs} theme={theme} activeSrcs={activeSrcs} onToggle={toggleSrc} />
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}
-        onMouseLeave={() => setHoverIdx(null)}>
-
-        {yTicks.map(v => {
-          const y = yScale(v);
-          return (
-            <g key={v}>
-              <line x1={mLeft} y1={y} x2={W - mRight} y2={y}
-                stroke={v === 0 ? "rgba(0,0,0,0.1)" : "rgba(0,0,0,0.05)"}
-                strokeWidth={1} strokeDasharray={v === 0 ? "none" : "3,3"} />
-              <text x={mLeft - 4} y={y + 3.5} textAnchor="end" fontSize={8} fill="rgba(0,0,0,0.35)">{v}%</text>
-            </g>
-          );
-        })}
-
-        <line x1={mLeft} y1={mTop + cH} x2={W - mRight} y2={mTop + cH} stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
-
-        {Array.from({ length: nDays }, (_, i) => {
-          const [day, dow] = splitDateLabel(refLabels[i]);
-          return (
-            <g key={i}>
-              <text x={groupX(i) + groupW / 2} y={H - mBottom + 13} textAnchor="middle" fontSize={8.5} fill="rgba(0,0,0,0.5)">{day}</text>
-              <text x={groupX(i) + groupW / 2} y={H - mBottom + 24} textAnchor="middle" fontSize={8} fill="rgba(0,0,0,0.35)">{dow}</text>
-            </g>
-          );
-        })}
-
-        {hoverIdx != null && (
-          <rect x={groupX(hoverIdx)} y={mTop} width={groupW} height={cH} fill="rgba(0,0,0,0.05)" rx={2} />
-        )}
-
-        {Array.from({ length: nDays }, (_, i) => (
-          <g key={i}>
-            {sourceDefs.map((src, bi) => {
-              const val = src.days[i]?.rainChance != null ? Number(src.days[i].rainChance) : 0;
-              if (val === 0) return null;
-              const x = barX(i, bi);
-              const y = yScale(val);
-              const bh = mTop + cH - y;
-              const isActive = activeSrcs.includes(src.name);
-              return (
-                <g key={src.name} opacity={isActive ? 1 : 0.1} style={{ transition: "opacity 0.15s" }}>
-                  <rect x={x} y={y} width={barW} height={Math.max(bh, 1)} fill={src.color} rx={1}
-                    opacity={hoverIdx === i ? 1 : 0.82} />
-                  {hoverIdx === i && isActive && (
-                    <text x={x + barW / 2} y={y - 3} textAnchor="middle" fontSize={7.5} fill={src.color} fontWeight="700">{val}%</text>
-                  )}
-                </g>
-              );
-            })}
-          </g>
-        ))}
-
-        {hoverIdx != null && refLabels[hoverIdx] && (
-          <text x={groupX(hoverIdx) + groupW / 2} y={mTop - 3} textAnchor="middle" fontSize={8.5} fill="rgba(0,0,0,0.5)">
-            {splitDateLabel(refLabels[hoverIdx]).join(" ")}
-          </text>
-        )}
-
-        {Array.from({ length: nDays }, (_, i) => (
-          <rect key={i} x={groupX(i)} y={mTop} width={groupW} height={cH}
-            fill="transparent" onMouseEnter={() => setHoverIdx(i)} />
-        ))}
-      </svg>
-    </div>
-  );
-}
 
 // ══════════════════════════════════════════════════════════════════════════
 // DailyConditionCard — 5일 날씨 상태 비교 (소스별 이모지+텍스트)
@@ -1152,8 +906,8 @@ export function DailyConditionCard({ dailyForecasts, owDailyForecasts, meteoDail
               padding: "10px 4px 8px",
               display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
             }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: theme.text, lineHeight: 1.1 }}>{day}</p>
-              <p style={{ fontSize: 9, color: theme.sub, lineHeight: 1 }}>{dow}</p>
+              <p style={{ fontSize: 13, fontWeight: 700, color: theme.text, lineHeight: 1.1 }}>{day}</p>
+              <p style={{ fontSize: 11, color: theme.sub, lineHeight: 1 }}>{dow}</p>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, marginTop: 2, width: "100%" }}>
                 {activeDefs.map(src => {
                   const am = src.days[i]?.condAm;
@@ -1161,11 +915,11 @@ export function DailyConditionCard({ dailyForecasts, owDailyForecasts, meteoDail
                   return (
                     <div key={src.name} style={{ display: "flex", gap: 4, justifyContent: "center", width: "100%" }}>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
-                        <span style={{ fontSize: 8, color: src.color, fontWeight: 700, marginBottom: 1 }}>오전</span>
+                        <span style={{ fontSize: 10, color: src.color, fontWeight: 700, marginBottom: 1 }}>오전</span>
                         <span style={{ fontSize: 18, lineHeight: 1 }}>{condToEmoji(am)}</span>
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
-                        <span style={{ fontSize: 8, color: src.color, fontWeight: 700, marginBottom: 1 }}>오후</span>
+                        <span style={{ fontSize: 10, color: src.color, fontWeight: 700, marginBottom: 1 }}>오후</span>
                         <span style={{ fontSize: 18, lineHeight: 1 }}>{condToEmoji(pm)}</span>
                       </div>
                     </div>
@@ -1192,14 +946,14 @@ export function DailyConditionCard({ dailyForecasts, owDailyForecasts, meteoDail
                 opacity: isActive ? 1 : 0.2, transition: "opacity 0.15s", cursor: "pointer",
               }}
             >
-              <p style={{ fontSize: 10, fontWeight: 700, color: src.color, marginBottom: 4 }}>{src.name}</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: src.color, marginBottom: 4 }}>{src.name}</p>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 7.5, color: src.color, opacity: 0.7 }}>오전</div>
+                  <div style={{ fontSize: 10, color: src.color, opacity: 0.7 }}>오전</div>
                   <span style={{ fontSize: 16 }}>{condToEmoji(am)}</span>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 7.5, color: src.color, opacity: 0.7 }}>오후</div>
+                  <div style={{ fontSize: 10, color: src.color, opacity: 0.7 }}>오후</div>
                   <span style={{ fontSize: 16 }}>{condToEmoji(pm)}</span>
                 </div>
               </div>
@@ -1232,7 +986,6 @@ export function DailyAirCard({ airForecast, theme }) {
     { name: "OpenWeather", color: "#F97316", data: airForecast?.openweather || [] },
   ];
 
-  // 모든 소스에서 dateLabel 수집 → 정렬된 고유 날짜 3개
   const allDates = [...new Set(sources.flatMap(s => s.data.map(d => d.dateLabel)))]
     .sort((a, b) => {
       const nums = s => (s.match(/\d+/g) || []).map(Number);
@@ -1245,7 +998,6 @@ export function DailyAirCard({ airForecast, theme }) {
     <div style={{ background: theme.card, borderRadius: 16, padding: "18px 16px", marginBottom: 16 }}>
       <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 14 }}>🌫️ 3일 미세먼지 (PM2.5) 예보</h3>
 
-      {/* 날짜 헤더 */}
       <div style={{ display: "grid", gridTemplateColumns: `72px repeat(${allDates.length}, 1fr)`, gap: 4, marginBottom: 6 }}>
         <div />
         {allDates.map(d => {
@@ -1259,7 +1011,6 @@ export function DailyAirCard({ airForecast, theme }) {
         })}
       </div>
 
-      {/* 소스별 행 */}
       {sources.map(src => {
         if (!activeSrcs.includes(src.name)) return null;
         const byDate = Object.fromEntries(src.data.map(d => [d.dateLabel, d]));
@@ -1284,7 +1035,6 @@ export function DailyAirCard({ airForecast, theme }) {
         );
       })}
 
-      {/* 미니카드 토글 */}
       <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
         {sources.map(src => {
           const isActive = activeSrcs.includes(src.name);
@@ -1324,7 +1074,6 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, owHourly, theme }) {
 
   const nowHour = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
 
-  // 모든 소스: 현재 시간 이후만 표시 (X축을 지금부터 시작)
   const filterFromNow = (arr) =>
     (arr || []).filter(h => h.time && parseInt(h.time.slice(0, 2), 10) >= nowHour && h.pm25 != null);
   const akSlots = filterFromNow(airHourly);
@@ -1347,7 +1096,6 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, owHourly, theme }) {
 
   const sources = allSources.filter(s => activeSrcs.includes(s.name));
 
-  // 동적 Y축: 활성 소스의 실제 최대값 기준 (등급 경계 포함)
   const activeVals = sources.flatMap(s => s.slots.map(h => h.pm25).filter(v => v != null));
   const dataMax = activeVals.length ? Math.max(...activeVals) : 0;
   const Y_MAX = dataMax <= 15 ? 25 : dataMax <= 35 ? 50 : dataMax <= 75 ? 90 : 110;
@@ -1362,7 +1110,6 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, owHourly, theme }) {
     { from: 35, to: 75, color: "#fb923c22" },
     { from: 75, to: Y_MAX, color: "#f8717122" },
   ];
-  // Y_MAX 이하에 걸치는 경계선만 표시
   const bandLabels = [
     { y: 15, label: "15" },
     { y: 35, label: "35" },
@@ -1383,7 +1130,6 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, owHourly, theme }) {
     return pts.length > 1 ? `M ${pts.join(" L ")}` : "";
   };
 
-  // X축 레이블: 4시간마다
   const xLabels = allTimes.filter((_, i) => i % 4 === 0);
 
   return (
@@ -1392,7 +1138,6 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, owHourly, theme }) {
 
       <div style={{ overflowX: "auto" }}>
         <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", minWidth: W, display: "block" }}>
-          {/* 등급 음영 */}
           {bands.map((b, i) => {
             const yTop = toY(Math.min(b.to, Y_MAX));
             const yBot = toY(b.from);
@@ -1400,7 +1145,6 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, owHourly, theme }) {
             return <rect key={i} x={PAD_L} y={yTop} width={chartW} height={yBot - yTop} fill={b.color} />;
           })}
 
-          {/* 등급 경계 점선 + 레이블 */}
           {bandLabels.map(({ y, label }) => (
             <g key={y}>
               <line x1={PAD_L} x2={PAD_L + chartW} y1={toY(y)} y2={toY(y)}
@@ -1410,10 +1154,8 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, owHourly, theme }) {
             </g>
           ))}
 
-          {/* Y축 0 */}
           <text x={PAD_L - 3} y={toY(0) + 3.5} textAnchor="end" fontSize={8} fill={theme.sub} opacity={0.7}>0</text>
 
-          {/* 꺾은선 */}
           {sources.map(src => {
             const d = makePath(src.slots);
             return d ? (
@@ -1422,7 +1164,6 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, owHourly, theme }) {
             ) : null;
           })}
 
-          {/* X축 레이블 */}
           {xLabels.map(t => (
             <text key={t} x={toX(t)} y={H - 6} textAnchor="middle"
               fontSize={8} fill={theme.sub} opacity={0.8}>{t.slice(0, 2)}시</text>
@@ -1430,7 +1171,6 @@ export function HourlyAirCard({ airHourly, openmeteoHourly, owHourly, theme }) {
         </svg>
       </div>
 
-      {/* 소스 토글 미니카드 */}
       <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
         {allSources.map(src => {
           const isActive = activeSrcs.includes(src.name);
